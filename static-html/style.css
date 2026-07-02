@@ -1,0 +1,289 @@
+/* ════════════════════════════════════════════════════════════════════
+   JL ENTERPRISES — shared stylesheet for the static pages
+   (index / service / signup / login / cart / category pages)
+
+   Colour palette:
+     navy   #0b2447  – headers, buttons, headings
+     brand  #576cbc  – purple/indigo accent (icons, links)
+     orange #f97316  – call-to-action highlights
+     grey   #f4f6fa  – page background
+   Tailwind CDN handles most layout; this file adds the form,
+   cart and component styles that Tailwind classes don't cover.
+   ════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --navy: #0b2447;
+  --navy-600: #19376d;
+  --brand: #576cbc;          /* purple accent */
+  --brand-light: #eef1fb;    /* pale purple for icon chips */
+  --orange: #f97316;
+  --grey-bg: #f4f6fa;
+  --grey-border: #e2e8f0;
+  --text-muted: #64748b;
+}
+
+/* soft grey page background so white cards stand out */
+body { background: var(--grey-bg); }
+
+/* ── Form card (service / signup / login) ─────────────────────────── */
+.form-card {
+  background: #fff;
+  border: 1px solid var(--grey-border);
+  border-radius: 24px;
+  padding: 32px 28px;
+  max-width: 480px;
+  margin: 36px auto;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, .06);
+}
+
+/* small round purple icon above the form title */
+.form-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--brand-light);
+  color: var(--brand);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  margin: 0 auto 12px;
+}
+
+.form-card h2 {
+  color: var(--navy);
+  font-size: 22px;
+  font-weight: 800;
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+.form-card .sub {
+  color: var(--text-muted);
+  font-size: 13.5px;
+  text-align: center;
+  margin-bottom: 22px;
+}
+
+/* ── Fields ───────────────────────────────────────────────────────── */
+.field { margin-bottom: 14px; }
+
+.field label {
+  display: block;
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  border: 1px solid var(--grey-border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: #0f172a;
+  background: #fff;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgba(87, 108, 188, .15);
+}
+
+/* red border added by script.js when a field is invalid */
+.field input.invalid,
+.field textarea.invalid { border-color: #ef4444; }
+
+.field .hint { font-size: 12px; color: #ef4444; margin-top: 4px; display: none; }
+.field .hint.show { display: block; }
+
+/* ── Buttons ──────────────────────────────────────────────────────── */
+.btn-primary {
+  width: 100%;
+  background: var(--navy);
+  color: #fff;
+  font-weight: 700;
+  font-size: 15px;
+  padding: 13px;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background .15s;
+}
+.btn-primary:hover { background: var(--brand); }
+
+/* ── Success message box (shown by script.js after submit) ───────── */
+.success-box {
+  display: none;               /* unhidden by script.js */
+  text-align: center;
+  padding: 36px 20px;
+}
+.success-box.show { display: block; }
+.success-box .big { font-size: 52px; display: block; margin-bottom: 10px; }
+.success-box h3 { color: var(--navy); font-size: 20px; font-weight: 800; margin-bottom: 6px; }
+.success-box p { color: var(--text-muted); font-size: 14px; }
+
+/* small helper link line under forms: "Already have an account?" etc. */
+.form-links {
+  text-align: center;
+  font-size: 13.5px;
+  color: var(--text-muted);
+  margin-top: 16px;
+}
+.form-links a { color: var(--brand); font-weight: 600; text-decoration: none; }
+.form-links a:hover { text-decoration: underline; }
+
+/* ── Cart page ────────────────────────────────────────────────────── */
+.cart-item {
+  background: #fff;
+  border: 1px solid var(--grey-border);
+  border-radius: 18px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+/* emoji placeholder in place of a product photo */
+.cart-thumb {
+  width: 64px;
+  height: 64px;
+  border-radius: 14px;
+  background: var(--grey-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 34px;
+  flex-shrink: 0;
+}
+
+.cart-info { flex: 1; min-width: 160px; }
+.cart-info .brand { font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 600; letter-spacing: .04em; }
+.cart-info .name { color: var(--navy); font-weight: 600; font-size: 15px; line-height: 1.35; }
+.cart-info .price { color: var(--navy); font-weight: 800; margin-top: 2px; }
+
+/* quantity selector: [−] 2 [+] */
+.qty-box {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--grey-border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.qty-box button {
+  width: 34px; height: 34px;
+  background: var(--grey-bg);
+  border: 0; cursor: pointer;
+  font-size: 16px; font-weight: 700; color: var(--navy);
+}
+.qty-box button:hover { background: var(--brand-light); color: var(--brand); }
+.qty-box .qty { width: 38px; text-align: center; font-weight: 700; color: var(--navy); font-size: 14px; }
+
+.remove-btn {
+  border: 1px solid var(--grey-border);
+  background: #fff;
+  color: var(--text-muted);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.remove-btn:hover { color: #ef4444; border-color: #fecaca; }
+
+/* totals card on the right / below */
+.cart-summary {
+  background: #fff;
+  border: 1px solid var(--grey-border);
+  border-radius: 18px;
+  padding: 20px;
+  height: fit-content;
+}
+.cart-summary .row {
+  display: flex; justify-content: space-between;
+  font-size: 14px; color: var(--text-muted); padding: 6px 0;
+}
+.cart-summary .total-row {
+  display: flex; justify-content: space-between;
+  border-top: 1px solid var(--grey-border);
+  margin-top: 8px; padding-top: 12px;
+  color: var(--navy); font-weight: 800; font-size: 18px;
+}
+
+/* empty-cart state */
+.cart-empty { text-align: center; padding: 70px 20px; color: #94a3b8; }
+.cart-empty .big { font-size: 54px; display: block; margin-bottom: 12px; }
+
+/* ── Footer ───────────────────────────────────────────────────────────
+   Every footer item is a real <a> link (no plain text, no href="#").
+   position:relative + z-index makes sure nothing can overlap the links
+   and block clicks. */
+.footer {
+  position: relative;
+  z-index: 10;
+}
+
+.footer h3 {
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 15px;
+  margin-bottom: 12px;
+}
+
+.footer a {
+  color: #a9c7e8;              /* light blue link text */
+  text-decoration: none;
+  cursor: pointer;
+  display: block;              /* full-width click target per line */
+  margin-bottom: 14px;
+  font-size: 13px;
+  pointer-events: auto;        /* always clickable */
+}
+
+.footer a:hover {
+  color: #ffffff;              /* white on hover */
+  text-decoration: underline;
+}
+
+/* clickable shop address — looks like normal address text, but links
+   to shop-location.html (.footer .footer-address outranks .footer a) */
+.footer .footer-address {
+  color: #a9c7e8;
+  text-decoration: none;
+  line-height: 1.8;
+  display: inline-block;
+  cursor: pointer;
+  pointer-events: auto;
+  font-size: 13px;
+  max-width: 260px;
+  margin-bottom: 0;
+}
+
+.footer .footer-address:hover {
+  color: #ffffff;
+  text-decoration: underline;
+}
+
+/* small label above phone numbers in the Call Us column */
+.footer a .tag {
+  display: block;
+  font-size: 11px;
+  color: var(--brand-sky, #a5d7e8);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  text-decoration: none;
+}
+
+/* ── Small screens ────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .form-card { margin: 20px 14px; padding: 24px 18px; }
+  .cart-item { gap: 10px; }
+}

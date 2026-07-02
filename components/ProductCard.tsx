@@ -4,11 +4,14 @@ import Link from "next/link";
 import type { Product } from "@/lib/types";
 import { inr, pctOff } from "@/lib/format";
 import { useCart } from "@/lib/cart";
+import { useWishlist } from "@/lib/wishlist";
 
 export default function ProductCard({ p }: { p: Product }) {
   const { add } = useCart();
+  const { has, toggle } = useWishlist();
   const off = pctOff(p.mrp, p.price);
   const low = p.stock > 0 && p.stock <= 3;
+  const saved = has(p.id);
 
   return (
     <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden hover:shadow-card hover:-translate-y-0.5 transition relative">
@@ -17,6 +20,16 @@ export default function ProductCard({ p }: { p: Product }) {
           -{off}%
         </span>
       )}
+      <button
+        onClick={() => toggle(p)}
+        aria-label={saved ? "Remove from wishlist" : "Add to wishlist"}
+        title={saved ? "Remove from wishlist" : "Add to wishlist"}
+        className={`absolute top-2.5 right-2.5 z-[2] w-8 h-8 rounded-full flex items-center justify-center text-[15px] shadow-sm transition ${
+          saved ? "bg-red-50 border border-red-200" : "bg-white/90 border border-slate-200 grayscale hover:grayscale-0"
+        }`}
+      >
+        ❤️
+      </button>
       <Link href={`/product/${p.slug}`} className="block h-40 flex items-center justify-center text-6xl bg-gradient-to-br from-slate-50 to-slate-100 overflow-hidden">
         {p.imageUrl ? <img src={p.imageUrl} alt={p.name} className="w-full h-full object-contain" /> : p.emoji}
       </Link>

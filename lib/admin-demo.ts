@@ -38,6 +38,34 @@ export const DEMO_CUSTOMERS: AdminCustomer[] = [
   { id: "c5", name: "Suresh B.", phone: "+91 73xxxx5540", area: "Madurai", orders: 1, ltv: 41000 },
 ];
 
+export type AdminReturn = {
+  id: string;
+  order_no: string;
+  contact_name: string;
+  phone: string;
+  kind: string; // RETURN | CANCEL
+  reason: string;
+  status: string; // REQUESTED | APPROVED | REJECTED | PICKED_UP | REFUNDED
+  payment_mode: string;
+  total: number;
+  created_at: string;
+};
+
+export const DEMO_RETURNS: AdminReturn[] = [
+  { id: "r1", order_no: "JL2838", contact_name: "Anitha R.", phone: "+91 94xxxx7765", kind: "RETURN", reason: "Mixer jar lid cracked on arrival", status: "REQUESTED", payment_mode: "UPI", total: 9450, created_at: new Date().toISOString() },
+  { id: "r2", order_no: "JL2836", contact_name: "Deepa V.", phone: "+91 73xxxx5540", kind: "CANCEL", reason: "Ordered wrong colour", status: "APPROVED", payment_mode: "RAZORPAY", total: 38000, created_at: new Date().toISOString() },
+];
+
+export const RETURN_FLOW = ["REQUESTED", "APPROVED", "REJECTED", "PICKED_UP", "REFUNDED"];
+
+export const RETURN_LABEL: Record<string, string> = {
+  REQUESTED: "Requested",
+  APPROVED: "Approved",
+  REJECTED: "Rejected",
+  PICKED_UP: "Picked up",
+  REFUNDED: "Refunded",
+};
+
 export const STATUS_FLOW = ["NEW", "PACKED", "OUT_FOR_DELIVERY", "DELIVERED"];
 
 export const STATUS_LABEL: Record<string, string> = {

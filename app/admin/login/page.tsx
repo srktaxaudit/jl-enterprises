@@ -23,7 +23,8 @@ export default function AdminLogin() {
       router.push("/admin");
       router.refresh();
     } else {
-      setErr("Incorrect password. (Demo password: jladmin)");
+      const data = await res.json().catch(() => ({}));
+      setErr(data.error || "Incorrect password.");
     }
   }
 
@@ -49,7 +50,7 @@ export default function AdminLogin() {
         <button onClick={submit} disabled={busy} className="w-full bg-navy disabled:opacity-60 text-white font-bold py-3 rounded-full mt-3">
           {busy ? "Signing in…" : "Sign In"}
         </button>
-        <p className="text-[11px] text-slate-400 text-center mt-4">Demo password: <b>jladmin</b> · set ADMIN_PASSWORD to change</p>
+        <p className="text-[11px] text-slate-400 text-center mt-4">Access restricted to JL Enterprises staff.</p>
       </div>
     </div>
   );

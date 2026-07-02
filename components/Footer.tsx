@@ -29,18 +29,18 @@ export default function Footer() {
 
         <div>
           <h4 className="text-white font-semibold mb-3">Help</h4>
-          <Link href="/login" className="block text-slate-400 hover:text-white text-[13px] py-1">Track Order</Link>
+          <Link href="/track" className="block text-slate-400 hover:text-white text-[13px] py-1">Track Order</Link>
           <Link href="/service" className="block text-slate-400 hover:text-white text-[13px] py-1">Book Service / AMC</Link>
-          {["Delivery & Returns", "EMI & Payment", "Contact Us"].map((x) => (
-            <span key={x} className="block text-slate-400 text-[13px] py-1">{x}</span>
-          ))}
+          <Link href="/shipping-policy" className="block text-slate-400 hover:text-white text-[13px] py-1">Shipping & Delivery</Link>
+          <Link href="/refund-policy" className="block text-slate-400 hover:text-white text-[13px] py-1">Returns & Refunds</Link>
         </div>
 
         <div>
           <h4 className="text-white font-semibold mb-3">Company</h4>
-          {["About JL Enterprises", "Our Brands", "Terms & Conditions", "Privacy Policy", "Feedback"].map((x) => (
-            <span key={x} className="block text-slate-400 text-[13px] py-1">{x}</span>
-          ))}
+          <span className="block text-slate-400 text-[13px] py-1">About JL Enterprises</span>
+          <Link href="/terms" className="block text-slate-400 hover:text-white text-[13px] py-1">Terms & Conditions</Link>
+          <Link href="/privacy" className="block text-slate-400 hover:text-white text-[13px] py-1">Privacy Policy</Link>
+          <Link href="/data-deletion" className="block text-slate-400 hover:text-white text-[13px] py-1">Data Deletion</Link>
         </div>
       </div>
       <div className="border-t border-white/10 mt-7 py-4 text-center text-[13px] text-slate-500">

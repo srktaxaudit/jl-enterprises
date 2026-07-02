@@ -38,6 +38,46 @@ export async function createRazorpayOrder(amountRupees: number, receipt: string)
   return { orderId: order.id as string, amount: order.amount as number, keyId: k.id };
 }
 
+/** Fetch a Razorpay order so its amount can be cross-checked against the
+ *  server-priced total before the order is persisted as PAID. */
+export async function fetchRazorpayOrder(orderId: string) {
+  const k = keys();
+  if (!k || !/^order_[A-Za-z0-9]+$/.test(orderId)) return null;
+
+  const auth = Buffer.from(`${k.id}:${k.secret}`).toString("base64");
+  const res = await fetch(`https://api.razorpay.com/v1/orders/${orderId}`, {
+    headers: { Authorization: `Basic ${auth}` },
+  });
+  if (!res.ok) return null;
+  const order = await res.json();
+  return { amountPaise: Number(order.amount), status: String(order.status) };
+}
+
+/** Refund a captured payment (full refund when amountPaise is omitted).
+ *  Used when the admin marks a return request as REFUNDED. */
+export async function refundRazorpayPayment(paymentId: string, amountPaise?: number) {
+  const k = keys();
+  if (!k) return { ok: false as const, error: "Razorpay keys not configured" };
+  if (!/^pay_[A-Za-z0-9]+$/.test(paymentId))
+    return { ok: false as const, error: "Invalid payment reference" };
+
+  const auth = Buffer.from(`${k.id}:${k.secret}`).toString("base64");
+  try {
+    const res = await fetch(`https://api.razorpay.com/v1/payments/${paymentId}/refund`, {
+      method: "POST",
+      headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/json" },
+      body: JSON.stringify(amountPaise ? { amount: Math.round(amountPaise) } : {}),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { ok: false as const, error: data?.error?.description ?? "Refund failed" };
+    }
+    return { ok: true as const, refundId: data.id as string };
+  } catch (e) {
+    return { ok: false as const, error: String(e) };
+  }
+}
+
 /** Verify the payment signature returned by Razorpay Checkout. */
 export function verifyRazorpaySignature(p: {
   razorpay_order_id: string;

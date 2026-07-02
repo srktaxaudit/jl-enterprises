@@ -1,13 +1,24 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useCart } from "@/lib/cart";
-import { getCategories } from "@/lib/catalog";
+import { useWishlist } from "@/lib/wishlist";
+import type { Category } from "@/lib/types";
 import { LogoMark } from "@/components/Logo";
 
-export default function Header() {
+export default function Header({ cats }: { cats: Category[] }) {
   const { count } = useCart();
-  const cats = getCategories();
+  const { count: wishCount } = useWishlist();
+  const router = useRouter();
+  const [q, setQ] = useState("");
+
+  function search(e: React.FormEvent) {
+    e.preventDefault();
+    const term = q.trim();
+    router.push(term ? `/search?q=${encodeURIComponent(term)}` : "/category");
+  }
 
   return (
     <>
@@ -27,22 +38,32 @@ export default function Header() {
             </div>
           </Link>
 
-          <div className="flex-1 flex bg-slate-100 border border-slate-200 rounded-full overflow-hidden">
+          <form onSubmit={search} className="flex-1 flex bg-slate-100 border border-slate-200 rounded-full overflow-hidden">
             <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
               className="flex-1 bg-transparent px-4 py-2.5 text-sm outline-none text-slate-600"
               placeholder="Search for AC, TV, Fridge, Washing Machine, Furniture…"
             />
-            <Link href="/category" className="bg-navy text-white px-5 flex items-center font-semibold text-sm">
+            <button type="submit" className="bg-navy text-white px-5 flex items-center font-semibold text-sm">
               Search
-            </Link>
-          </div>
+            </button>
+          </form>
 
           <nav className="flex items-center gap-4 text-slate-600">
             <Link href="/service" className="flex flex-col items-center text-[11px]">
               <span className="text-xl">🔧</span>Service
             </Link>
-            <Link href="/login" className="hidden sm:flex flex-col items-center text-[11px]">
-              <span className="text-xl">👤</span>Login
+            <Link href="/wishlist" className="relative hidden sm:flex flex-col items-center text-[11px]">
+              <span className="text-xl">❤️</span>Wishlist
+              {wishCount > 0 && (
+                <span className="absolute -top-1.5 -right-2 bg-orange text-white text-[11px] font-bold w-[18px] h-[18px] rounded-full flex items-center justify-center">
+                  {wishCount}
+                </span>
+              )}
+            </Link>
+            <Link href="/account" className="hidden sm:flex flex-col items-center text-[11px]">
+              <span className="text-xl">👤</span>Account
             </Link>
             <Link href="/cart" className="relative flex flex-col items-center text-[11px]">
               <span className="text-xl">🛒</span>Cart

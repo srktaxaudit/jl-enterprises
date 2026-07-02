@@ -1,15 +1,24 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { fetchProducts, fetchCategoryBySlug, fetchCategories } from "@/lib/data";
+import { applyFilters, collectBrands, type FilterParams } from "@/lib/filters";
 import ProductCard from "@/components/ProductCard";
+import FilterBar from "@/components/FilterBar";
 
-export default async function CategoryPage({ params }: { params: { slug: string } }) {
+export default async function CategoryPage({
+  params,
+  searchParams,
+}: {
+  params: { slug: string };
+  searchParams: FilterParams;
+}) {
   const category = await fetchCategoryBySlug(params.slug);
   if (!category) notFound();
-  const [products, cats] = await Promise.all([
+  const [all, cats] = await Promise.all([
     fetchProducts(params.slug),
     fetchCategories(),
   ]);
+  const products = applyFilters(all, { ...searchParams, q: undefined });
 
   return (
     <div className="max-w-[1180px] mx-auto px-5 animate-fade">
@@ -39,9 +48,10 @@ export default async function CategoryPage({ params }: { params: { slug: string 
         </div>
       </div>
 
+      <FilterBar brands={collectBrands(all)} />
       {products.length === 0 ? (
         <div className="text-center py-16 text-slate-400">
-          No products in this category yet.
+          {all.length === 0 ? "No products in this category yet." : "No products match these filters."}
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

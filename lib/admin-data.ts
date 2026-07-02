@@ -1,6 +1,13 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { PRODUCTS } from "@/lib/catalog";
-import { DEMO_ORDERS, DEMO_CUSTOMERS, type AdminOrder, type AdminCustomer } from "@/lib/admin-demo";
+import {
+  DEMO_ORDERS,
+  DEMO_CUSTOMERS,
+  DEMO_RETURNS,
+  type AdminOrder,
+  type AdminCustomer,
+  type AdminReturn,
+} from "@/lib/admin-demo";
 import type { Product } from "@/lib/types";
 
 // All admin reads go through the service-role client (sees inactive rows too).
@@ -37,6 +44,29 @@ export async function adminOrders(): Promise<AdminOrder[]> {
     id: r.id, order_no: r.order_no, contact_name: r.contact_name ?? "Guest",
     city: r.city ?? "—", product: r.order_items?.[0]?.name ?? "—",
     payment_mode: r.payment_mode, status: r.status, total: Number(r.total),
+  }));
+}
+
+export async function adminReturns(): Promise<AdminReturn[]> {
+  const sb = createAdminClient();
+  if (!sb) return DEMO_RETURNS;
+  const { data, error } = await sb
+    .from("return_requests")
+    .select("*, order:orders(contact_name, payment_mode, total)")
+    .order("created_at", { ascending: false })
+    .limit(100);
+  if (error || !data) return DEMO_RETURNS;
+  return data.map((r: any) => ({
+    id: r.id,
+    order_no: r.order_no,
+    contact_name: r.order?.contact_name ?? "Guest",
+    phone: r.phone ?? "—",
+    kind: r.kind ?? "RETURN",
+    reason: r.reason ?? "",
+    status: r.status ?? "REQUESTED",
+    payment_mode: r.order?.payment_mode ?? "—",
+    total: Number(r.order?.total ?? 0),
+    created_at: r.created_at,
   }));
 }
 

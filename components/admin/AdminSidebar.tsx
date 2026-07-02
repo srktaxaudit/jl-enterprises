@@ -8,6 +8,7 @@ const NAV = [
   { group: "Overview", items: [
     { href: "/admin", label: "Dashboard", emoji: "📊" },
     { href: "/admin/orders", label: "Orders", emoji: "📥" },
+    { href: "/admin/returns", label: "Returns & Refunds", emoji: "🔁" },
   ]},
   { group: "Catalog & Sales", items: [
     { href: "/admin/products", label: "Products", emoji: "📦" },

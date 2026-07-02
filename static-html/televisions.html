@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Televisions — JL Enterprises</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          navy: { DEFAULT: "#0b2447", 600: "#19376d" },
+          brand: { DEFAULT: "#576cbc", sky: "#a5d7e8" },
+          orange: { DEFAULT: "#f97316", 600: "#ea580c" },
+          amber: { DEFAULT: "#fbbf24" },
+        },
+        boxShadow: { card: "0 12px 30px rgba(15,23,42,.12)" },
+      },
+    },
+  };
+</script>
+<link rel="stylesheet" href="style.css" />
+<style>
+  body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background:#fff; }
+  .no-scrollbar::-webkit-scrollbar { display:none; }
+  .no-scrollbar { -ms-overflow-style:none; scrollbar-width:none; }
+</style>
+</head>
+<body class="text-slate-800">
+
+<!-- ANNOUNCEMENT BAR -->
+<div class="bg-navy text-white text-center text-[13px] py-1.5 px-3">
+  🚚 Free door delivery across <b class="text-amber">Tamil Nadu</b> · 💳 Easy EMI &amp; Cash on Delivery · 🔧 Doorstep service &amp; AMC
+</div>
+
+<!-- HEADER -->
+<header class="bg-white border-b border-slate-200 sticky top-0 z-40">
+  <div class="max-w-[1180px] mx-auto px-5 flex items-center gap-5 py-3">
+    <a href="index.html" class="flex items-center gap-2.5 shrink-0">
+      <div class="w-12 h-10 rounded-lg bg-gradient-to-br from-navy to-brand text-white font-extrabold flex items-center justify-center text-lg">JL</div>
+      <div class="leading-tight hidden sm:block">
+        <div class="font-extrabold text-navy">JL ENTERPRISES</div>
+        <div class="text-[10px] font-semibold text-slate-400 tracking-wider">HOME APPLIANCES · THOOTHUKUDI</div>
+      </div>
+    </a>
+    <div class="flex-1 flex bg-slate-100 border border-slate-200 rounded-full overflow-hidden">
+      <input class="flex-1 bg-transparent px-4 py-2.5 text-sm outline-none text-slate-600" placeholder="Search for AC, TV, Fridge, Washing Machine, Furniture…" />
+      <a href="#" class="bg-navy text-white px-5 flex items-center font-semibold text-sm">Search</a>
+    </div>
+    <nav class="flex items-center gap-4 text-slate-600">
+      <a href="service.html" class="flex flex-col items-center text-[11px]"><span class="text-xl">🔧</span>Service</a>
+      <a href="signup.html" class="hidden sm:flex flex-col items-center text-[11px]"><span class="text-xl">📝</span>Sign Up</a>
+      <a href="login.html" class="hidden sm:flex flex-col items-center text-[11px]"><span class="text-xl">👤</span>Login</a>
+      <a href="cart.html" class="relative flex flex-col items-center text-[11px]">
+        <span class="text-xl">🛒</span>Cart
+        <span id="cartBadge" class="hidden absolute -top-1.5 -right-2 bg-orange text-white text-[11px] font-bold w-[18px] h-[18px] rounded-full items-center justify-center">0</span>
+      </a>
+    </nav>
+  </div>
+  <nav class="bg-navy-600">
+    <div class="max-w-[1180px] mx-auto px-5 flex items-center gap-1 overflow-x-auto no-scrollbar">
+      <a href="index.html" class="bg-orange text-white px-4 py-2.5 text-sm font-bold whitespace-nowrap">☰ All</a>
+      <a href="air-conditioners.html" class="text-blue-100/90 hover:text-white px-4 py-2.5 text-sm whitespace-nowrap border-b-[3px] border-transparent hover:border-orange">Air Conditioners</a>
+      <a href="televisions.html" class="text-white px-4 py-2.5 text-sm whitespace-nowrap border-b-[3px] border-orange font-semibold">Televisions</a>
+      <a href="refrigerators.html" class="text-blue-100/90 hover:text-white px-4 py-2.5 text-sm whitespace-nowrap border-b-[3px] border-transparent hover:border-orange">Refrigerators</a>
+      <a href="washing-machines.html" class="text-blue-100/90 hover:text-white px-4 py-2.5 text-sm whitespace-nowrap border-b-[3px] border-transparent hover:border-orange">Washing Machines</a>
+      <a href="home-theatre.html" class="text-blue-100/90 hover:text-white px-4 py-2.5 text-sm whitespace-nowrap border-b-[3px] border-transparent hover:border-orange">Home Theatre</a>
+      <a href="kitchen.html" class="text-blue-100/90 hover:text-white px-4 py-2.5 text-sm whitespace-nowrap border-b-[3px] border-transparent hover:border-orange">Kitchen &amp; Stove</a>
+      <a href="furniture.html" class="text-blue-100/90 hover:text-white px-4 py-2.5 text-sm whitespace-nowrap border-b-[3px] border-transparent hover:border-orange">Furniture</a>
+    </div>
+  </nav>
+</header>
+
+<main class="min-h-[60vh]">
+<div class="max-w-[1180px] mx-auto px-5">
+
+  <!-- BREADCRUMB -->
+  <div class="text-[13px] text-slate-400 my-4">
+    <a href="index.html" class="text-brand">Home</a> / <a href="index.html" class="text-brand">Products</a> / Televisions
+  </div>
+
+  <!-- TITLE -->
+  <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+    <h2 class="text-2xl text-navy font-bold">📺 Televisions</h2>
+    <span id="resultCount" class="text-[13px] text-slate-400"></span>
+  </div>
+
+  <!-- FILTERS -->
+  <div class="flex items-center gap-2 flex-wrap mb-4">
+    <select id="fPrice" class="border border-slate-200 bg-white rounded-full px-3 py-1.5 text-[13px] text-slate-600 outline-none">
+      <option value="">Any price</option>
+      <option value="0-25000">Under ₹25,000</option>
+      <option value="25000-50000">₹25,000 – ₹50,000</option>
+      <option value="50000-">Above ₹50,000</option>
+    </select>
+    <select id="fBrand" class="border border-slate-200 bg-white rounded-full px-3 py-1.5 text-[13px] text-slate-600 outline-none">
+      <option value="">All brands</option>
+    </select>
+    <select id="fRating" class="border border-slate-200 bg-white rounded-full px-3 py-1.5 text-[13px] text-slate-600 outline-none">
+      <option value="">Any rating</option>
+      <option value="4.5">4.5★ &amp; up</option>
+      <option value="4">4★ &amp; up</option>
+    </select>
+    <select id="fSort" class="border border-slate-200 bg-white rounded-full px-3 py-1.5 text-[13px] text-slate-600 outline-none">
+      <option value="">Featured</option>
+      <option value="price_asc">Price: Low to High</option>
+      <option value="price_desc">Price: High to Low</option>
+      <option value="rating">Top Rated</option>
+      <option value="discount">Biggest Discount</option>
+    </select>
+    <button id="fClear" class="hidden text-[13px] text-brand font-semibold px-2">✕ Clear filters</button>
+  </div>
+
+  <!-- GRID -->
+  <div id="grid" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"></div>
+
+  <!-- CATEGORY BANNER -->
+  <section class="mb-8">
+    <div class="bg-gradient-to-br from-violet-700 to-purple-500 rounded-3xl px-9 py-7 text-white flex items-center gap-6 flex-wrap">
+      <span class="text-5xl">🔊</span>
+      <div class="flex-1 min-w-[240px]">
+        <h2 class="text-2xl font-bold mb-1.5">Complete your home theatre</h2>
+        <p class="text-purple-100 text-sm">Pair your new TV with a 5.1 surround system — ask our sales team for combo pricing and free wall-mount installation.</p>
+      </div>
+      <a href="tel:+919514970111" class="bg-white text-violet-700 font-bold px-6 py-3 rounded-full whitespace-nowrap">Call Sales →</a>
+    </div>
+  </section>
+
+</div>
+</main>
+
+<!-- FOOTER (same on every page; all items are real links) -->
+<footer class="footer bg-navy text-slate-300 mt-9 pt-10">
+  <div class="footer-container max-w-[1180px] mx-auto px-5 grid grid-cols-2 md:grid-cols-4 gap-7">
+    <div>
+      <div class="w-14 h-12 rounded-lg bg-white/10 text-white font-extrabold flex items-center justify-center text-xl mb-1">JL</div>
+      <h3>JL ENTERPRISES</h3>
+      <a href="shop-location.html" class="footer-address">185G/1B, Palai Road, Chidambaramnagar,<br>Thoothukudi, Tamil Nadu 628008</a>
+      <div class="flex gap-2 mt-3 flex-wrap text-[12px]">
+        <span class="bg-white/10 rounded px-2.5 py-1">💳 Razorpay</span>
+        <span class="bg-white/10 rounded px-2.5 py-1">UPI</span>
+        <span class="bg-white/10 rounded px-2.5 py-1">Cards</span>
+        <span class="bg-white/10 rounded px-2.5 py-1">EMI</span>
+        <span class="bg-white/10 rounded px-2.5 py-1">COD</span>
+      </div>
+    </div>
+    <div class="footer-column">
+      <h3>📞 Call Us</h3>
+      <a href="tel:+919514970111"><span class="tag">Sales Team</span>95149 70111</a>
+      <a href="tel:+919514970222"><span class="tag">Marketing Team</span>95149 70222</a>
+      <a href="tel:+919514970444"><span class="tag">Service Team</span>95149 70444</a>
+      <a href="tel:+917373970666"><span class="tag">Owner / Enquiries</span>73739 70666</a>
+    </div>
+    <div class="footer-column">
+      <h3>Help</h3>
+      <a href="track-order.html">Track Order</a>
+      <a href="service.html">Book Service / AMC</a>
+      <a href="cart.html">My Cart</a>
+      <a href="emi-payment.html">EMI &amp; Payment</a>
+    </div>
+    <div class="footer-column">
+      <h3>Company</h3>
+      <a href="about.html">About JL Enterprises</a>
+      <a href="signup.html">Create an Account</a>
+      <a href="login.html">Login</a>
+      <a href="terms.html">Terms &amp; Conditions</a>
+      <a href="privacy.html">Privacy Policy</a>
+    </div>
+  </div>
+  <div class="border-t border-white/10 mt-7 py-4 text-center text-[13px] text-slate-500">© 2026 JL Enterprises, Thoothukudi</div>
+</footer>
+
+<!-- FLOATING CART -->
+<a href="cart.html" id="floatingCart" class="hidden fixed bottom-5 right-5 bg-orange text-white font-bold px-5 py-3.5 rounded-full shadow-card z-40 items-center gap-2">
+  🛒 <span id="floatCount">0</span> item(s) · <span id="floatTotal">₹0</span>
+</a>
+
+<script>
+  // ── Seed TV catalog (mockup data — the real app reads Supabase) ──
+  const inr = (n) => "₹" + Math.round(n).toLocaleString("en-IN");
+  const pctOff = (mrp, price) => (!mrp || mrp <= price) ? 0 : Math.round(((mrp - price) / mrp) * 100);
+
+  const TVS = [
+    { id:"p2",  name:'55" 4K Ultra HD Smart Google TV', brand:"Sony",    emoji:"📺", price:62990, mrp:87900,  stock:12, rating:4.4, reviewCount:176, emi:2950 },
+    { id:"tv2", name:'43" Crystal 4K UHD Smart TV', brand:"Samsung",     emoji:"📺", price:31990, mrp:46900,  stock:8,  rating:4.5, reviewCount:241, emi:1500 },
+    { id:"tv3", name:'32" HD Ready Smart LED TV', brand:"LG",            emoji:"📺", price:14990, mrp:21990,  stock:15, rating:4.3, reviewCount:312, emi:705  },
+    { id:"tv4", name:'65" BRAVIA 4K HDR Google TV', brand:"Sony",        emoji:"📺", price:94990, mrp:129900, stock:2,  rating:4.8, reviewCount:64,  emi:4450 },
+    { id:"tv5", name:'50" QLED 4K Smart Google TV', brand:"TCL",         emoji:"📺", price:36990, mrp:52990,  stock:6,  rating:4.2, reviewCount:128, emi:1735 },
+    { id:"tv6", name:'55" OLED evo 4K Smart TV', brand:"LG",             emoji:"📺", price:119990, mrp:159990, stock:3, rating:4.7, reviewCount:52,  emi:5625 },
+  ];
+
+  // ── Product card (same layout as index.html) ──
+  function card(p) {
+    const off = pctOff(p.mrp, p.price);
+    const low = p.stock > 0 && p.stock <= 3;
+    const stockTxt = p.stock === 0 ? "Out of stock" : low ? `Only ${p.stock} left` : "In stock";
+    return `
+    <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden hover:shadow-card hover:-translate-y-0.5 transition relative">
+      ${off>0 ? `<span class="absolute top-3 left-3 bg-red-600 text-white text-[11px] font-bold px-2 py-0.5 rounded z-[2]">-${off}%</span>`:""}
+      <a href="#" class="block h-40 flex items-center justify-center text-6xl bg-gradient-to-br from-slate-50 to-slate-100">${p.emoji}</a>
+      <div class="p-3.5">
+        <div class="text-[11px] text-slate-400 uppercase font-semibold tracking-wide">${p.brand}</div>
+        <a href="#" class="block text-[15px] text-navy font-semibold mt-0.5 mb-1.5 leading-snug h-9 overflow-hidden">${p.name}</a>
+        <div class="text-amber text-[13px] mb-2">${"★".repeat(Math.round(p.rating))}<span class="text-slate-400"> (${p.reviewCount})</span></div>
+        <div class="text-[11px] font-bold mb-2 ${low ? "text-orange-600":"text-green-600"}">${stockTxt}</div>
+        <div class="flex items-baseline gap-2 mb-0.5">
+          <span class="text-xl font-extrabold text-navy">${inr(p.price)}</span>
+          ${p.mrp>p.price ? `<span class="text-[13px] text-slate-400 line-through">${inr(p.mrp)}</span>`:""}
+        </div>
+        <div class="text-[12px] text-brand mb-2.5">EMI from ${inr(p.emi)}/mo</div>
+        <button data-id="${p.id}" data-name='${p.name}' data-brand="${p.brand}" data-emoji="${p.emoji}" data-price="${p.price}" ${p.stock===0?"disabled":""}
+          class="addbtn w-full bg-navy hover:bg-orange disabled:bg-slate-300 text-white font-bold py-2.5 rounded-lg text-sm transition">🛒 Add to Cart</button>
+      </div>
+    </div>`;
+  }
+
+  // ── Filters + sort (mirrors the real app's FilterBar) ──
+  const fPrice = document.getElementById("fPrice");
+  const fBrand = document.getElementById("fBrand");
+  const fRating = document.getElementById("fRating");
+  const fSort = document.getElementById("fSort");
+  const fClear = document.getElementById("fClear");
+
+  fBrand.innerHTML += [...new Set(TVS.map(p => p.brand))].sort()
+    .map(b => `<option value="${b}">${b}</option>`).join("");
+
+  function render() {
+    let list = [...TVS];
+    if (fPrice.value) {
+      const [min, max] = fPrice.value.split("-");
+      if (min) list = list.filter(p => p.price >= Number(min));
+      if (max) list = list.filter(p => p.price <= Number(max));
+    }
+    if (fBrand.value) list = list.filter(p => p.brand === fBrand.value);
+    if (fRating.value) list = list.filter(p => p.rating >= Number(fRating.value));
+    switch (fSort.value) {
+      case "price_asc":  list.sort((a,b) => a.price - b.price); break;
+      case "price_desc": list.sort((a,b) => b.price - a.price); break;
+      case "rating":     list.sort((a,b) => b.rating - a.rating); break;
+      case "discount":   list.sort((a,b) => pctOff(b.mrp,b.price) - pctOff(a.mrp,a.price)); break;
+    }
+    document.getElementById("grid").innerHTML = list.length
+      ? list.map(card).join("")
+      : `<div class="col-span-full text-center py-16 text-slate-400">No TVs match these filters.</div>`;
+    document.getElementById("resultCount").textContent = `${list.length} of ${TVS.length} models`;
+    const active = fPrice.value || fBrand.value || fRating.value || fSort.value;
+    fClear.classList.toggle("hidden", !active);
+  }
+
+  [fPrice, fBrand, fRating, fSort].forEach(s => s.addEventListener("change", render));
+  fClear.addEventListener("click", () => {
+    fPrice.value = fBrand.value = fRating.value = fSort.value = "";
+    render();
+  });
+  render();
+
+</script>
+<!-- shared localStorage cart + header badge (same as index.html) -->
+<script src="script.js"></script>
+</body>
+</html>

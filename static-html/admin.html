@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>JL Enterprises — Admin</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          navy: { DEFAULT: "#0b2447", 600: "#19376d" },
+          brand: { DEFAULT: "#576cbc", sky: "#a5d7e8" },
+          orange: { DEFAULT: "#f97316", 600: "#ea580c" },
+          amber: { DEFAULT: "#fbbf24" },
+        },
+        boxShadow: { card: "0 12px 30px rgba(15,23,42,.12)" },
+      },
+    },
+  };
+</script>
+<style>
+  body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+</style>
+</head>
+<body class="text-slate-800">
+
+<div class="md:flex bg-[#eef1f6] min-h-screen">
+
+  <!-- SIDEBAR -->
+  <aside class="hidden md:block w-[248px] shrink-0 bg-gradient-to-b from-[#0b2447] to-[#19376d] sticky top-0 h-screen py-5">
+    <div class="flex flex-col h-full">
+      <div class="flex items-center gap-2.5 px-5 pb-4 border-b border-white/10 mb-3">
+        <div class="w-11 h-9 rounded-lg bg-white/10 text-white font-extrabold flex items-center justify-center">JL</div>
+        <div>
+          <div class="font-bold text-[15px] text-white">JL ENTERPRISES</div>
+          <div class="text-[10px] text-brand-sky tracking-wider">CEO CONTROL CENTRE</div>
+        </div>
+      </div>
+      <div class="flex-1 overflow-auto" id="nav"></div>
+      <div class="px-5 pt-3 border-t border-white/10">
+        <a href="user.html" class="block text-slate-300 hover:text-white text-[13px] py-1.5">↗ View store</a>
+        <a href="#" class="block text-slate-300 hover:text-white text-[13px] py-1.5">⎋ Logout</a>
+      </div>
+    </div>
+  </aside>
+
+  <div class="flex-1 min-w-0">
+    <!-- TOP BAR -->
+    <div class="bg-white border-b border-slate-200 px-4 md:px-7 py-3 flex items-center gap-3 sticky top-0 z-10">
+      <div class="md:hidden flex items-center gap-2">
+        <div class="w-9 h-7 rounded bg-navy text-white text-[11px] font-extrabold flex items-center justify-center">JL</div>
+        <span class="font-bold text-navy text-sm">Admin</span>
+      </div>
+      <div class="ml-auto flex items-center gap-3">
+        <span class="hidden sm:flex items-center gap-2 bg-green-50 text-green-700 px-3 py-1.5 rounded-full text-[12px] font-semibold">
+          <span class="w-2 h-2 rounded-full bg-green-500"></span> 27 online
+        </span>
+        <span class="w-9 h-9 rounded-full bg-gradient-to-br from-navy-600 to-brand text-white flex items-center justify-center font-bold text-[13px]">CEO</span>
+      </div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div class="p-4 md:p-7">
+      <div class="bg-orange-50 border border-dashed border-orange-300 text-orange-800 text-[13px] text-center py-2 rounded-xl mb-5">
+        👑 CEO Super-Admin — full visibility across every team. Working panel on live/demo data.
+      </div>
+      <h2 class="text-2xl text-navy font-bold mb-1">Good morning, Boss 👋</h2>
+      <p class="text-slate-400 text-sm mb-5">Here's what's happening at JL Enterprises today.</p>
+
+      <!-- STAT CARDS -->
+      <div id="stats" class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6"></div>
+
+      <div class="grid md:grid-cols-[1.6fr_1fr] gap-5">
+        <!-- RECENT ORDERS -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-5">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-navy font-semibold">Recent Orders</h3>
+            <a href="#" class="text-brand text-[13px]">All orders →</a>
+          </div>
+          <table class="w-full text-sm">
+            <thead><tr class="text-left text-slate-400 text-[12px] uppercase">
+              <th class="py-2">Order</th><th>Customer</th><th>Status</th><th class="text-right">Amount</th>
+            </tr></thead>
+            <tbody id="orders"></tbody>
+          </table>
+        </div>
+
+        <!-- LOW STOCK -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-5">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-navy font-semibold">⚠️ Low Stock</h3>
+            <a href="#" class="text-brand text-[13px]">Inventory →</a>
+          </div>
+          <div id="lowstock"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const inr = (n) => "₹" + Math.round(n).toLocaleString("en-IN");
+
+  // ── Sidebar nav (mirrors AdminSidebar.tsx) ──
+  const NAV = [
+    { group:"Overview", items:[
+      { label:"Dashboard", emoji:"📊", on:true },
+      { label:"Orders", emoji:"📥" },
+    ]},
+    { group:"Catalog & Sales", items:[
+      { label:"Products", emoji:"📦" },
+      { label:"Inventory", emoji:"🗂️" },
+      { label:"Offers & Deals", emoji:"🏷️" },
+    ]},
+    { group:"Engage", items:[
+      { label:"Customers (CRM)", emoji:"👥" },
+      { label:"WhatsApp Offers", emoji:"💬" },
+    ]},
+    { group:"Control", items:[
+      { label:"Teams & Settings", emoji:"⚙️" },
+    ]},
+  ];
+  document.getElementById("nav").innerHTML = NAV.map(g => `
+    <div>
+      <div class="text-[11px] tracking-widest text-slate-400 uppercase px-5 pt-3 pb-1.5">${g.group}</div>
+      ${g.items.map(it => `
+        <a href="#" class="flex items-center gap-3 px-5 py-2.5 text-sm border-l-[3px] ${
+          it.on ? "bg-orange/20 border-orange text-white font-semibold" : "border-transparent text-slate-300 hover:bg-white/5 hover:text-white"
+        }"><span class="w-5 text-center">${it.emoji}</span> ${it.label}</a>`).join("")}
+    </div>`).join("");
+
+  // ── Demo orders (mirrors admin-demo.ts) ──
+  const STATUS_LABEL = { NEW:"New", PACKED:"Packed", OUT_FOR_DELIVERY:"Out for delivery", DELIVERED:"Delivered", CANCELLED:"Cancelled" };
+  const STATUS_STYLE = {
+    NEW:"bg-blue-50 text-blue-700", PACKED:"bg-amber-50 text-amber-700",
+    OUT_FOR_DELIVERY:"bg-violet-50 text-violet-700", DELIVERED:"bg-green-50 text-green-700",
+    CANCELLED:"bg-red-50 text-red-700",
+  };
+  const ORDERS = [
+    { order_no:"JL2841", contact_name:"Ramesh K.", status:"OUT_FOR_DELIVERY", total:34990 },
+    { order_no:"JL2840", contact_name:"Priya S.", status:"PACKED", total:28500 },
+    { order_no:"JL2839", contact_name:"Karthik M.", status:"NEW", total:62990 },
+    { order_no:"JL2838", contact_name:"Anitha R.", status:"DELIVERED", total:9450 },
+    { order_no:"JL2837", contact_name:"Suresh B.", status:"OUT_FOR_DELIVERY", total:41200 },
+    { order_no:"JL2836", contact_name:"Deepa V.", status:"NEW", total:38000 },
+  ];
+
+  // Low-stock products (stock <= 3, mirrors catalog.ts)
+  const LOW = [
+    { name:"1.5 Ton 3-Star Inverter Split AC", brand:"Voltas", emoji:"❄️", stock:2 },
+    { name:"5.1 Channel Home Theatre System", brand:"Sony", emoji:"🔊", stock:3 },
+  ];
+
+  // ── Stats (computed like adminStats) ──
+  const sales = ORDERS.reduce((s,o)=>s+o.total,0);
+  const pending = ORDERS.filter(o => o.status!=="DELIVERED" && o.status!=="CANCELLED").length;
+  const STATS = [
+    ["Sales", inr(sales), "recent orders"],
+    ["Orders", String(ORDERS.length), "in system"],
+    ["Pending", String(pending), "to fulfil"],
+    ["Low Stock", String(LOW.length), "need restock"],
+    ["Customers", "5", "total"],
+  ];
+  document.getElementById("stats").innerHTML = STATS.map(([label,value,sub]) => `
+    <div class="bg-white border border-slate-200 rounded-2xl p-4">
+      <div class="text-[12px] text-slate-400 uppercase tracking-wide font-semibold">${label}</div>
+      <div class="text-2xl font-extrabold text-navy mt-1">${value}</div>
+      <div class="text-[12px] text-slate-400 mt-0.5">${sub}</div>
+    </div>`).join("");
+
+  document.getElementById("orders").innerHTML = ORDERS.map(o => `
+    <tr class="border-t border-slate-100">
+      <td class="py-2.5 font-bold text-navy">#${o.order_no}</td>
+      <td class="text-slate-600">${o.contact_name}</td>
+      <td><span class="inline-block text-[11px] font-semibold px-2 py-0.5 rounded-full ${STATUS_STYLE[o.status]}">${STATUS_LABEL[o.status]}</span></td>
+      <td class="text-right font-bold text-navy">${inr(o.total)}</td>
+    </tr>`).join("");
+
+  document.getElementById("lowstock").innerHTML = LOW.map((p,i) => `
+    <div class="flex items-center gap-3 py-2.5 border-t border-slate-100 ${i===0?"border-0":""}">
+      <span class="text-xl">${p.emoji}</span>
+      <div class="flex-1"><b class="text-navy text-[13px] block">${p.name}</b><span class="text-[12px] text-slate-400">${p.brand}</span></div>
+      <b class="text-red-600">${p.stock} left</b>
+    </div>`).join("");
+</script>
+</body>
+</html>

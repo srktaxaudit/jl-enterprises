@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>JL Enterprises — Online Store</title>
+<!-- Tailwind CDN for layout utilities + our own stylesheet for components -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          navy: { DEFAULT: "#0b2447", 600: "#19376d" },
+          brand: { DEFAULT: "#576cbc", sky: "#a5d7e8" },
+          orange: { DEFAULT: "#f97316", 600: "#ea580c" },
+          amber: { DEFAULT: "#fbbf24" },
+        },
+        boxShadow: { card: "0 12px 30px rgba(15,23,42,.12)" },
+      },
+    },
+  };
+</script>
+<link rel="stylesheet" href="style.css" />
+<style>
+  .no-scrollbar::-webkit-scrollbar { display:none; }
+  .no-scrollbar { -ms-overflow-style:none; scrollbar-width:none; }
+</style>
+</head>
+<body class="text-slate-800">
+
+<!-- ANNOUNCEMENT BAR -->
+<div class="bg-navy text-white text-center text-[13px] py-1.5 px-3">
+  🚚 Free door delivery across <b class="text-amber">Tamil Nadu</b> · 💳 Easy EMI &amp; Cash on Delivery · 🔧 Doorstep service &amp; AMC
+</div>
+
+<!-- HEADER (same design on every page) -->
+<header class="bg-white border-b border-slate-200 sticky top-0 z-40">
+  <div class="max-w-[1180px] mx-auto px-5 flex items-center gap-5 py-3">
+    <!-- logo -->
+    <a href="index.html" class="flex items-center gap-2.5 shrink-0">
+      <div class="w-12 h-10 rounded-lg bg-gradient-to-br from-navy to-brand text-white font-extrabold flex items-center justify-center text-lg">JL</div>
+      <div class="leading-tight hidden sm:block">
+        <div class="font-extrabold text-navy">JL ENTERPRISES</div>
+        <div class="text-[10px] font-semibold text-slate-400 tracking-wider">HOME APPLIANCES · THOOTHUKUDI</div>
+      </div>
+    </a>
+    <!-- search: filters the product cards below as you type -->
+    <form action="index.html" method="get" class="flex-1 flex bg-slate-100 border border-slate-200 rounded-full overflow-hidden">
+      <input id="searchInput" name="q" autocomplete="off"
+        class="flex-1 bg-transparent px-4 py-2.5 text-sm outline-none text-slate-600"
+        placeholder="Search for AC, TV, Fridge, Washing Machine, Furniture…" />
+      <button type="submit" class="bg-navy text-white px-5 flex items-center font-semibold text-sm">Search</button>
+    </form>
+    <!-- menu: Service | Sign Up | Login | Cart -->
+    <nav class="flex items-center gap-4 text-slate-600">
+      <a href="service.html" class="flex flex-col items-center text-[11px]"><span class="text-xl">🔧</span>Service</a>
+      <a href="signup.html" class="hidden sm:flex flex-col items-center text-[11px]"><span class="text-xl">📝</span>Sign Up</a>
+      <a href="login.html" class="hidden sm:flex flex-col items-center text-[11px]"><span class="text-xl">👤</span>Login</a>
+      <a href="cart.html" class="relative flex flex-col items-center text-[11px]">
+        <span class="text-xl">🛒</span>Cart
+        <span id="cartBadge" class="hidden absolute -top-1.5 -right-2 bg-orange text-white text-[11px] font-bold w-[18px] h-[18px] rounded-full items-center justify-center">0</span>
+      </a>
+    </nav>
+  </div>
+  <!-- category strip -->
+  <nav class="bg-navy-600">
+    <div class="max-w-[1180px] mx-auto px-5 flex items-center gap-1 overflow-x-auto no-scrollbar">
+      <a href="index.html" class="bg-orange text-white px-4 py-2.5 text-sm font-bold whitespace-nowrap">☰ All</a>
+      <a href="air-conditioners.html" class="text-blue-100/90 hover:text-white px-4 py-2.5 text-sm whitespace-nowrap border-b-[3px] border-transparent hover:border-orange">Air Conditioners</a>
+      <a href="televisions.html" class="text-blue-100/90 hover:text-white px-4 py-2.5 text-sm whitespace-nowrap border-b-[3px] border-transparent hover:border-orange">Televisions</a>
+      <a href="refrigerators.html" class="text-blue-100/90 hover:text-white px-4 py-2.5 text-sm whitespace-nowrap border-b-[3px] border-transparent hover:border-orange">Refrigerators</a>
+      <a href="washing-machines.html" class="text-blue-100/90 hover:text-white px-4 py-2.5 text-sm whitespace-nowrap border-b-[3px] border-transparent hover:border-orange">Washing Machines</a>
+      <a href="home-theatre.html" class="text-blue-100/90 hover:text-white px-4 py-2.5 text-sm whitespace-nowrap border-b-[3px] border-transparent hover:border-orange">Home Theatre</a>
+      <a href="kitchen.html" class="text-blue-100/90 hover:text-white px-4 py-2.5 text-sm whitespace-nowrap border-b-[3px] border-transparent hover:border-orange">Kitchen &amp; Stove</a>
+      <a href="furniture.html" class="text-blue-100/90 hover:text-white px-4 py-2.5 text-sm whitespace-nowrap border-b-[3px] border-transparent hover:border-orange">Furniture</a>
+    </div>
+  </nav>
+</header>
+
+<main class="min-h-[60vh]">
+<div class="max-w-[1180px] mx-auto px-5">
+
+  <!-- HERO -->
+  <section class="grid md:grid-cols-[1fr_320px] gap-4 my-5">
+    <div class="bg-gradient-to-br from-navy via-navy-600 to-brand rounded-3xl p-10 text-white relative overflow-hidden min-h-[280px] flex flex-col justify-center">
+      <span class="inline-block bg-orange text-white text-[12px] font-bold px-3 py-1.5 rounded-full w-fit mb-3.5">🔥 SUMMER SALE · LIMITED PERIOD</span>
+      <h1 class="text-4xl leading-tight max-w-[430px] mb-2.5 font-bold">Beat the Heat with <span class="text-amber">Up to 40% Off</span> on ACs</h1>
+      <p class="text-blue-100 max-w-[380px] mb-5">Top brands — Voltas, LG, Samsung, Daikin. Free installation &amp; door delivery across Tamil Nadu.</p>
+      <a href="air-conditioners.html" class="bg-gradient-to-br from-orange to-amber text-white font-bold px-6 py-3 rounded-full w-fit">Shop Air Conditioners →</a>
+    </div>
+    <div class="flex flex-col gap-4">
+      <a href="furniture.html" class="flex-1 rounded-2xl p-5 text-white bg-gradient-to-br from-violet-600 to-purple-500 flex flex-col justify-center">
+        <b class="text-lg">Furniture Fest</b><span class="text-[13px] opacity-90">Sofas, beds &amp; chairs from ₹4,999</span>
+      </a>
+      <a href="#products" class="flex-1 rounded-2xl p-5 text-white bg-gradient-to-br from-green-600 to-green-500 flex flex-col justify-center">
+        <b class="text-lg">Exchange Offer</b><span class="text-[13px] opacity-90">Old appliance? Get extra ₹3,000 off</span>
+      </a>
+    </div>
+  </section>
+
+  <!-- USP STRIP -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3.5 mb-7">
+    <div class="bg-white border border-slate-200 rounded-xl p-3.5 flex items-center gap-3"><span class="text-2xl">🚚</span><div><b class="text-sm text-navy block">Free Delivery</b><span class="text-[12px] text-slate-400">Across Tamil Nadu</span></div></div>
+    <div class="bg-white border border-slate-200 rounded-xl p-3.5 flex items-center gap-3"><span class="text-2xl">💳</span><div><b class="text-sm text-navy block">Easy EMI &amp; COD</b><span class="text-[12px] text-slate-400">No-cost EMI options</span></div></div>
+    <div class="bg-white border border-slate-200 rounded-xl p-3.5 flex items-center gap-3"><span class="text-2xl">🔧</span><div><b class="text-sm text-navy block">Doorstep Service</b><span class="text-[12px] text-slate-400">Repair &amp; AMC booking</span></div></div>
+    <div class="bg-white border border-slate-200 rounded-xl p-3.5 flex items-center gap-3"><span class="text-2xl">🛡️</span><div><b class="text-sm text-navy block">Brand Warranty</b><span class="text-[12px] text-slate-400">100% genuine products</span></div></div>
+  </div>
+
+  <!-- CATEGORY TILES -->
+  <section class="mb-8">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-2xl text-navy font-bold">Shop by Category</h2>
+    </div>
+    <div class="grid grid-cols-3 md:grid-cols-7 gap-3.5">
+      <a href="air-conditioners.html" class="bg-white border border-slate-200 rounded-2xl py-4 px-2 text-center hover:shadow-card hover:-translate-y-0.5 transition"><span class="text-3xl block mb-2">❄️</span><b class="text-[13px] text-navy">Air Conditioners</b></a>
+      <a href="televisions.html" class="bg-white border border-slate-200 rounded-2xl py-4 px-2 text-center hover:shadow-card hover:-translate-y-0.5 transition"><span class="text-3xl block mb-2">📺</span><b class="text-[13px] text-navy">Televisions</b></a>
+      <a href="refrigerators.html" class="bg-white border border-slate-200 rounded-2xl py-4 px-2 text-center hover:shadow-card hover:-translate-y-0.5 transition"><span class="text-3xl block mb-2">🧊</span><b class="text-[13px] text-navy">Refrigerators</b></a>
+      <a href="washing-machines.html" class="bg-white border border-slate-200 rounded-2xl py-4 px-2 text-center hover:shadow-card hover:-translate-y-0.5 transition"><span class="text-3xl block mb-2">🌀</span><b class="text-[13px] text-navy">Washing Machines</b></a>
+      <a href="home-theatre.html" class="bg-white border border-slate-200 rounded-2xl py-4 px-2 text-center hover:shadow-card hover:-translate-y-0.5 transition"><span class="text-3xl block mb-2">🔊</span><b class="text-[13px] text-navy">Home Theatre</b></a>
+      <a href="kitchen.html" class="bg-white border border-slate-200 rounded-2xl py-4 px-2 text-center hover:shadow-card hover:-translate-y-0.5 transition"><span class="text-3xl block mb-2">🍳</span><b class="text-[13px] text-navy">Kitchen &amp; Stove</b></a>
+      <a href="furniture.html" class="bg-white border border-slate-200 rounded-2xl py-4 px-2 text-center hover:shadow-card hover:-translate-y-0.5 transition"><span class="text-3xl block mb-2">🛋️</span><b class="text-[13px] text-navy">Furniture</b></a>
+    </div>
+  </section>
+
+  <!-- PRODUCTS (rendered by the inline script below; the header search
+       box filters these cards live via script.js) -->
+  <section class="mb-8" id="productsSection">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-2xl text-navy font-bold">🔥 Our Products</h2>
+      <span class="text-[13px] text-slate-400">Type in the search bar to filter</span>
+    </div>
+    <div id="products" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+    <div id="noResults" style="display:none" class="text-center py-16 text-slate-400">
+      😕 No products matched your search.
+    </div>
+  </section>
+
+  <!-- SERVICE BANNER -->
+  <section class="mb-8">
+    <div class="bg-gradient-to-br from-teal-700 to-teal-500 rounded-3xl px-9 py-7 text-white flex items-center gap-6 flex-wrap">
+      <span class="text-5xl">🔧</span>
+      <div class="flex-1 min-w-[240px]">
+        <h2 class="text-2xl font-bold mb-1.5">Need a repair or AMC? Book service at your doorstep</h2>
+        <p class="text-teal-50 text-sm">AC, Fridge, Washing Machine, TV &amp; more — our in-house &amp; partner technicians come to you anywhere in Tamil Nadu.</p>
+      </div>
+      <a href="service.html" class="bg-white text-teal-700 font-bold px-6 py-3 rounded-full whitespace-nowrap">Book Service →</a>
+    </div>
+  </section>
+
+</div>
+</main>
+
+<!-- FOOTER (same on every page; all items are real links) -->
+<footer class="footer bg-navy text-slate-300 mt-9 pt-10">
+  <div class="footer-container max-w-[1180px] mx-auto px-5 grid grid-cols-2 md:grid-cols-4 gap-7">
+    <div>
+      <div class="w-14 h-12 rounded-lg bg-white/10 text-white font-extrabold flex items-center justify-center text-xl mb-1">JL</div>
+      <h3>JL ENTERPRISES</h3>
+      <a href="shop-location.html" class="footer-address">185G/1B, Palai Road, Chidambaramnagar,<br>Thoothukudi, Tamil Nadu 628008</a>
+      <div class="flex gap-2 mt-3 flex-wrap text-[12px]">
+        <span class="bg-white/10 rounded px-2.5 py-1">💳 Razorpay</span>
+        <span class="bg-white/10 rounded px-2.5 py-1">UPI</span>
+        <span class="bg-white/10 rounded px-2.5 py-1">Cards</span>
+        <span class="bg-white/10 rounded px-2.5 py-1">EMI</span>
+        <span class="bg-white/10 rounded px-2.5 py-1">COD</span>
+      </div>
+    </div>
+    <div class="footer-column">
+      <h3>📞 Call Us</h3>
+      <a href="tel:+919514970111"><span class="tag">Sales Team</span>95149 70111</a>
+      <a href="tel:+919514970222"><span class="tag">Marketing Team</span>95149 70222</a>
+      <a href="tel:+919514970444"><span class="tag">Service Team</span>95149 70444</a>
+      <a href="tel:+917373970666"><span class="tag">Owner / Enquiries</span>73739 70666</a>
+    </div>
+    <div class="footer-column">
+      <h3>Help</h3>
+      <a href="track-order.html">Track Order</a>
+      <a href="service.html">Book Service / AMC</a>
+      <a href="cart.html">My Cart</a>
+      <a href="emi-payment.html">EMI &amp; Payment</a>
+    </div>
+    <div class="footer-column">
+      <h3>Company</h3>
+      <a href="about.html">About JL Enterprises</a>
+      <a href="signup.html">Create an Account</a>
+      <a href="login.html">Login</a>
+      <a href="terms.html">Terms &amp; Conditions</a>
+      <a href="privacy.html">Privacy Policy</a>
+    </div>
+  </div>
+  <div class="border-t border-white/10 mt-7 py-4 text-center text-[13px] text-slate-500">© 2026 JL Enterprises, Thoothukudi</div>
+</footer>
+
+<!-- FLOATING CART (appears once something is added) -->
+<a href="cart.html" id="floatingCart" class="hidden fixed bottom-5 right-5 bg-orange text-white font-bold px-5 py-3.5 rounded-full shadow-card z-40 items-center gap-2">
+  🛒 <span id="floatCount">0</span> item(s) · <span id="floatTotal">₹0</span>
+</a>
+
+<script>
+  // ── Product catalog for the home page (mockup data — the real app
+  //    reads Supabase). Every card gets a data-search attribute so the
+  //    header search box can filter them (see script.js).
+  const inr = (n) => "₹" + Math.round(n).toLocaleString("en-IN");
+  const pctOff = (mrp, price) => (!mrp || mrp <= price) ? 0 : Math.round(((mrp - price) / mrp) * 100);
+
+  const PRODUCTS = [
+    { id:"p1", name:"1.5 Ton 3-Star Inverter Split AC", brand:"Voltas", cat:"air conditioner ac cooling", emoji:"❄️", price:34990, mrp:51500, stock:2,  rating:4.6, reviewCount:214, emi:1649 },
+    { id:"p2", name:'55" 4K Ultra HD Smart Google TV', brand:"Sony", cat:"television tv smart 4k", emoji:"📺", price:62990, mrp:87900, stock:12, rating:4.4, reviewCount:176, emi:2950 },
+    { id:"p3", name:"340L Double-Door Frost-Free Fridge", brand:"Godrej", cat:"refrigerator fridge frost free", emoji:"🧊", price:41200, mrp:54000, stock:8,  rating:4.7, reviewCount:98,  emi:1930 },
+    { id:"p4", name:"7Kg Fully Automatic Front-Load Washing Machine", brand:"LG", cat:"washing machine washer laundry", emoji:"🌀", price:28500, mrp:43900, stock:6,  rating:4.5, reviewCount:143, emi:1340 },
+    { id:"p5", name:"5-Seater Premium Fabric Sofa Set", brand:"JL Home", cat:"furniture sofa seating living room", emoji:"🛋️", price:38000, mrp:49000, stock:4,  rating:4.5, reviewCount:64,  emi:1780 },
+    { id:"p6", name:"Queen Size Bed with Storage", brand:"JL Home", cat:"furniture bed bedroom storage", emoji:"🛏️", price:24500, mrp:31000, stock:5,  rating:4.3, reviewCount:41,  emi:1150 },
+    { id:"p7", name:"Mixer Grinder + Gas Stove Combo", brand:"Preethi", cat:"kitchen mixer grinder stove", emoji:"🍳", price:9450,  mrp:13200, stock:15, rating:4.6, reviewCount:187, emi:790  },
+    { id:"p8", name:"5.1 Channel Home Theatre System", brand:"Sony", cat:"home theatre speaker sound audio", emoji:"🔊", price:18990, mrp:26500, stock:3,  rating:4.4, reviewCount:72,  emi:890  },
+  ];
+
+  // One card per product — the "Add to Cart" button carries data-*
+  // attributes that script.js reads to store the item in localStorage.
+  function card(p) {
+    const off = pctOff(p.mrp, p.price);
+    const low = p.stock > 0 && p.stock <= 3;
+    const stockTxt = p.stock === 0 ? "Out of stock" : low ? `Only ${p.stock} left` : "In stock";
+    const searchText = (p.name + " " + p.brand + " " + p.cat).toLowerCase();
+    return `
+    <div class="product-card bg-white border border-slate-200 rounded-2xl overflow-hidden hover:shadow-card hover:-translate-y-0.5 transition relative" data-search="${searchText}">
+      ${off>0 ? `<span class="absolute top-3 left-3 bg-red-600 text-white text-[11px] font-bold px-2 py-0.5 rounded z-[2]">-${off}%</span>`:""}
+      <div class="h-40 flex items-center justify-center text-6xl bg-gradient-to-br from-slate-50 to-slate-100">${p.emoji}</div>
+      <div class="p-3.5">
+        <div class="text-[11px] text-slate-400 uppercase font-semibold tracking-wide">${p.brand}</div>
+        <div class="text-[15px] text-navy font-semibold mt-0.5 mb-1.5 leading-snug h-9 overflow-hidden">${p.name}</div>
+        <div class="text-amber text-[13px] mb-2">${"★".repeat(Math.round(p.rating))}<span class="text-slate-400"> (${p.reviewCount})</span></div>
+        <div class="text-[11px] font-bold mb-2 ${low ? "text-orange-600":"text-green-600"}">${stockTxt}</div>
+        <div class="flex items-baseline gap-2 mb-0.5">
+          <span class="text-xl font-extrabold text-navy">${inr(p.price)}</span>
+          ${p.mrp>p.price ? `<span class="text-[13px] text-slate-400 line-through">${inr(p.mrp)}</span>`:""}
+        </div>
+        <div class="text-[12px] text-brand mb-2.5">EMI from ${inr(p.emi)}/mo</div>
+        <button data-id="${p.id}" data-name='${p.name}' data-brand="${p.brand}" data-emoji="${p.emoji}" data-price="${p.price}" ${p.stock===0?"disabled":""}
+          class="addbtn w-full bg-navy hover:bg-orange disabled:bg-slate-300 text-white font-bold py-2.5 rounded-lg text-sm transition">🛒 Add to Cart</button>
+      </div>
+    </div>`;
+  }
+
+  document.getElementById("products").innerHTML = PRODUCTS.map(card).join("");
+</script>
+<!-- shared cart / search / form logic -->
+<script src="script.js"></script>
+</body>
+</html>

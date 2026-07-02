@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sign Up — JL Enterprises</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          navy: { DEFAULT: "#0b2447", 600: "#19376d" },
+          brand: { DEFAULT: "#576cbc", sky: "#a5d7e8" },
+          orange: { DEFAULT: "#f97316", 600: "#ea580c" },
+          amber: { DEFAULT: "#fbbf24" },
+        },
+        boxShadow: { card: "0 12px 30px rgba(15,23,42,.12)" },
+      },
+    },
+  };
+</script>
+<link rel="stylesheet" href="style.css" />
+<style>
+  .no-scrollbar::-webkit-scrollbar { display:none; }
+  .no-scrollbar { -ms-overflow-style:none; scrollbar-width:none; }
+</style>
+</head>
+<body class="text-slate-800">
+
+<!-- ANNOUNCEMENT BAR -->
+<div class="bg-navy text-white text-center text-[13px] py-1.5 px-3">
+  🚚 Free door delivery across <b class="text-amber">Tamil Nadu</b> · 💳 Easy EMI &amp; Cash on Delivery · 🔧 Doorstep service &amp; AMC
+</div>
+
+<!-- HEADER (same design on every page) -->
+<header class="bg-white border-b border-slate-200 sticky top-0 z-40">
+  <div class="max-w-[1180px] mx-auto px-5 flex items-center gap-5 py-3">
+    <a href="index.html" class="flex items-center gap-2.5 shrink-0">
+      <div class="w-12 h-10 rounded-lg bg-gradient-to-br from-navy to-brand text-white font-extrabold flex items-center justify-center text-lg">JL</div>
+      <div class="leading-tight hidden sm:block">
+        <div class="font-extrabold text-navy">JL ENTERPRISES</div>
+        <div class="text-[10px] font-semibold text-slate-400 tracking-wider">HOME APPLIANCES · THOOTHUKUDI</div>
+      </div>
+    </a>
+    <form action="index.html" method="get" class="flex-1 flex bg-slate-100 border border-slate-200 rounded-full overflow-hidden">
+      <input name="q" autocomplete="off" class="flex-1 bg-transparent px-4 py-2.5 text-sm outline-none text-slate-600" placeholder="Search for AC, TV, Fridge, Washing Machine, Furniture…" />
+      <button type="submit" class="bg-navy text-white px-5 flex items-center font-semibold text-sm">Search</button>
+    </form>
+    <nav class="flex items-center gap-4 text-slate-600">
+      <a href="service.html" class="flex flex-col items-center text-[11px]"><span class="text-xl">🔧</span>Service</a>
+      <a href="signup.html" class="hidden sm:flex flex-col items-center text-[11px] text-brand font-semibold"><span class="text-xl">📝</span>Sign Up</a>
+      <a href="login.html" class="hidden sm:flex flex-col items-center text-[11px]"><span class="text-xl">👤</span>Login</a>
+      <a href="cart.html" class="relative flex flex-col items-center text-[11px]">
+        <span class="text-xl">🛒</span>Cart
+        <span id="cartBadge" class="hidden absolute -top-1.5 -right-2 bg-orange text-white text-[11px] font-bold w-[18px] h-[18px] rounded-full items-center justify-center">0</span>
+      </a>
+    </nav>
+  </div>
+  <nav class="bg-navy-600">
+    <div class="max-w-[1180px] mx-auto px-5 flex items-center gap-1 overflow-x-auto no-scrollbar">
+      <a href="index.html" class="bg-orange text-white px-4 py-2.5 text-sm font-bold whitespace-nowrap">☰ All</a>
+      <a href="air-conditioners.html" class="text-blue-100/90 hover:text-white px-4 py-2.5 text-sm whitespace-nowrap border-b-[3px] border-transparent hover:border-orange">Air Conditioners</a>
+      <a href="televisions.html" class="text-blue-100/90 hover:text-white px-4 py-2.5 text-sm whitespace-nowrap border-b-[3px] border-transparent hover:border-orange">Televisions</a>
+      <a href="refrigerators.html" class="text-blue-100/90 hover:text-white px-4 py-2.5 text-sm whitespace-nowrap border-b-[3px] border-transparent hover:border-orange">Refrigerators</a>
+      <a href="washing-machines.html" class="text-blue-100/90 hover:text-white px-4 py-2.5 text-sm whitespace-nowrap border-b-[3px] border-transparent hover:border-orange">Washing Machines</a>
+      <a href="home-theatre.html" class="text-blue-100/90 hover:text-white px-4 py-2.5 text-sm whitespace-nowrap border-b-[3px] border-transparent hover:border-orange">Home Theatre</a>
+      <a href="kitchen.html" class="text-blue-100/90 hover:text-white px-4 py-2.5 text-sm whitespace-nowrap border-b-[3px] border-transparent hover:border-orange">Kitchen &amp; Stove</a>
+      <a href="furniture.html" class="text-blue-100/90 hover:text-white px-4 py-2.5 text-sm whitespace-nowrap border-b-[3px] border-transparent hover:border-orange">Furniture</a>
+    </div>
+  </nav>
+</header>
+
+<main class="min-h-[60vh]">
+
+  <!-- SIGN UP FORM -->
+  <div class="form-card">
+    <div class="form-icon">📝</div>
+    <h2>Create Your Account</h2>
+    <p class="sub">Sign up to track orders, book service faster and get offers on WhatsApp.</p>
+
+    <form id="signupForm" novalidate>
+      <div class="field">
+        <label for="suName">Full Name</label>
+        <input id="suName" type="text" required minlength="2" placeholder="Your full name" />
+      </div>
+
+      <div class="field">
+        <label for="suMobile">Mobile Number</label>
+        <input id="suMobile" type="tel" required inputmode="numeric" maxlength="13" placeholder="10-digit mobile number" />
+        <div class="hint" id="suMobileHint">Mobile number must be a valid 10-digit number.</div>
+      </div>
+
+      <div class="field">
+        <label for="suEmail">Email</label>
+        <input id="suEmail" type="email" required placeholder="you@example.com" />
+      </div>
+
+      <div class="field">
+        <label for="suPassword">Password</label>
+        <input id="suPassword" type="password" required minlength="6" placeholder="At least 6 characters" />
+        <div class="hint" id="suPassHint">Password must be at least 6 characters.</div>
+      </div>
+
+      <div class="field">
+        <label for="suConfirm">Confirm Password</label>
+        <input id="suConfirm" type="password" required placeholder="Re-enter your password" />
+        <div class="hint" id="suConfirmHint">Passwords do not match.</div>
+      </div>
+
+      <div class="field">
+        <label for="suAddress">Address</label>
+        <textarea id="suAddress" rows="2" required minlength="10" placeholder="Door no, street, area, city"></textarea>
+      </div>
+
+      <button type="submit" class="btn-primary">Sign Up 🚀</button>
+    </form>
+
+    <!-- shown by script.js after a successful signup -->
+    <div class="success-box" id="signupSuccess">
+      <span class="big">🎉</span>
+      <h3>Account Created!</h3>
+      <p>Welcome to the JL Enterprises family. You can now log in and start shopping.</p>
+      <p style="margin-top:14px"><a href="login.html" style="color:var(--brand);font-weight:600">Go to Login →</a></p>
+    </div>
+
+    <p class="form-links">Already have an account? <a href="login.html">Login</a></p>
+  </div>
+
+</main>
+
+<!-- FOOTER (same on every page; all items are real links) -->
+<footer class="footer bg-navy text-slate-300 mt-9 pt-10">
+  <div class="footer-container max-w-[1180px] mx-auto px-5 grid grid-cols-2 md:grid-cols-4 gap-7">
+    <div>
+      <div class="w-14 h-12 rounded-lg bg-white/10 text-white font-extrabold flex items-center justify-center text-xl mb-1">JL</div>
+      <h3>JL ENTERPRISES</h3>
+      <a href="shop-location.html" class="footer-address">185G/1B, Palai Road, Chidambaramnagar,<br>Thoothukudi, Tamil Nadu 628008</a>
+      <div class="flex gap-2 mt-3 flex-wrap text-[12px]">
+        <span class="bg-white/10 rounded px-2.5 py-1">💳 Razorpay</span>
+        <span class="bg-white/10 rounded px-2.5 py-1">UPI</span>
+        <span class="bg-white/10 rounded px-2.5 py-1">Cards</span>
+        <span class="bg-white/10 rounded px-2.5 py-1">EMI</span>
+        <span class="bg-white/10 rounded px-2.5 py-1">COD</span>
+      </div>
+    </div>
+    <div class="footer-column">
+      <h3>📞 Call Us</h3>
+      <a href="tel:+919514970111"><span class="tag">Sales Team</span>95149 70111</a>
+      <a href="tel:+919514970222"><span class="tag">Marketing Team</span>95149 70222</a>
+      <a href="tel:+919514970444"><span class="tag">Service Team</span>95149 70444</a>
+      <a href="tel:+917373970666"><span class="tag">Owner / Enquiries</span>73739 70666</a>
+    </div>
+    <div class="footer-column">
+      <h3>Help</h3>
+      <a href="track-order.html">Track Order</a>
+      <a href="service.html">Book Service / AMC</a>
+      <a href="cart.html">My Cart</a>
+      <a href="emi-payment.html">EMI &amp; Payment</a>
+    </div>
+    <div class="footer-column">
+      <h3>Company</h3>
+      <a href="about.html">About JL Enterprises</a>
+      <a href="signup.html">Create an Account</a>
+      <a href="login.html">Login</a>
+      <a href="terms.html">Terms &amp; Conditions</a>
+      <a href="privacy.html">Privacy Policy</a>
+    </div>
+  </div>
+  <div class="border-t border-white/10 mt-7 py-4 text-center text-[13px] text-slate-500">© 2026 JL Enterprises, Thoothukudi</div>
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>

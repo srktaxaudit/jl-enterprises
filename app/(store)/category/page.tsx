@@ -1,9 +1,16 @@
 import Link from "next/link";
 import { fetchProducts, fetchCategories } from "@/lib/data";
+import { applyFilters, collectBrands, type FilterParams } from "@/lib/filters";
 import ProductCard from "@/components/ProductCard";
+import FilterBar from "@/components/FilterBar";
 
-export default async function AllProductsPage() {
-  const [products, cats] = await Promise.all([fetchProducts(), fetchCategories()]);
+export default async function AllProductsPage({
+  searchParams,
+}: {
+  searchParams: FilterParams;
+}) {
+  const [all, cats] = await Promise.all([fetchProducts(), fetchCategories()]);
+  const products = applyFilters(all, { ...searchParams, q: undefined });
 
   return (
     <div className="max-w-[1180px] mx-auto px-5 animate-fade">
@@ -20,9 +27,14 @@ export default async function AllProductsPage() {
           ))}
         </div>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {products.map((p) => <ProductCard key={p.id} p={p} />)}
-      </div>
+      <FilterBar brands={collectBrands(all)} />
+      {products.length === 0 ? (
+        <div className="text-center py-16 text-slate-400">No products match these filters.</div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {products.map((p) => <ProductCard key={p.id} p={p} />)}
+        </div>
+      )}
     </div>
   );
 }
