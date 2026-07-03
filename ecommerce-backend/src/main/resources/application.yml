@@ -1,5 +1,5 @@
 server:
-  port: ${SERVER_PORT:8081}          # 8081 so it never clashes with the existing admin API on 8080
+  port: ${PORT:8081}                 # Render injects PORT (e.g. 10000); 8081 is the local default
   forward-headers-strategy: framework
   error:
     include-message: never
