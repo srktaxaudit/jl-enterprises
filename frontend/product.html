@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Product — JL Enterprises</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = { theme: { extend: {
+    colors: { navy: { DEFAULT: "#0b2447", 600: "#19376d" }, brand: { DEFAULT: "#576cbc", sky: "#a5d7e8" },
+      orange: { DEFAULT: "#f97316", 600: "#ea580c" }, amber: { DEFAULT: "#fbbf24" } },
+    boxShadow: { card: "0 12px 30px rgba(15,23,42,.12)" } } } };
+</script>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body class="text-slate-800">
+
+<!-- HEADER -->
+<header class="bg-white border-b border-slate-200 sticky top-0 z-40">
+  <div class="max-w-[1180px] mx-auto px-5 flex items-center gap-5 py-3">
+    <a href="index.html" class="flex items-center gap-2.5 shrink-0">
+      <div class="w-12 h-10 rounded-lg bg-gradient-to-br from-navy to-brand text-white font-extrabold flex items-center justify-center text-lg">JL</div>
+      <div class="leading-tight hidden sm:block">
+        <div class="font-extrabold text-navy">JL ENTERPRISES</div>
+        <div class="text-[10px] font-semibold text-slate-400 tracking-wider">HOME APPLIANCES · THOOTHUKUDI</div>
+      </div>
+    </a>
+    <div class="flex-1"></div>
+    <nav class="flex items-center gap-4 text-slate-600">
+      <a href="index.html" class="flex flex-col items-center text-[11px]"><span class="text-xl">🏬</span>Store</a>
+      <a href="cart.html" class="relative flex flex-col items-center text-[11px]">
+        <span class="text-xl">🛒</span>Cart
+        <span id="cartBadge" class="hidden absolute -top-1.5 -right-2 bg-orange text-white text-[11px] font-bold w-[18px] h-[18px] rounded-full items-center justify-center">0</span>
+      </a>
+    </nav>
+  </div>
+</header>
+
+<main class="max-w-[1000px] mx-auto px-5 py-6 min-h-[60vh]">
+  <a href="index.html" class="text-brand text-sm">← Back to store</a>
+  <div id="product" class="mt-4 text-slate-400">Loading…</div>
+</main>
+
+<footer class="bg-navy text-slate-400 mt-9 py-6 text-center text-[13px]">© 2026 JL Enterprises, Thoothukudi</footer>
+
+<script src="store.js"></script>
+<script>
+  const inr = (n) => "₹" + Math.round(Number(n || 0)).toLocaleString("en-IN");
+  const escAttr = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  async function loadProduct() {
+    const box = document.getElementById("product");
+    const slug = new URLSearchParams(location.search).get("slug");
+    if (!slug) { box.innerHTML = '<p class="text-red-500">No product specified.</p>'; return; }
+    try {
+      const p = await JLStore.productBySlug(slug);
+      document.title = p.name + " — JL Enterprises";
+      const price = Number(p.price || 0), mrp = Number(p.comparePrice || 0);
+      const emoji = JL_CAT_EMOJI[p.categorySlug] || "📦";
+      const rating = Math.round(Number(p.averageRating || 0));
+      const media = p.primaryImageUrl
+        ? `<img src="${escAttr(p.primaryImageUrl)}" alt="${escAttr(p.name)}" class="w-full rounded-2xl object-cover" />`
+        : `<div class="h-72 flex items-center justify-center text-8xl bg-gradient-to-br from-slate-50 to-slate-100 rounded-2xl">${emoji}</div>`;
+      box.innerHTML = `
+        <div class="grid md:grid-cols-2 gap-8 bg-white border border-slate-200 rounded-2xl p-6">
+          <div>${media}</div>
+          <div>
+            <div class="text-[12px] text-slate-400 uppercase font-semibold tracking-wide">${escAttr(p.brandName || "")}</div>
+            <h1 class="text-2xl font-bold text-navy mt-1 mb-2">${escAttr(p.name)}</h1>
+            <div class="text-amber text-sm mb-3">${"★".repeat(rating)}<span class="text-slate-400"> (${p.reviewCount || 0} reviews)</span></div>
+            <div class="flex items-baseline gap-3 mb-1">
+              <span class="text-3xl font-extrabold text-navy">${inr(price)}</span>
+              ${mrp > price ? `<span class="text-slate-400 line-through">${inr(mrp)}</span>` : ""}
+            </div>
+            <div class="text-[13px] text-brand mb-4">EMI from ${inr(Math.max(1, Math.round(price / 21)))}/mo · Free delivery in Tamil Nadu</div>
+            ${p.shortDescription ? `<p class="text-slate-600 text-sm mb-3">${escAttr(p.shortDescription)}</p>` : ""}
+            <button data-id="${escAttr(p.id)}" data-name="${escAttr(p.name)}" data-brand="${escAttr(p.brandName || "")}" data-emoji="${emoji}" data-price="${price}"
+              class="addbtn bg-navy hover:bg-orange text-white font-bold px-6 py-3 rounded-lg text-sm transition">🛒 Add to Cart</button>
+          </div>
+        </div>
+        ${p.description ? `<div class="bg-white border border-slate-200 rounded-2xl p-6 mt-5">
+          <h2 class="text-navy font-semibold mb-2">Description</h2>
+          <p class="text-slate-600 text-sm whitespace-pre-line">${escAttr(p.description)}</p></div>` : ""}`;
+    } catch (e) {
+      box.innerHTML = `<p class="text-red-500">${e.status === 404 ? "Product not found." : "Couldn't load this product."}</p>`;
+    }
+  }
+  loadProduct();
+</script>
+<script src="script.js"></script>
+</body>
+</html>

@@ -197,52 +197,63 @@
   🛒 <span id="floatCount">0</span> item(s) · <span id="floatTotal">₹0</span>
 </a>
 
+<script src="store.js"></script>
 <script>
-  // ── Product catalog for the home page (mockup data — the real app
-  //    reads Supabase). Every card gets a data-search attribute so the
-  //    header search box can filter them (see script.js).
-  const inr = (n) => "₹" + Math.round(n).toLocaleString("en-IN");
+  // ── Live catalog: products come from the backend API (Supabase-backed). ──
+  const inr = (n) => "₹" + Math.round(Number(n || 0)).toLocaleString("en-IN");
   const pctOff = (mrp, price) => (!mrp || mrp <= price) ? 0 : Math.round(((mrp - price) / mrp) * 100);
+  const escAttr = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
-  const PRODUCTS = [
-    { id:"p1", name:"1.5 Ton 3-Star Inverter Split AC", brand:"Voltas", cat:"air conditioner ac cooling", emoji:"❄️", price:34990, mrp:51500, stock:2,  rating:4.6, reviewCount:214, emi:1649 },
-    { id:"p2", name:'55" 4K Ultra HD Smart Google TV', brand:"Sony", cat:"television tv smart 4k", emoji:"📺", price:62990, mrp:87900, stock:12, rating:4.4, reviewCount:176, emi:2950 },
-    { id:"p3", name:"340L Double-Door Frost-Free Fridge", brand:"Godrej", cat:"refrigerator fridge frost free", emoji:"🧊", price:41200, mrp:54000, stock:8,  rating:4.7, reviewCount:98,  emi:1930 },
-    { id:"p4", name:"7Kg Fully Automatic Front-Load Washing Machine", brand:"LG", cat:"washing machine washer laundry", emoji:"🌀", price:28500, mrp:43900, stock:6,  rating:4.5, reviewCount:143, emi:1340 },
-    { id:"p5", name:"5-Seater Premium Fabric Sofa Set", brand:"JL Home", cat:"furniture sofa seating living room", emoji:"🛋️", price:38000, mrp:49000, stock:4,  rating:4.5, reviewCount:64,  emi:1780 },
-    { id:"p6", name:"Queen Size Bed with Storage", brand:"JL Home", cat:"furniture bed bedroom storage", emoji:"🛏️", price:24500, mrp:31000, stock:5,  rating:4.3, reviewCount:41,  emi:1150 },
-    { id:"p7", name:"Mixer Grinder + Gas Stove Combo", brand:"Preethi", cat:"kitchen mixer grinder stove", emoji:"🍳", price:9450,  mrp:13200, stock:15, rating:4.6, reviewCount:187, emi:790  },
-    { id:"p8", name:"5.1 Channel Home Theatre System", brand:"Sony", cat:"home theatre speaker sound audio", emoji:"🔊", price:18990, mrp:26500, stock:3,  rating:4.4, reviewCount:72,  emi:890  },
-  ];
-
-  // One card per product — the "Add to Cart" button carries data-*
-  // attributes that script.js reads to store the item in localStorage.
+  // Maps a ProductSummaryDto from the API to a storefront card. The Add-to-Cart
+  // button carries data-* attributes that script.js reads (event-delegated).
   function card(p) {
-    const off = pctOff(p.mrp, p.price);
-    const low = p.stock > 0 && p.stock <= 3;
-    const stockTxt = p.stock === 0 ? "Out of stock" : low ? `Only ${p.stock} left` : "In stock";
-    const searchText = (p.name + " " + p.brand + " " + p.cat).toLowerCase();
+    const price = Number(p.price || 0);
+    const mrp = Number(p.comparePrice || 0);
+    const off = pctOff(mrp, price);
+    const rating = Math.round(Number(p.averageRating || 0));
+    const emi = Math.max(1, Math.round(price / 21));
+    const emoji = JL_CAT_EMOJI[p.categorySlug] || "📦";
+    const searchText = escAttr(((p.name || "") + " " + (p.brandName || "") + " " + (p.categorySlug || "")).toLowerCase());
+    const media = p.primaryImageUrl
+      ? `<img src="${escAttr(p.primaryImageUrl)}" alt="${escAttr(p.name)}" class="h-40 w-full object-cover" />`
+      : `<div class="h-40 flex items-center justify-center text-6xl bg-gradient-to-br from-slate-50 to-slate-100">${emoji}</div>`;
     return `
     <div class="product-card bg-white border border-slate-200 rounded-2xl overflow-hidden hover:shadow-card hover:-translate-y-0.5 transition relative" data-search="${searchText}">
       ${off>0 ? `<span class="absolute top-3 left-3 bg-red-600 text-white text-[11px] font-bold px-2 py-0.5 rounded z-[2]">-${off}%</span>`:""}
-      <div class="h-40 flex items-center justify-center text-6xl bg-gradient-to-br from-slate-50 to-slate-100">${p.emoji}</div>
+      <a href="product.html?slug=${escAttr(p.slug)}">${media}</a>
       <div class="p-3.5">
-        <div class="text-[11px] text-slate-400 uppercase font-semibold tracking-wide">${p.brand}</div>
-        <div class="text-[15px] text-navy font-semibold mt-0.5 mb-1.5 leading-snug h-9 overflow-hidden">${p.name}</div>
-        <div class="text-amber text-[13px] mb-2">${"★".repeat(Math.round(p.rating))}<span class="text-slate-400"> (${p.reviewCount})</span></div>
-        <div class="text-[11px] font-bold mb-2 ${low ? "text-orange-600":"text-green-600"}">${stockTxt}</div>
+        <div class="text-[11px] text-slate-400 uppercase font-semibold tracking-wide">${escAttr(p.brandName || "")}</div>
+        <a href="product.html?slug=${escAttr(p.slug)}" class="text-[15px] text-navy font-semibold mt-0.5 mb-1.5 leading-snug h-9 overflow-hidden block hover:text-brand">${escAttr(p.name)}</a>
+        <div class="text-amber text-[13px] mb-2">${"★".repeat(rating)}<span class="text-slate-400"> (${p.reviewCount || 0})</span></div>
         <div class="flex items-baseline gap-2 mb-0.5">
-          <span class="text-xl font-extrabold text-navy">${inr(p.price)}</span>
-          ${p.mrp>p.price ? `<span class="text-[13px] text-slate-400 line-through">${inr(p.mrp)}</span>`:""}
+          <span class="text-xl font-extrabold text-navy">${inr(price)}</span>
+          ${mrp>price ? `<span class="text-[13px] text-slate-400 line-through">${inr(mrp)}</span>`:""}
         </div>
-        <div class="text-[12px] text-brand mb-2.5">EMI from ${inr(p.emi)}/mo</div>
-        <button data-id="${p.id}" data-name='${p.name}' data-brand="${p.brand}" data-emoji="${p.emoji}" data-price="${p.price}" ${p.stock===0?"disabled":""}
-          class="addbtn w-full bg-navy hover:bg-orange disabled:bg-slate-300 text-white font-bold py-2.5 rounded-lg text-sm transition">🛒 Add to Cart</button>
+        <div class="text-[12px] text-brand mb-2.5">EMI from ${inr(emi)}/mo</div>
+        <button data-id="${escAttr(p.id)}" data-name="${escAttr(p.name)}" data-brand="${escAttr(p.brandName || "")}" data-emoji="${emoji}" data-price="${price}"
+          class="addbtn w-full bg-navy hover:bg-orange text-white font-bold py-2.5 rounded-lg text-sm transition">🛒 Add to Cart</button>
       </div>
     </div>`;
   }
 
-  document.getElementById("products").innerHTML = PRODUCTS.map(card).join("");
+  async function loadProducts() {
+    const grid = document.getElementById("products");
+    grid.innerHTML = `<div class="col-span-full text-center py-12 text-slate-400">Loading products…</div>`;
+    try {
+      const page = await JLStore.products();
+      const items = (page && page.content) || [];
+      const none = document.getElementById("noResults");
+      if (!items.length) { grid.innerHTML = ""; if (none) none.style.display = "block"; return; }
+      grid.innerHTML = items.map(card).join("");
+      // If the user arrived via ?q=, apply the search filter now that cards exist.
+      const q = new URLSearchParams(location.search).get("q");
+      if (q && window.applySearch) { const si = document.getElementById("searchInput"); if (si) si.value = q; applySearch(q); }
+    } catch (e) {
+      grid.innerHTML = `<div class="col-span-full text-center py-12 text-red-500">Couldn't load products right now. Please refresh in a moment.</div>`;
+    }
+  }
+  loadProducts();
 </script>
 <!-- shared cart / search / form logic -->
 <script src="script.js"></script>

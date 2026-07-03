@@ -116,11 +116,13 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration cfg = new CorsConfiguration();
+        // Auth uses a bearer token (Authorization header), NOT cookies — so we do
+        // not need credentialed CORS. Keeping allowCredentials=false lets a wildcard
+        // origin ("*") work; browsers forbid "*" together with allowCredentials=true.
         cfg.setAllowedOrigins(props.security().cors().allowedOrigins());
         cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         cfg.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
-        cfg.setExposedHeaders(List.of("Authorization"));
-        cfg.setAllowCredentials(true);
+        cfg.setAllowCredentials(false);
         cfg.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource src = new UrlBasedCorsConfigurationSource();
