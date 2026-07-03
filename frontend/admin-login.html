@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Admin Login — JL Enterprises</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: { extend: {
+      colors: {
+        navy: { DEFAULT: "#0b2447", 600: "#19376d" },
+        brand: { DEFAULT: "#576cbc", sky: "#a5d7e8" },
+        orange: { DEFAULT: "#f97316", 600: "#ea580c" },
+      },
+      boxShadow: { card: "0 12px 30px rgba(15,23,42,.12)" },
+    } },
+  };
+</script>
+<style> body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; } </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-[#0b2447] to-[#19376d] flex items-center justify-center p-4 text-slate-800">
+
+  <div class="w-full max-w-[400px]">
+    <div class="flex items-center justify-center gap-2.5 mb-5">
+      <div class="w-12 h-10 rounded-lg bg-white/10 text-white font-extrabold flex items-center justify-center text-lg">JL</div>
+      <div class="text-white">
+        <div class="font-extrabold leading-tight">JL ENTERPRISES</div>
+        <div class="text-[10px] text-brand-sky tracking-widest">CONTROL CENTRE</div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-card p-6">
+      <h1 class="text-xl font-bold text-navy mb-1">Staff Login</h1>
+      <p class="text-slate-400 text-sm mb-5">Authorised personnel only.</p>
+
+      <div id="error" class="hidden mb-4 text-[13px] bg-red-50 text-red-700 border border-red-200 rounded-lg px-3 py-2"></div>
+
+      <form id="loginForm" novalidate>
+        <label class="block text-[13px] font-semibold text-slate-600 mb-1" for="email">Email</label>
+        <input id="email" type="email" autocomplete="username" required
+               class="w-full mb-4 rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-brand"
+               placeholder="you@jlenterprises.in" />
+
+        <label class="block text-[13px] font-semibold text-slate-600 mb-1" for="password">Password</label>
+        <input id="password" type="password" autocomplete="current-password" required
+               class="w-full mb-5 rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-brand"
+               placeholder="Your password" />
+
+        <button id="submitBtn" type="submit"
+                class="w-full bg-navy hover:bg-navy-600 text-white font-semibold rounded-lg py-2.5 text-sm transition">
+          Login 🔑
+        </button>
+      </form>
+
+      <p class="text-[12px] text-slate-400 mt-4 text-center">
+        Trouble logging in? Contact the owner on
+        <a href="tel:+917373970666" class="text-brand font-semibold">73739 70666</a>.
+      </p>
+    </div>
+
+    <p class="text-center text-white/60 text-[12px] mt-4">
+      <a href="index.html" class="hover:text-white">← Back to store</a>
+    </p>
+  </div>
+
+<script src="admin.js"></script>
+<script>
+  const form = document.getElementById("loginForm");
+  const errorBox = document.getElementById("error");
+  const btn = document.getElementById("submitBtn");
+
+  function nextPage() {
+    const next = new URLSearchParams(location.search).get("next");
+    // Only allow same-folder .html targets (avoid open-redirects).
+    return next && /^[\w.-]+\.html$/.test(next) ? next : "admin.html";
+  }
+
+  // If already logged in, skip the form.
+  JLAuth.me().then(() => location.replace(nextPage())).catch(() => {});
+
+  form.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    errorBox.classList.add("hidden");
+    btn.disabled = true;
+    btn.textContent = "Signing in…";
+    try {
+      await JLAuth.login(document.getElementById("email").value.trim(),
+                         document.getElementById("password").value);
+      location.replace(nextPage());
+    } catch (e) {
+      errorBox.textContent = e.message || "Login failed";
+      errorBox.classList.remove("hidden");
+      btn.disabled = false;
+      btn.textContent = "Login 🔑";
+    }
+  });
+</script>
+</body>
+</html>

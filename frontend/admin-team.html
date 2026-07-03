@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Team & Roles — JL Admin</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = { theme: { extend: {
+    colors: {
+      navy: { DEFAULT: "#0b2447", 600: "#19376d" },
+      brand: { DEFAULT: "#576cbc", sky: "#a5d7e8" },
+      orange: { DEFAULT: "#f97316", 600: "#ea580c" },
+    },
+    boxShadow: { card: "0 12px 30px rgba(15,23,42,.12)" },
+  } } };
+</script>
+<style> body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; } </style>
+</head>
+<body class="bg-[#eef1f6] min-h-screen text-slate-800">
+
+  <!-- TOP BAR -->
+  <div class="bg-white border-b border-slate-200 px-4 md:px-7 py-3 flex items-center gap-3 sticky top-0 z-10">
+    <a href="admin.html" class="flex items-center gap-2 text-navy">
+      <div class="w-9 h-7 rounded bg-navy text-white text-[11px] font-extrabold flex items-center justify-center">JL</div>
+      <span class="font-bold text-sm">← Dashboard</span>
+    </a>
+    <div class="ml-auto flex items-center gap-3">
+      <span id="adminBadge" title="" class="w-9 h-9 rounded-full bg-gradient-to-br from-navy-600 to-brand text-white flex items-center justify-center font-bold text-[13px]">··</span>
+      <a href="#" id="logoutBtn" class="text-[13px] text-slate-500 hover:text-navy">⎋ Logout</a>
+    </div>
+  </div>
+
+  <div class="max-w-[1000px] mx-auto p-4 md:p-7">
+    <h1 class="text-2xl text-navy font-bold mb-1">Team & Roles</h1>
+    <p class="text-slate-400 text-sm mb-5">Manage staff access. Roles: SUPER_ADMIN · ADMIN · MANAGER · CUSTOMER.</p>
+
+    <div class="bg-blue-50 border border-blue-200 text-blue-800 text-[13px] rounded-lg px-3 py-2 mb-5">
+      ℹ️ New staff sign up like any customer, then a <b>Super Admin</b> promotes them here by assigning a role.
+    </div>
+
+    <div id="msg" class="hidden mb-4 text-[13px] rounded-lg px-3 py-2"></div>
+
+    <div class="bg-white border border-slate-200 rounded-2xl p-5">
+      <div class="flex items-center gap-3 mb-4">
+        <h2 class="text-navy font-semibold">Users</h2>
+        <input id="search" placeholder="Search name or email…"
+               class="ml-auto w-64 rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-brand" />
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead><tr class="text-left text-slate-400 text-[12px] uppercase">
+            <th class="py-2">Name</th><th>Email</th><th>Roles</th><th>Verified</th><th class="text-right">Actions</th>
+          </tr></thead>
+          <tbody id="usersBody"><tr><td colspan="5" class="py-4 text-slate-400">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+<script src="admin.js"></script>
+<script>
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  const ASSIGNABLE = ["ROLE_ADMIN", "ROLE_MANAGER", "ROLE_CUSTOMER", "ROLE_SUPER_ADMIN"];
+  let CURRENT = null;
+
+  const ROLE_STYLE = {
+    ROLE_SUPER_ADMIN: "bg-orange-50 text-orange-700",
+    ROLE_ADMIN:       "bg-violet-50 text-violet-700",
+    ROLE_MANAGER:     "bg-blue-50 text-blue-700",
+    ROLE_CUSTOMER:    "bg-slate-100 text-slate-600",
+  };
+
+  function flash(text, ok = true) {
+    const el = document.getElementById("msg");
+    el.textContent = text;
+    el.className = "mb-4 text-[13px] rounded-lg px-3 py-2 " +
+      (ok ? "bg-green-50 text-green-700 border border-green-200"
+          : "bg-red-50 text-red-700 border border-red-200");
+    el.classList.remove("hidden");
+  }
+
+  function name(u) {
+    return [u.firstName, u.lastName].filter(Boolean).join(" ").trim() || u.email;
+  }
+
+  function roleChips(u) {
+    const isSuper = CURRENT && (CURRENT.roles || []).includes("ROLE_SUPER_ADMIN");
+    return (u.roles || []).map((r) => `
+      <span class="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${ROLE_STYLE[r] || "bg-slate-100"}">
+        ${esc(r.replace("ROLE_", ""))}
+        ${isSuper ? `<button data-remove="${u.id}" data-role="${r}" class="text-current/70 hover:text-red-600" title="Remove role">×</button>` : ""}
+      </span>`).join(" ");
+  }
+
+  function rowActions(u) {
+    const isSuper = CURRENT && (CURRENT.roles || []).includes("ROLE_SUPER_ADMIN");
+    const isAdmin = CURRENT && (CURRENT.roles || []).some((r) => ["ROLE_SUPER_ADMIN", "ROLE_ADMIN"].includes(r));
+    let html = "";
+    if (isSuper) {
+      html += `<select data-roleselect="${u.id}" class="rounded border border-slate-300 text-[12px] px-1.5 py-1 mr-1">
+        ${ASSIGNABLE.map((r) => `<option value="${r}">${r.replace("ROLE_", "")}</option>`).join("")}
+      </select>
+      <button data-assign="${u.id}" class="text-[12px] bg-navy text-white rounded px-2 py-1 mr-1">+ Role</button>`;
+    }
+    if (isAdmin) {
+      html += `<button data-enable="${u.id}" data-on="true" class="text-[12px] text-green-700 border border-green-300 rounded px-2 py-1 mr-1">Enable</button>
+      <button data-enable="${u.id}" data-on="false" class="text-[12px] text-red-700 border border-red-300 rounded px-2 py-1">Disable</button>`;
+    }
+    return html || '<span class="text-slate-300 text-[12px]">—</span>';
+  }
+
+  async function loadUsers(search = "") {
+    const body = document.getElementById("usersBody");
+    try {
+      const q = search ? `?search=${encodeURIComponent(search)}&size=50` : "?size=50";
+      const page = await jlApi("/api/v1/admin/users" + q);
+      const users = page.content || [];
+      body.innerHTML = users.length ? users.map((u) => `
+        <tr class="border-t border-slate-100 align-top">
+          <td class="py-2.5 font-semibold text-navy">${esc(name(u))}</td>
+          <td class="text-slate-600">${esc(u.email)}</td>
+          <td>${roleChips(u)}</td>
+          <td>${u.emailVerified ? '<span class="text-green-600">✓</span>' : '<span class="text-slate-400">—</span>'}</td>
+          <td class="text-right whitespace-nowrap">${rowActions(u)}</td>
+        </tr>`).join("") : `<tr><td colspan="5" class="py-4 text-slate-400">No users found.</td></tr>`;
+    } catch (e) {
+      body.innerHTML = `<tr><td colspan="5" class="py-4 text-red-600">Could not load users (${esc(e.message)}).</td></tr>`;
+    }
+  }
+
+  // Event delegation for row actions.
+  document.getElementById("usersBody").addEventListener("click", async (ev) => {
+    const t = ev.target.closest("button");
+    if (!t) return;
+    try {
+      if (t.dataset.assign) {
+        const role = document.querySelector(`[data-roleselect="${t.dataset.assign}"]`).value;
+        await jlApi(`/api/v1/admin/users/${t.dataset.assign}/roles/${role}`, { method: "POST" });
+        flash("Role assigned.");
+      } else if (t.dataset.remove) {
+        await jlApi(`/api/v1/admin/users/${t.dataset.remove}/roles/${t.dataset.role}`, { method: "DELETE" });
+        flash("Role removed.");
+      } else if (t.dataset.enable) {
+        await jlApi(`/api/v1/admin/users/${t.dataset.enable}/status?enabled=${t.dataset.on}`, { method: "PATCH" });
+        flash("User " + (t.dataset.on === "true" ? "enabled." : "disabled."));
+      }
+      loadUsers(document.getElementById("search").value.trim());
+    } catch (e) {
+      flash(e.message || "Action failed", false);
+    }
+  });
+
+  let searchTimer;
+  document.getElementById("search").addEventListener("input", (e) => {
+    clearTimeout(searchTimer);
+    const v = e.target.value.trim();
+    searchTimer = setTimeout(() => loadUsers(v), 300);
+  });
+
+  jlWireLogout("#logoutBtn");
+  jlRequireAdmin().then((admin) => {
+    CURRENT = admin;
+    const badge = document.getElementById("adminBadge");
+    badge.textContent = name(admin).split(/[\s@.]+/).filter(Boolean).slice(0, 2)
+      .map((w) => w[0].toUpperCase()).join("") || "JL";
+    badge.title = `${name(admin)} · ${(admin.roles || []).map((r) => r.replace("ROLE_", "")).join(", ")}`;
+    loadUsers();
+  });
+</script>
+</body>
+</html>

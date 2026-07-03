@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Customers — JL Admin</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = { theme: { extend: { colors: {
+    navy: { DEFAULT: "#0b2447", 600: "#19376d" }, brand: { DEFAULT: "#576cbc", sky: "#a5d7e8" },
+    orange: { DEFAULT: "#f97316" } }, boxShadow: { card: "0 12px 30px rgba(15,23,42,.12)" } } } };
+</script>
+<style> body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; } </style>
+</head>
+<body class="bg-[#eef1f6] min-h-screen text-slate-800">
+
+  <div class="bg-white border-b border-slate-200 px-4 md:px-7 py-3 flex items-center gap-3 sticky top-0 z-10">
+    <a href="admin.html" class="flex items-center gap-2 text-navy">
+      <div class="w-9 h-7 rounded bg-navy text-white text-[11px] font-extrabold flex items-center justify-center">JL</div>
+      <span class="font-bold text-sm">← Dashboard</span>
+    </a>
+    <div class="ml-auto flex items-center gap-3">
+      <span id="adminBadge" class="w-9 h-9 rounded-full bg-gradient-to-br from-navy-600 to-brand text-white flex items-center justify-center font-bold text-[13px]">··</span>
+      <a href="#" id="logoutBtn" class="text-[13px] text-slate-500 hover:text-navy">⎋ Logout</a>
+    </div>
+  </div>
+
+  <div class="max-w-[1000px] mx-auto p-4 md:p-7">
+    <h1 class="text-2xl text-navy font-bold mb-1">Customers</h1>
+    <p class="text-slate-400 text-sm mb-5">Customer & user directory. Manage roles/access on the <a href="admin-team.html" class="text-brand">Team</a> page.</p>
+    <div id="msg" class="hidden mb-4 text-[13px] rounded-lg px-3 py-2"></div>
+
+    <div class="bg-white border border-slate-200 rounded-2xl p-5">
+      <div class="flex items-center gap-3 mb-4">
+        <h2 class="text-navy font-semibold">Directory</h2>
+        <input id="search" placeholder="Search name or email…" class="ml-auto w-64 rounded-lg border border-slate-300 px-3 py-1.5 text-sm" />
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead><tr class="text-left text-slate-400 text-[12px] uppercase">
+            <th class="py-2">Name</th><th>Email</th><th>Phone</th><th>Verified</th><th>Roles</th><th class="text-right">Orders</th>
+          </tr></thead>
+          <tbody id="rows"><tr><td colspan="5" class="py-4 text-slate-400">Loading…</td></tr></tbody>
+        </table>
+      </div>
+      <div class="flex items-center justify-between mt-4 text-sm">
+        <button id="prev" class="px-3 py-1.5 rounded border border-slate-300 disabled:opacity-40">← Prev</button>
+        <span id="pageInfo" class="text-slate-400"></span>
+        <button id="next" class="px-3 py-1.5 rounded border border-slate-300 disabled:opacity-40">Next →</button>
+      </div>
+    </div>
+  </div>
+
+<script src="admin.js"></script>
+<script>
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c)=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+  const $ = (id) => document.getElementById(id);
+  const state = { page: 0, size: 20, totalPages: 1 };
+  const name = (u) => [u.firstName,u.lastName].filter(Boolean).join(" ").trim() || u.email;
+
+  async function load(){
+    const search = $("search").value.trim();
+    const q = `?page=${state.page}&size=${state.size}` + (search?`&search=${encodeURIComponent(search)}`:"");
+    const body = $("rows");
+    try {
+      const page = await jlApi("/api/v1/admin/users" + q);
+      state.totalPages = page.totalPages || 1;
+      const rows = page.content || [];
+      body.innerHTML = rows.length ? rows.map(u=>`
+        <tr class="border-t border-slate-100">
+          <td class="py-2.5 font-semibold text-navy">${esc(name(u))}</td>
+          <td class="text-slate-600">${esc(u.email)}</td>
+          <td class="text-slate-500">${esc(u.phone||"—")}</td>
+          <td>${u.emailVerified?'<span class="text-green-600">✓ email</span>':'<span class="text-slate-400">—</span>'}</td>
+          <td class="text-slate-500 text-[12px]">${(u.roles||[]).map(r=>esc(r.replace("ROLE_",""))).join(", ")}</td>
+          <td class="text-right"><button data-orders="${u.id}" class="text-[12px] text-brand">View →</button></td>
+        </tr>
+        <tr id="orders-${u.id}" class="hidden bg-slate-50"><td colspan="6" class="px-4 py-3 text-[13px]"></td></tr>`).join("")
+        : `<tr><td colspan="6" class="py-4 text-slate-400">No users found.</td></tr>`;
+      $("pageInfo").textContent = `Page ${state.page+1} of ${state.totalPages}`;
+      $("prev").disabled = page.first; $("next").disabled = page.last;
+    } catch(e){ body.innerHTML = `<tr><td colspan="6" class="py-4 text-red-600">Could not load (${esc(e.message)}).</td></tr>`; }
+  }
+
+  const inr = (n) => "₹" + Math.round(Number(n||0)).toLocaleString("en-IN");
+  const fmt = (iso) => { try { return new Date(iso).toLocaleDateString("en-IN",{dateStyle:"medium"}); } catch(_){ return "—"; } };
+
+  async function toggleOrders(userId){
+    const row = $("orders-"+userId);
+    const cell = row.querySelector("td");
+    if(!row.classList.contains("hidden")){ row.classList.add("hidden"); return; }
+    row.classList.remove("hidden");
+    cell.innerHTML = "Loading orders…";
+    try {
+      const page = await jlApi(`/api/v1/admin/orders/user/${userId}?size=20`);
+      const orders = page.content || [];
+      cell.innerHTML = orders.length ? `
+        <table class="w-full"><tbody>${orders.map(o=>`
+          <tr><td class="py-1 font-semibold text-navy">#${esc(o.orderNumber)}</td>
+          <td class="text-slate-500">${fmt(o.placedAt)}</td>
+          <td class="text-slate-500">${esc(o.status)}</td>
+          <td class="text-right font-semibold">${inr(o.grandTotal)}</td></tr>`).join("")}</tbody></table>`
+        : '<span class="text-slate-400">No orders for this customer.</span>';
+    } catch(e){ cell.innerHTML = `<span class="text-red-600">${esc(e.message)}</span>`; }
+  }
+
+  $("rows").addEventListener("click", (ev)=>{ const b=ev.target.closest("button[data-orders]"); if(b) toggleOrders(b.dataset.orders); });
+
+  let timer; $("search").addEventListener("input", ()=>{ clearTimeout(timer); state.page=0; timer=setTimeout(load,300); });
+  $("prev").addEventListener("click", ()=>{ if(state.page>0){state.page--; load();} });
+  $("next").addEventListener("click", ()=>{ if(state.page<state.totalPages-1){state.page++; load();} });
+
+  jlWireLogout("#logoutBtn");
+  jlRequireAdmin().then((a)=>{
+    $("adminBadge").textContent = jlDisplayName(a).split(/[\s@.]+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join("")||"JL";
+    load();
+  });
+</script>
+</body>
+</html>

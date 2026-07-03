@@ -40,8 +40,8 @@
       </div>
       <div class="flex-1 overflow-auto" id="nav"></div>
       <div class="px-5 pt-3 border-t border-white/10">
-        <a href="user.html" class="block text-slate-300 hover:text-white text-[13px] py-1.5">↗ View store</a>
-        <a href="#" class="block text-slate-300 hover:text-white text-[13px] py-1.5">⎋ Logout</a>
+        <a href="index.html" class="block text-slate-300 hover:text-white text-[13px] py-1.5">↗ View store</a>
+        <a href="#" id="logoutBtn" class="block text-slate-300 hover:text-white text-[13px] py-1.5">⎋ Logout</a>
       </div>
     </div>
   </aside>
@@ -57,7 +57,7 @@
         <span class="hidden sm:flex items-center gap-2 bg-green-50 text-green-700 px-3 py-1.5 rounded-full text-[12px] font-semibold">
           <span class="w-2 h-2 rounded-full bg-green-500"></span> 27 online
         </span>
-        <span class="w-9 h-9 rounded-full bg-gradient-to-br from-navy-600 to-brand text-white flex items-center justify-center font-bold text-[13px]">CEO</span>
+        <span id="adminBadge" title="" class="w-9 h-9 rounded-full bg-gradient-to-br from-navy-600 to-brand text-white flex items-center justify-center font-bold text-[13px]">··</span>
       </div>
     </div>
 
@@ -100,90 +100,115 @@
   </div>
 </div>
 
+<script src="admin.js"></script>
 <script>
+  // ── Auth guard: redirect to login if not authenticated, then show identity ──
+  jlWireLogout("#logoutBtn");
+  jlRequireAdmin().then((admin) => {
+    const badge = document.getElementById("adminBadge");
+    if (badge && admin) {
+      const name = jlDisplayName(admin);
+      const initials = name.split(/[\s@.]+/).filter(Boolean).slice(0, 2)
+        .map((w) => w[0].toUpperCase()).join("");
+      const roles = (admin.roles || []).map((r) => r.replace("ROLE_", "")).join(", ");
+      badge.textContent = initials || "JL";
+      badge.title = `${name} · ${roles}`;
+    }
+  });
+
   const inr = (n) => "₹" + Math.round(n).toLocaleString("en-IN");
 
   // ── Sidebar nav (mirrors AdminSidebar.tsx) ──
   const NAV = [
     { group:"Overview", items:[
-      { label:"Dashboard", emoji:"📊", on:true },
-      { label:"Orders", emoji:"📥" },
+      { label:"Dashboard", emoji:"📊", on:true, href:"admin.html" },
+      { label:"Orders", emoji:"📥", href:"admin-orders.html" },
     ]},
     { group:"Catalog & Sales", items:[
-      { label:"Products", emoji:"📦" },
-      { label:"Inventory", emoji:"🗂️" },
-      { label:"Offers & Deals", emoji:"🏷️" },
+      { label:"Products", emoji:"📦", href:"admin-products.html" },
+      { label:"Inventory", emoji:"🗂️", href:"admin-inventory.html" },
+      { label:"Offers & Deals", emoji:"🏷️", href:"admin-offers.html" },
     ]},
     { group:"Engage", items:[
-      { label:"Customers (CRM)", emoji:"👥" },
-      { label:"WhatsApp Offers", emoji:"💬" },
+      { label:"Customers (CRM)", emoji:"👥", href:"admin-customers.html" },
+      { label:"WhatsApp Offers", emoji:"💬", href:"admin-whatsapp.html" },
     ]},
     { group:"Control", items:[
-      { label:"Teams & Settings", emoji:"⚙️" },
+      { label:"Team", emoji:"👤", href:"admin-team.html" },
+      { label:"Settings", emoji:"⚙️", href:"admin-settings.html" },
     ]},
   ];
   document.getElementById("nav").innerHTML = NAV.map(g => `
     <div>
       <div class="text-[11px] tracking-widest text-slate-400 uppercase px-5 pt-3 pb-1.5">${g.group}</div>
       ${g.items.map(it => `
-        <a href="#" class="flex items-center gap-3 px-5 py-2.5 text-sm border-l-[3px] ${
+        <a href="${it.href || "#"}" class="flex items-center gap-3 px-5 py-2.5 text-sm border-l-[3px] ${
           it.on ? "bg-orange/20 border-orange text-white font-semibold" : "border-transparent text-slate-300 hover:bg-white/5 hover:text-white"
         }"><span class="w-5 text-center">${it.emoji}</span> ${it.label}</a>`).join("")}
     </div>`).join("");
 
-  // ── Demo orders (mirrors admin-demo.ts) ──
-  const STATUS_LABEL = { NEW:"New", PACKED:"Packed", OUT_FOR_DELIVERY:"Out for delivery", DELIVERED:"Delivered", CANCELLED:"Cancelled" };
+  // ── Live dashboard data (from the backend) ──
   const STATUS_STYLE = {
-    NEW:"bg-blue-50 text-blue-700", PACKED:"bg-amber-50 text-amber-700",
-    OUT_FOR_DELIVERY:"bg-violet-50 text-violet-700", DELIVERED:"bg-green-50 text-green-700",
-    CANCELLED:"bg-red-50 text-red-700",
+    PENDING:"bg-blue-50 text-blue-700", CONFIRMED:"bg-cyan-50 text-cyan-700",
+    PACKED:"bg-amber-50 text-amber-700", SHIPPED:"bg-violet-50 text-violet-700",
+    DELIVERED:"bg-green-50 text-green-700", CANCELLED:"bg-red-50 text-red-700",
+    REFUNDED:"bg-slate-100 text-slate-600",
   };
-  const ORDERS = [
-    { order_no:"JL2841", contact_name:"Ramesh K.", status:"OUT_FOR_DELIVERY", total:34990 },
-    { order_no:"JL2840", contact_name:"Priya S.", status:"PACKED", total:28500 },
-    { order_no:"JL2839", contact_name:"Karthik M.", status:"NEW", total:62990 },
-    { order_no:"JL2838", contact_name:"Anitha R.", status:"DELIVERED", total:9450 },
-    { order_no:"JL2837", contact_name:"Suresh B.", status:"OUT_FOR_DELIVERY", total:41200 },
-    { order_no:"JL2836", contact_name:"Deepa V.", status:"NEW", total:38000 },
-  ];
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
-  // Low-stock products (stock <= 3, mirrors catalog.ts)
-  const LOW = [
-    { name:"1.5 Ton 3-Star Inverter Split AC", brand:"Voltas", emoji:"❄️", stock:2 },
-    { name:"5.1 Channel Home Theatre System", brand:"Sony", emoji:"🔊", stock:3 },
-  ];
-
-  // ── Stats (computed like adminStats) ──
-  const sales = ORDERS.reduce((s,o)=>s+o.total,0);
-  const pending = ORDERS.filter(o => o.status!=="DELIVERED" && o.status!=="CANCELLED").length;
-  const STATS = [
-    ["Sales", inr(sales), "recent orders"],
-    ["Orders", String(ORDERS.length), "in system"],
-    ["Pending", String(pending), "to fulfil"],
-    ["Low Stock", String(LOW.length), "need restock"],
-    ["Customers", "5", "total"],
-  ];
-  document.getElementById("stats").innerHTML = STATS.map(([label,value,sub]) => `
-    <div class="bg-white border border-slate-200 rounded-2xl p-4">
+  function statCard(label, value, sub) {
+    return `<div class="bg-white border border-slate-200 rounded-2xl p-4">
       <div class="text-[12px] text-slate-400 uppercase tracking-wide font-semibold">${label}</div>
       <div class="text-2xl font-extrabold text-navy mt-1">${value}</div>
-      <div class="text-[12px] text-slate-400 mt-0.5">${sub}</div>
-    </div>`).join("");
+      <div class="text-[12px] text-slate-400 mt-0.5">${sub}</div></div>`;
+  }
 
-  document.getElementById("orders").innerHTML = ORDERS.map(o => `
-    <tr class="border-t border-slate-100">
-      <td class="py-2.5 font-bold text-navy">#${o.order_no}</td>
-      <td class="text-slate-600">${o.contact_name}</td>
-      <td><span class="inline-block text-[11px] font-semibold px-2 py-0.5 rounded-full ${STATUS_STYLE[o.status]}">${STATUS_LABEL[o.status]}</span></td>
-      <td class="text-right font-bold text-navy">${inr(o.total)}</td>
-    </tr>`).join("");
+  async function loadDashboard() {
+    try {
+      const s = await jlApi("/api/v1/admin/dashboard/stats");
+      document.getElementById("stats").innerHTML = [
+        statCard("Revenue (30d)", inr(Number(s.revenueLast30Days || 0)), `${s.ordersLast30Days} orders`),
+        statCard("Orders", String(s.totalOrders), "all time"),
+        statCard("Pending", String(s.pendingOrders), "to fulfil"),
+        statCard("Low Stock", String(s.lowStockCount), "need restock"),
+        statCard("Customers", String(s.totalUsers), "total users"),
+      ].join("");
+    } catch (e) {
+      document.getElementById("stats").innerHTML =
+        `<div class="col-span-full text-red-600 text-sm">Could not load stats (${esc(e.message)}).</div>`;
+    }
 
-  document.getElementById("lowstock").innerHTML = LOW.map((p,i) => `
-    <div class="flex items-center gap-3 py-2.5 border-t border-slate-100 ${i===0?"border-0":""}">
-      <span class="text-xl">${p.emoji}</span>
-      <div class="flex-1"><b class="text-navy text-[13px] block">${p.name}</b><span class="text-[12px] text-slate-400">${p.brand}</span></div>
-      <b class="text-red-600">${p.stock} left</b>
-    </div>`).join("");
+    try {
+      const page = await jlApi("/api/v1/admin/orders?size=6");
+      const rows = page.content || [];
+      document.getElementById("orders").innerHTML = rows.length ? rows.map(o => `
+        <tr class="border-t border-slate-100">
+          <td class="py-2.5 font-bold text-navy">#${esc(o.orderNumber)}</td>
+          <td class="text-slate-500 text-[12px]">${o.itemCount} item(s)</td>
+          <td><span class="inline-block text-[11px] font-semibold px-2 py-0.5 rounded-full ${STATUS_STYLE[o.status] || "bg-slate-100"}">${esc(o.status)}</span></td>
+          <td class="text-right font-bold text-navy">${inr(Number(o.grandTotal || 0))}</td>
+        </tr>`).join("") : `<tr><td colspan="4" class="py-4 text-slate-400">No orders yet.</td></tr>`;
+    } catch (e) {
+      document.getElementById("orders").innerHTML =
+        `<tr><td colspan="4" class="py-4 text-red-600">Could not load orders.</td></tr>`;
+    }
+
+    try {
+      const low = await jlApi("/api/v1/admin/inventory/low-stock");
+      document.getElementById("lowstock").innerHTML = low.length ? low.map((p,i) => `
+        <div class="flex items-center gap-3 py-2.5 border-t border-slate-100 ${i===0?"border-0":""}">
+          <div class="flex-1"><b class="text-navy text-[13px] block">${esc(p.productName)}</b>
+            <span class="text-[12px] text-slate-400">reorder at ${p.reorderLevel}</span></div>
+          <b class="text-red-600">${p.available} left</b>
+        </div>`).join("") : `<div class="text-slate-400 text-sm py-2">All products above reorder level. 🎉</div>`;
+    } catch (e) {
+      document.getElementById("lowstock").innerHTML =
+        `<div class="text-red-600 text-sm py-2">Could not load stock.</div>`;
+    }
+  }
+
+  loadDashboard();
 </script>
 </body>
 </html>

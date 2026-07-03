@@ -1,0 +1,8 @@
+-- ════════════════════════════════════════════════════════════════════
+--  V1 — baseline.
+--  Intentionally empty: establishes the Flyway schema-history table so the
+--  application boots on a fresh database. Real tables arrive in V2 (Step 4,
+--  the domain model) as PostgreSQL DDL, kept in lock-step with the JPA
+--  entities (spring.jpa.hibernate.ddl-auto=validate enforces the match).
+-- ════════════════════════════════════════════════════════════════════
+-- (no-op)

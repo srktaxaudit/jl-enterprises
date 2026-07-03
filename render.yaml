@@ -1,0 +1,73 @@
+# ────────────────────────────────────────────────────────────────────────
+#  Render Blueprint — deploys the JL backend (ecommerce-backend/) using
+#  SUPABASE as its Postgres database.
+#
+#  The backend auto-creates its schema on first boot (Hibernate ddl-auto=update),
+#  so nothing is run in the Supabase SQL editor. You only supply the connection
+#  string. Render also provisions a Key Value (Redis) store for OTP/tokens.
+#
+#  DB connection: use Supabase → Project Settings → Database → "Session pooler"
+#  (IPv4-compatible and supports prepared statements; do NOT use the Transaction
+#  pooler on 6543).
+#     DB_URL      = jdbc:postgresql://aws-0-<region>.pooler.supabase.com:5432/postgres?sslmode=require
+#     DB_USER     = postgres.<project-ref>
+#     DB_PASSWORD = <supabase db password>
+# ────────────────────────────────────────────────────────────────────────
+
+services:
+  # Redis / Key Value (OTP + verification tokens)
+  - type: redis
+    name: jl-ecom-redis
+    plan: free
+    ipAllowList: []          # only reachable from Render services
+
+  - type: web
+    name: jl-ecommerce-api
+    runtime: docker
+    rootDir: ecommerce-backend
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /actuator/health
+    envVars:
+      # ── Supabase Postgres (Session pooler) — fill these from the dashboard ──
+      - key: DB_URL
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_POOL_MAX
+        value: "5"           # Supabase free tier has limited connections
+      # ── Redis (auto-wired) ──
+      - key: REDIS_HOST
+        fromService:
+          type: redis
+          name: jl-ecom-redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          type: redis
+          name: jl-ecom-redis
+          property: port
+      # ── App ──
+      - key: JWT_SECRET
+        generateValue: true          # Render generates a strong random value
+      - key: CORS_ORIGINS             # your admin/site origin(s), e.g. https://jlenterprises.vercel.app
+        sync: false
+      - key: APP_BOOTSTRAP_ADMIN_PASSWORD
+        sync: false
+      - key: MAIL_HOST
+        sync: false
+      - key: MAIL_PORT
+        sync: false
+      # WhatsApp broadcast (optional — demo mode until set)
+      - key: WHATSAPP_TOKEN
+        sync: false
+      - key: WHATSAPP_PHONE_ID
+        sync: false
+      # Entity-development mode. To productionise: freeze the schema into a
+      # Flyway V2 migration, then set JPA_DDL_AUTO=validate and FLYWAY_ENABLED=true.
+      - key: JPA_DDL_AUTO
+        value: update
+      - key: FLYWAY_ENABLED
+        value: "false"

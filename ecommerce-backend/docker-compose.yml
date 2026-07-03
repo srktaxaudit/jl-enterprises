@@ -1,0 +1,60 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: jl-ecom-db
+    environment:
+      POSTGRES_DB: jl_ecommerce
+      POSTGRES_USER: jl
+      POSTGRES_PASSWORD: jl
+    ports:
+      - "5432:5432"
+    volumes:
+      - jl_ecom_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jl -d jl_ecommerce"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: jl-ecom-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Catches all outgoing mail during development — UI at http://localhost:8025
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: jl-ecom-mailhog
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # web UI
+
+  # The API itself. Comment this out to run the app from your IDE against the
+  # infra services above (db/redis/mailhog).
+  api:
+    build: .
+    container_name: jl-ecom-api
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/jl_ecommerce
+      DB_USER: jl
+      DB_PASSWORD: jl
+      REDIS_HOST: redis
+      MAIL_HOST: mailhog
+      MAIL_PORT: 1025
+      JWT_SECRET: dev-only-change-me-a-long-random-secret-at-least-32-bytes
+    ports:
+      - "8081:8081"
+
+volumes:
+  jl_ecom_pgdata:

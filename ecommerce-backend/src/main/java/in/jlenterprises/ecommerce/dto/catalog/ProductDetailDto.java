@@ -1,0 +1,33 @@
+package in.jlenterprises.ecommerce.dto.catalog;
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.UUID;
+
+/** Full product view for the product detail page. */
+public record ProductDetailDto(
+        UUID id,
+        String name,
+        String slug,
+        String sku,
+        String shortDescription,
+        String description,
+        BigDecimal price,
+        BigDecimal comparePrice,
+        BigDecimal discountPercent,
+        String currency,
+        boolean featured,
+        String metaTitle,
+        String metaDescription,
+        BigDecimal averageRating,
+        int reviewCount,
+        long viewCount,
+        long salesCount,
+        String primaryImageUrl,
+        UUID categoryId,
+        String categorySlug,
+        UUID brandId,
+        String brandName,
+        List<ProductImageDto> images,
+        List<ProductVariantDto> variants
+) {}
