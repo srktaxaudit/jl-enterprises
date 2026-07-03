@@ -115,3 +115,10 @@ from (values
 ) as v(slug, qty, reorder)
 join products p on p.slug = v.slug
 on conflict (product_id) do nothing;
+
+-- ── Ensure the optimistic-lock version is never NULL ──────────────────────
+--  Hibernate needs a non-null @Version for UPDATE (edit/delete/stock) to work.
+update categories  set version = 0 where version is null;
+update brands      set version = 0 where version is null;
+update products    set version = 0 where version is null;
+update inventories set version = 0 where version is null;
