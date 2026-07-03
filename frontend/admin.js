@@ -9,10 +9,8 @@
 
 // Where the Spring Boot API lives. Localhost during dev; set the prod URL below.
 const JL_API_BASE = (() => {
-  const h = location.hostname;
-  if (h === "localhost" || h === "127.0.0.1" || h === "") return "http://localhost:8081";
-  // TODO: replace with your deployed API origin (e.g. https://jl-ecommerce-api.onrender.com)
-  return "https://jl-ecommerce-api.onrender.com";
+  // The backend runs only on Render, so always call it (even from a local server).
+  return "https://jl-enterprises-api.onrender.com";
 })();
 
 const JL_LOGIN_PAGE = "admin-login.html";
