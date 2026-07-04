@@ -47,7 +47,11 @@ public class DashboardServiceImpl implements DashboardService {
                 revenue == null ? BigDecimal.ZERO : revenue,
                 inventoryRepository.countActive(),
                 inventoryRepository.countInStock(),
-                inventoryRepository.countOutOfStock()
+                inventoryRepository.countOutOfStock(),
+                orderRepository.countByOrderStatus(OrderStatus.PROCESSING),
+                orderRepository.countByOrderStatus(OrderStatus.DELIVERED),
+                orderRepository.countByOrderStatus(OrderStatus.CANCELLED),
+                orderRepository.countByOrderStatus(OrderStatus.RETURNED)
         );
     }
 }

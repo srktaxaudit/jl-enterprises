@@ -37,6 +37,9 @@ public interface CouponService {
     /** Persist a redemption and bump the usage counter (called after the order is saved). */
     void recordUsage(AppliedCoupon applied, User user, Order order);
 
+    /** Undo a redemption for an order (on cancel/return): delete the usage + decrement the counter. */
+    void revokeForOrder(UUID orderId);
+
     /** Internal holder for a validated coupon and the discount it yields. */
     record AppliedCoupon(Coupon coupon, BigDecimal discount) {}
 }

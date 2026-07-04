@@ -22,6 +22,10 @@ public record OrderDto(
         AddressSnapshotDto billingAddress,
         String notes,
         Instant placedAt,
+        Instant cancelledAt,
+        String cancellationReason,
+        String returnReason,
+        String adminNotes,
         List<OrderItemDto> items,
         OrderPaymentDto payment
 ) {}

@@ -20,7 +20,11 @@ public interface OrderService {
 
     OrderDto myOrder(UUID userId, UUID orderId);
 
-    OrderDto cancel(UUID userId, UUID orderId);
+    /** Customer cancels their order (allowed only in PENDING/CONFIRMED/PROCESSING). */
+    OrderDto cancel(UUID userId, UUID orderId, String reason);
+
+    /** Customer requests a return for a DELIVERED order. */
+    OrderDto requestReturn(UUID userId, UUID orderId, String reason);
 
     InvoiceDto invoice(UUID userId, UUID orderId);
 
@@ -35,4 +39,13 @@ public interface OrderService {
     OrderDto adminGet(UUID orderId);
 
     OrderDto updateStatus(UUID orderId, OrderStatus status);
+
+    /** Admin approves a return request → RETURNED, restock + refund. */
+    OrderDto approveReturn(UUID orderId);
+
+    /** Admin rejects a return request → back to DELIVERED, with a reason recorded in admin notes. */
+    OrderDto rejectReturn(UUID orderId, String reason);
+
+    /** Admin sets/updates the internal notes on an order. */
+    OrderDto setAdminNotes(UUID orderId, String notes);
 }

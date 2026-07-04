@@ -156,6 +156,9 @@ const JLCheckout = {
   },
   myOrders: () => jlAuthApi("/api/v1/orders?size=50&sort=placedAt,desc"),
   order: (id) => jlAuthApi("/api/v1/orders/" + encodeURIComponent(id)),
+  cancelOrder: (id, reason) => jlAuthApi("/api/v1/orders/" + encodeURIComponent(id) + "/cancel?reason=" + encodeURIComponent(reason || ""), {}, "POST"),
+  requestReturn: (id, reason) => jlAuthApi("/api/v1/orders/" + encodeURIComponent(id) + "/return?reason=" + encodeURIComponent(reason || ""), {}, "POST"),
+  invoice: (id) => jlAuthApi("/api/v1/orders/" + encodeURIComponent(id) + "/invoice"),
 };
 
 const JLStore = {

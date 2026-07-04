@@ -13,5 +13,9 @@ public record DashboardStatsDto(
         BigDecimal revenueLast30Days,
         long totalInventoryItems,
         long inStockCount,
-        long outOfStockCount
+        long outOfStockCount,
+        long processingOrders,
+        long deliveredOrders,
+        long cancelledOrders,
+        long returnedOrders
 ) {}

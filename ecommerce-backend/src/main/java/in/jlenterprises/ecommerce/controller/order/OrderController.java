@@ -65,9 +65,15 @@ public class OrderController {
     }
 
     @PostMapping("/{id}/cancel")
-    @Operation(summary = "Cancel one of my orders")
-    public ApiResponse<OrderDto> cancel(@PathVariable UUID id) {
-        return ApiResponse.success("Order cancelled", orderService.cancel(SecurityUtils.currentUserId(), id));
+    @Operation(summary = "Cancel one of my orders (only before it ships)")
+    public ApiResponse<OrderDto> cancel(@PathVariable UUID id, @RequestParam(required = false) String reason) {
+        return ApiResponse.success("Order cancelled", orderService.cancel(SecurityUtils.currentUserId(), id, reason));
+    }
+
+    @PostMapping("/{id}/return")
+    @Operation(summary = "Request a return for one of my delivered orders")
+    public ApiResponse<OrderDto> requestReturn(@PathVariable UUID id, @RequestParam(required = false) String reason) {
+        return ApiResponse.success("Return requested", orderService.requestReturn(SecurityUtils.currentUserId(), id, reason));
     }
 
     @GetMapping("/{id}/invoice")

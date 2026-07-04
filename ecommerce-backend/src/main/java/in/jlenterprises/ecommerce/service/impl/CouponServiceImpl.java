@@ -154,6 +154,19 @@ public class CouponServiceImpl implements CouponService {
         couponRepository.save(coupon);
     }
 
+    @Override
+    @Transactional
+    public void revokeForOrder(UUID orderId) {
+        couponUsageRepository.findByOrderId(orderId).ifPresent(usage -> {
+            Coupon coupon = usage.getCoupon();
+            if (coupon != null && coupon.getUsedCount() > 0) {
+                coupon.setUsedCount(coupon.getUsedCount() - 1);
+                couponRepository.save(coupon);
+            }
+            couponUsageRepository.delete(usage);
+        });
+    }
+
     // ── helpers ──
     private BigDecimal computeDiscount(Coupon coupon, BigDecimal subtotal) {
         BigDecimal discount;

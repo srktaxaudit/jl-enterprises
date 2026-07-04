@@ -39,6 +39,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -186,18 +188,30 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
-    public OrderDto cancel(UUID userId, UUID orderId) {
+    public OrderDto cancel(UUID userId, UUID orderId, String reason) {
         Order order = ownedOrder(userId, orderId);
-        if (order.getOrderStatus() != OrderStatus.PENDING && order.getOrderStatus() != OrderStatus.CONFIRMED) {
-            throw new BusinessException("Order cannot be cancelled in status " + order.getOrderStatus());
+        OrderStatus s = order.getOrderStatus();
+        if (s != OrderStatus.PENDING && s != OrderStatus.CONFIRMED && s != OrderStatus.PROCESSING) {
+            throw new BusinessException("This order can no longer be cancelled (status: " + s + ").");
         }
-        restoreStock(order);
-        order.setOrderStatus(OrderStatus.CANCELLED);
-        if (order.getPayment() != null && order.getPayment().getPaymentStatus() == PaymentStatus.SUCCESS) {
-            order.getPayment().setPaymentStatus(PaymentStatus.REFUNDED);
-        }
+        doCancel(order, reason);
         notificationService.notifyUser(userId, NotificationType.ORDER, "Order cancelled",
                 "Your order " + order.getOrderNumber() + " has been cancelled.", "/orders/" + order.getId());
+        return orderMapper.toDto(orderRepository.save(order));
+    }
+
+    @Override
+    @Transactional
+    public OrderDto requestReturn(UUID userId, UUID orderId, String reason) {
+        Order order = ownedOrder(userId, orderId);
+        if (order.getOrderStatus() != OrderStatus.DELIVERED) {
+            throw new BusinessException("Only delivered orders can be returned.");
+        }
+        order.setOrderStatus(OrderStatus.RETURN_REQUESTED);
+        order.setReturnReason(reason);
+        order.setReturnRequestedAt(Instant.now());
+        notificationService.notifyUser(userId, NotificationType.ORDER, "Return requested",
+                "We've received your return request for order " + order.getOrderNumber() + ".", "/orders/" + order.getId());
         return orderMapper.toDto(orderRepository.save(order));
     }
 
@@ -251,20 +265,101 @@ public class OrderServiceImpl implements OrderService {
     public OrderDto updateStatus(UUID orderId, OrderStatus status) {
         Order order = getEntity(orderId);
         OrderStatus current = order.getOrderStatus();
-        if (current == OrderStatus.DELIVERED || current == OrderStatus.CANCELLED || current == OrderStatus.REFUNDED) {
-            throw new BusinessException("Order is in a terminal state: " + current);
+        if (!isTransitionAllowed(current, status)) {
+            throw new BusinessException("Cannot change status from " + current + " to " + status + ".");
         }
         if (status == OrderStatus.CANCELLED) {
-            restoreStock(order);
+            doCancel(order, "Cancelled by staff");
+        } else if (status == OrderStatus.RETURNED) {
+            refundAndRestore(order);
+            order.setOrderStatus(status);
+        } else {
+            order.setOrderStatus(status);
         }
-        order.setOrderStatus(status);
         notificationService.notifyUser(order.getUser().getId(), NotificationType.ORDER,
                 "Order update", "Your order " + order.getOrderNumber() + " is now " + status + ".",
                 "/orders/" + order.getId());
         return orderMapper.toDto(orderRepository.save(order));
     }
 
+    @Override
+    @Transactional
+    @Auditable(action = "APPROVE_RETURN", entity = "order")
+    public OrderDto approveReturn(UUID orderId) {
+        Order order = getEntity(orderId);
+        if (order.getOrderStatus() != OrderStatus.RETURN_REQUESTED) {
+            throw new BusinessException("There is no pending return request for this order.");
+        }
+        refundAndRestore(order);
+        order.setOrderStatus(OrderStatus.RETURNED);
+        notificationService.notifyUser(order.getUser().getId(), NotificationType.ORDER, "Return approved",
+                "Your return for order " + order.getOrderNumber() + " was approved; refund is being processed.",
+                "/orders/" + order.getId());
+        return orderMapper.toDto(orderRepository.save(order));
+    }
+
+    @Override
+    @Transactional
+    @Auditable(action = "REJECT_RETURN", entity = "order")
+    public OrderDto rejectReturn(UUID orderId, String reason) {
+        Order order = getEntity(orderId);
+        if (order.getOrderStatus() != OrderStatus.RETURN_REQUESTED) {
+            throw new BusinessException("There is no pending return request for this order.");
+        }
+        order.setOrderStatus(OrderStatus.DELIVERED);
+        order.setAdminNotes(appendNote(order.getAdminNotes(), "Return rejected: " + (reason == null ? "" : reason)));
+        notificationService.notifyUser(order.getUser().getId(), NotificationType.ORDER, "Return declined",
+                "Your return request for order " + order.getOrderNumber() + " was declined.", "/orders/" + order.getId());
+        return orderMapper.toDto(orderRepository.save(order));
+    }
+
+    @Override
+    @Transactional
+    public OrderDto setAdminNotes(UUID orderId, String notes) {
+        Order order = getEntity(orderId);
+        order.setAdminNotes(notes);
+        return orderMapper.toDto(orderRepository.save(order));
+    }
+
     // ── helpers ──
+
+    /** Allowed status transitions (admin). Terminal states have no outgoing edges. */
+    private static final Map<OrderStatus, Set<OrderStatus>> TRANSITIONS = Map.of(
+            OrderStatus.PENDING, Set.of(OrderStatus.CONFIRMED, OrderStatus.PROCESSING, OrderStatus.CANCELLED, OrderStatus.FAILED_PAYMENT),
+            OrderStatus.CONFIRMED, Set.of(OrderStatus.PROCESSING, OrderStatus.PACKED, OrderStatus.CANCELLED),
+            OrderStatus.PROCESSING, Set.of(OrderStatus.PACKED, OrderStatus.CANCELLED),
+            OrderStatus.PACKED, Set.of(OrderStatus.SHIPPED, OrderStatus.CANCELLED),
+            OrderStatus.SHIPPED, Set.of(OrderStatus.OUT_FOR_DELIVERY, OrderStatus.DELIVERED),
+            OrderStatus.OUT_FOR_DELIVERY, Set.of(OrderStatus.DELIVERED),
+            OrderStatus.DELIVERED, Set.of(OrderStatus.RETURN_REQUESTED),
+            OrderStatus.RETURN_REQUESTED, Set.of(OrderStatus.RETURNED, OrderStatus.DELIVERED),
+            OrderStatus.RETURNED, Set.of(OrderStatus.REFUNDED));
+
+    private boolean isTransitionAllowed(OrderStatus from, OrderStatus to) {
+        return from != to && TRANSITIONS.getOrDefault(from, Set.of()).contains(to);
+    }
+
+    /** Cancel: restock, revoke coupon usage, set reason/timestamp, mark payment refunded if paid. */
+    private void doCancel(Order order, String reason) {
+        refundAndRestore(order);
+        order.setOrderStatus(OrderStatus.CANCELLED);
+        order.setCancelledAt(Instant.now());
+        order.setCancellationReason(reason);
+    }
+
+    /** Restore inventory + coupon usage and flip a successful payment to REFUNDED. */
+    private void refundAndRestore(Order order) {
+        restoreStock(order);
+        couponService.revokeForOrder(order.getId());
+        if (order.getPayment() != null && order.getPayment().getPaymentStatus() == PaymentStatus.SUCCESS) {
+            order.getPayment().setPaymentStatus(PaymentStatus.REFUNDED);
+        }
+    }
+
+    private static String appendNote(String existing, String add) {
+        return (existing == null || existing.isBlank()) ? add : existing + "\n" + add;
+    }
+
     private void restoreStock(Order order) {
         for (OrderItem item : order.getItems()) {
             if (item.getProduct() == null) continue;

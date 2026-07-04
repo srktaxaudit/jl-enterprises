@@ -106,6 +106,23 @@ public class Order extends BaseEntity {
     @Column(name = "notes", length = 500)
     private String notes;
 
+    // ── Lifecycle (cancellation / return) ──
+    @Column(name = "cancelled_at")
+    private Instant cancelledAt;
+
+    @Column(name = "cancellation_reason", length = 300)
+    private String cancellationReason;
+
+    @Column(name = "return_requested_at")
+    private Instant returnRequestedAt;
+
+    @Column(name = "return_reason", length = 300)
+    private String returnReason;
+
+    /** Staff-only internal notes (not shown to the customer). */
+    @Column(name = "admin_notes", length = 1000)
+    private String adminNotes;
+
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<OrderItem> items = new ArrayList<>();
 

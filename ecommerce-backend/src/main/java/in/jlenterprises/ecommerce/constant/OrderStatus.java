@@ -4,9 +4,14 @@ package in.jlenterprises.ecommerce.constant;
 public enum OrderStatus {
     PENDING,
     CONFIRMED,
+    PROCESSING,
     PACKED,
     SHIPPED,
+    OUT_FOR_DELIVERY,
     DELIVERED,
     CANCELLED,
-    REFUNDED
+    RETURN_REQUESTED,
+    RETURNED,
+    REFUNDED,
+    FAILED_PAYMENT
 }

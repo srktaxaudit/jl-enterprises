@@ -147,6 +147,44 @@
       }
     }
 
+    async function cancelOrder(id) {
+      const reason = prompt("Reason for cancelling (optional):", "");
+      if (reason === null) return;
+      if (!confirm("Cancel this order? This can't be undone.")) return;
+      try { await JLCheckout.cancelOrder(id, reason); alert("Order cancelled. Any payment will be refunded."); location.reload(); }
+      catch (e) { alert(e.message || "Could not cancel this order."); }
+    }
+    async function returnOrder(id) {
+      const reason = prompt("Reason for return:", "");
+      if (reason === null) return;
+      try { await JLCheckout.requestReturn(id, reason); alert("Return requested — our team will review it shortly."); location.reload(); }
+      catch (e) { alert(e.message || "Could not request a return."); }
+    }
+    async function downloadInvoice(id) {
+      try {
+        const o = await JLCheckout.order(id);
+        const rows = (o.items || []).map((it) => `<tr><td>${jlEsc(it.productName || "Item")}</td><td style="text-align:center">${it.quantity}</td><td style="text-align:right">${jlInr(it.unitPrice)}</td><td style="text-align:right">${jlInr(it.lineTotal)}</td></tr>`).join("");
+        const a = o.shippingAddress || {};
+        const addr = [a.fullName, a.line1, a.line2, a.city, a.state, a.postalCode].filter(Boolean).join(", ");
+        const w = window.open("", "_blank");
+        if (!w) { alert("Please allow pop-ups to view the invoice."); return; }
+        w.document.write(`<html><head><title>Invoice ${jlEsc(o.orderNumber)}</title>
+          <style>body{font-family:system-ui,Arial,sans-serif;padding:28px;color:#0b2447}h1{margin:0}table{width:100%;border-collapse:collapse;margin-top:16px}th,td{border-bottom:1px solid #e2e8f0;padding:8px;font-size:14px}th{text-align:left;color:#64748b}.t{text-align:right;margin-top:6px}</style></head>
+          <body>
+            <h1>JL Enterprises</h1><div style="color:#64748b">Tax Invoice · Thoothukudi</div>
+            <div style="margin-top:12px;font-size:14px"><b>Order:</b> ${jlEsc(o.orderNumber)}<br><b>Date:</b> ${fmtDate(o.placedAt)}<br><b>Deliver to:</b> ${jlEsc(addr)}</div>
+            <table><thead><tr><th>Item</th><th style="text-align:center">Qty</th><th style="text-align:right">Price</th><th style="text-align:right">Total</th></tr></thead><tbody>${rows}</tbody></table>
+            <div class="t">Subtotal: ${jlInr(o.subtotal)}</div>
+            ${Number(o.discountTotal) > 0 ? `<div class="t">Discount: -${jlInr(o.discountTotal)}</div>` : ""}
+            <div class="t">Delivery: ${Number(o.shippingTotal) > 0 ? jlInr(o.shippingTotal) : "FREE"}</div>
+            <div class="t" style="font-size:18px;font-weight:800">Grand Total: ${jlInr(o.grandTotal)}</div>
+            <div style="margin-top:24px;color:#64748b;font-size:12px">Thank you for shopping with JL Enterprises.</div>
+            <scr` + `ipt>window.onload=function(){window.print()}</scr` + `ipt>
+          </body></html>`);
+        w.document.close();
+      } catch (e) { alert(e.message || "Could not load the invoice."); }
+    }
+
     (async function load() {
       try {
         const page = await JLCheckout.myOrders();
@@ -169,11 +207,20 @@
                 <div class="mt-1">${badge(o.status)}</div>
               </div>
             </div>
-            <button type="button" class="mt-3 text-[13px] text-brand font-semibold">View items ▾</button>
+            <div class="mt-3 flex gap-4 flex-wrap items-center text-[13px]">
+              <button type="button" class="viewBtn text-brand font-semibold">View items ▾</button>
+              <button type="button" class="invBtn text-slate-500 hover:text-navy">🧾 Invoice</button>
+              ${["PENDING","CONFIRMED","PROCESSING"].includes(o.status) ? '<button type="button" class="cancelBtn text-red-600 font-semibold">Cancel order</button>' : ""}
+              ${o.status === "DELIVERED" ? '<button type="button" class="returnBtn text-orange-600 font-semibold">Request return</button>' : ""}
+              ${o.status === "RETURN_REQUESTED" ? '<span class="text-orange-600">↩ Return requested</span>' : ""}
+            </div>
             <div class="detail" style="display:none" data-open="0"></div>`;
-          const btn = card.querySelector("button");
           const wrap = card.querySelector(".detail");
-          btn.addEventListener("click", () => toggleDetail(o.id, wrap, btn));
+          const vb = card.querySelector(".viewBtn");
+          vb.addEventListener("click", () => toggleDetail(o.id, wrap, vb));
+          card.querySelector(".invBtn").addEventListener("click", () => downloadInvoice(o.id));
+          const cb = card.querySelector(".cancelBtn"); if (cb) cb.addEventListener("click", () => cancelOrder(o.id));
+          const rb = card.querySelector(".returnBtn"); if (rb) rb.addEventListener("click", () => returnOrder(o.id));
           list.appendChild(card);
         });
       } catch (err) {

@@ -15,6 +15,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -56,8 +57,26 @@ public class AdminOrderController {
     }
 
     @PatchMapping("/{id}/status")
-    @Operation(summary = "Advance an order's status (auto-restocks on cancellation)")
+    @Operation(summary = "Advance an order's status (validates transitions; auto-restocks on cancel/return)")
     public ApiResponse<OrderDto> updateStatus(@PathVariable UUID id, @RequestParam OrderStatus status) {
         return ApiResponse.success("Order status updated", orderService.updateStatus(id, status));
+    }
+
+    @PostMapping("/{id}/return/approve")
+    @Operation(summary = "Approve a return request (restock + refund)")
+    public ApiResponse<OrderDto> approveReturn(@PathVariable UUID id) {
+        return ApiResponse.success("Return approved", orderService.approveReturn(id));
+    }
+
+    @PostMapping("/{id}/return/reject")
+    @Operation(summary = "Reject a return request with a reason")
+    public ApiResponse<OrderDto> rejectReturn(@PathVariable UUID id, @RequestParam(required = false) String reason) {
+        return ApiResponse.success("Return rejected", orderService.rejectReturn(id, reason));
+    }
+
+    @PatchMapping("/{id}/notes")
+    @Operation(summary = "Set internal (staff-only) notes on an order")
+    public ApiResponse<OrderDto> setNotes(@PathVariable UUID id, @RequestParam(required = false) String notes) {
+        return ApiResponse.success("Notes saved", orderService.setAdminNotes(id, notes));
     }
 }

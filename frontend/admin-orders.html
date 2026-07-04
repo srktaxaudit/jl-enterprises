@@ -56,9 +56,11 @@
 
 <script src="admin.js"></script>
 <script>
-  const STATUSES = ["PENDING","CONFIRMED","PACKED","SHIPPED","DELIVERED","CANCELLED","REFUNDED"];
-  const STYLE = { PENDING:"bg-blue-50 text-blue-700", CONFIRMED:"bg-cyan-50 text-cyan-700", PACKED:"bg-amber-50 text-amber-700",
-    SHIPPED:"bg-violet-50 text-violet-700", DELIVERED:"bg-green-50 text-green-700", CANCELLED:"bg-red-50 text-red-700", REFUNDED:"bg-slate-100 text-slate-600" };
+  const STATUSES = ["PENDING","CONFIRMED","PROCESSING","PACKED","SHIPPED","OUT_FOR_DELIVERY","DELIVERED","CANCELLED","RETURN_REQUESTED","RETURNED","REFUNDED","FAILED_PAYMENT"];
+  const STYLE = { PENDING:"bg-blue-50 text-blue-700", CONFIRMED:"bg-cyan-50 text-cyan-700", PROCESSING:"bg-sky-50 text-sky-700", PACKED:"bg-amber-50 text-amber-700",
+    SHIPPED:"bg-violet-50 text-violet-700", OUT_FOR_DELIVERY:"bg-purple-50 text-purple-700", DELIVERED:"bg-green-50 text-green-700",
+    CANCELLED:"bg-red-50 text-red-700", RETURN_REQUESTED:"bg-orange-50 text-orange-700", RETURNED:"bg-rose-50 text-rose-700",
+    REFUNDED:"bg-slate-100 text-slate-600", FAILED_PAYMENT:"bg-red-100 text-red-700" };
   const inr = (n) => "₹" + Math.round(Number(n||0)).toLocaleString("en-IN");
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c)=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
   const fmt = (iso) => { try { return new Date(iso).toLocaleDateString("en-IN",{dateStyle:"medium"}); } catch(_){ return "—"; } };
@@ -87,10 +89,14 @@
           <td class="text-right font-bold text-navy">${inr(o.grandTotal)}</td>
           <td><span class="inline-block text-[11px] font-semibold px-2 py-0.5 rounded-full ${STYLE[o.status]||"bg-slate-100"}">${esc(o.status)}</span></td>
           <td class="text-right whitespace-nowrap">
-            <select data-sel="${o.id}" class="rounded border border-slate-300 text-[12px] px-1.5 py-1 mr-1">
-              ${STATUSES.map(s=>`<option value="${s}" ${s===o.status?"selected":""}>${s}</option>`).join("")}
-            </select>
-            <button data-upd="${o.id}" class="text-[12px] bg-navy text-white rounded px-2 py-1">Set</button>
+            ${o.status === "RETURN_REQUESTED"
+              ? `<button data-approve="${o.id}" class="text-[12px] bg-green-600 text-white rounded px-2 py-1 mr-1">✓ Approve</button>
+                 <button data-reject="${o.id}" class="text-[12px] bg-red-600 text-white rounded px-2 py-1 mr-1">✗ Reject</button>`
+              : `<select data-sel="${o.id}" class="rounded border border-slate-300 text-[12px] px-1.5 py-1 mr-1">
+                   ${STATUSES.map(s=>`<option value="${s}" ${s===o.status?"selected":""}>${s}</option>`).join("")}
+                 </select>
+                 <button data-upd="${o.id}" class="text-[12px] bg-navy text-white rounded px-2 py-1">Set</button>`}
+            <button data-note="${o.id}" title="Internal note" class="text-[12px] text-slate-500 border border-slate-300 rounded px-2 py-1 ml-1">📝</button>
           </td>
         </tr>`).join("") : `<tr><td colspan="6" class="py-4 text-slate-400">No orders.</td></tr>`;
       document.getElementById("pageInfo").textContent = `Page ${state.page+1} of ${state.totalPages}`;
@@ -100,10 +106,22 @@
   }
 
   document.getElementById("rows").addEventListener("click", async (ev)=>{
-    const b = ev.target.closest("button[data-upd]"); if(!b) return;
-    const status = document.querySelector(`[data-sel="${b.dataset.upd}"]`).value;
-    try { await jlApi(`/api/v1/admin/orders/${b.dataset.upd}/status?status=${status}`, {method:"PATCH"}); flash("Status updated."); load(); }
-    catch(e){ flash(e.message||"Update failed", false); }
+    const b = ev.target.closest("button"); if(!b) return;
+    try {
+      if(b.dataset.upd){
+        const status = document.querySelector(`[data-sel="${b.dataset.upd}"]`).value;
+        await jlApi(`/api/v1/admin/orders/${b.dataset.upd}/status?status=${status}`, {method:"PATCH"}); flash("Status updated."); load();
+      } else if(b.dataset.approve){
+        if(!confirm("Approve this return? Stock will be restored and payment refunded.")) return;
+        await jlApi(`/api/v1/admin/orders/${b.dataset.approve}/return/approve`, {method:"POST"}); flash("Return approved."); load();
+      } else if(b.dataset.reject){
+        const reason = prompt("Reason for rejecting the return:", ""); if(reason===null) return;
+        await jlApi(`/api/v1/admin/orders/${b.dataset.reject}/return/reject?reason=${encodeURIComponent(reason)}`, {method:"POST"}); flash("Return rejected."); load();
+      } else if(b.dataset.note){
+        const notes = prompt("Internal note for this order (staff-only):", ""); if(notes===null) return;
+        await jlApi(`/api/v1/admin/orders/${b.dataset.note}/notes?notes=${encodeURIComponent(notes)}`, {method:"PATCH"}); flash("Note saved.");
+      }
+    } catch(e){ flash(e.message||"Action failed", false); }
   });
   document.getElementById("statusFilter").addEventListener("change", ()=>{ state.page=0; load(); });
   document.getElementById("prev").addEventListener("click", ()=>{ if(state.page>0){state.page--; load();} });
