@@ -13,8 +13,11 @@ import java.util.UUID;
 
 public interface ProductService {
 
-    /** Paged search with dynamic filtering + sorting. */
+    /** Paged search with dynamic filtering + sorting (admin — includes all products). */
     Page<ProductSummaryDto> search(ProductSearchCriteria criteria, Pageable pageable);
+
+    /** Storefront search — only ACTIVE, in-stock products (available &gt; 0). */
+    Page<ProductSummaryDto> searchPublic(ProductSearchCriteria criteria, Pageable pageable);
 
     /** Full detail by slug; increments the view counter. */
     ProductDetailDto getBySlug(String slug);

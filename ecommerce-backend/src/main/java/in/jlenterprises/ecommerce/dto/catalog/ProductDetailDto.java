@@ -23,6 +23,7 @@ public record ProductDetailDto(
         int reviewCount,
         long viewCount,
         long salesCount,
+        Integer availableStock,
         String primaryImageUrl,
         UUID categoryId,
         String categorySlug,

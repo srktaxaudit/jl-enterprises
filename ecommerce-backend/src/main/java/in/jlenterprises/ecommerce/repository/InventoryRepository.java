@@ -15,9 +15,22 @@ public interface InventoryRepository extends JpaRepository<Inventory, UUID> {
 
     Optional<Inventory> findByProductId(UUID productId);
 
-    @Query("select i from Inventory i where (i.quantity - i.reserved) <= i.reorderLevel")
+    // All queries join i.product so Hibernate applies Product's @SQLRestriction
+    // (deleted = false) — inventory rows for soft-deleted products are excluded,
+    // which is what previously caused the low-stock endpoint to 500.
+
+    @Query("select i from Inventory i join i.product p where (i.quantity - i.reserved) <= i.reorderLevel")
     List<Inventory> findLowStock();
 
-    @Query("select count(i) from Inventory i where (i.quantity - i.reserved) <= i.reorderLevel")
+    @Query("select count(i) from Inventory i join i.product p where (i.quantity - i.reserved) <= i.reorderLevel")
     long countLowStock();
+
+    @Query("select count(i) from Inventory i join i.product p")
+    long countActive();
+
+    @Query("select count(i) from Inventory i join i.product p where (i.quantity - i.reserved) > 0")
+    long countInStock();
+
+    @Query("select count(i) from Inventory i join i.product p where (i.quantity - i.reserved) <= 0")
+    long countOutOfStock();
 }

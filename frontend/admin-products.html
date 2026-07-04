@@ -109,7 +109,7 @@
   async function load(search=""){
     const body = $("rows");
     try {
-      const page = await jlApi("/api/v1/products?size=50" + (search?`&search=${encodeURIComponent(search)}`:""));
+      const page = await jlApi("/api/v1/admin/products?size=50" + (search?`&search=${encodeURIComponent(search)}`:""));
       const rows = page.content || [];
       body.innerHTML = rows.length ? rows.map(p=>`
         <tr class="border-t border-slate-100">

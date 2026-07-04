@@ -1,10 +1,15 @@
 package in.jlenterprises.ecommerce.repository;
 
+import in.jlenterprises.ecommerce.constant.RecordStatus;
+import in.jlenterprises.ecommerce.entity.Inventory;
 import in.jlenterprises.ecommerce.entity.Product;
 import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 /**
  * Composable {@link Specification}s for product search / filtering. The service
@@ -55,5 +60,22 @@ public final class ProductSpecifications {
     public static Specification<Product> minRating(BigDecimal rating) {
         if (rating == null) return null;
         return (root, query, cb) -> cb.greaterThanOrEqualTo(root.get("averageRating"), rating);
+    }
+
+    /**
+     * Storefront visibility: the product is ACTIVE and has an inventory record with
+     * available stock (quantity − reserved) &gt; 0. Products that are inactive, have
+     * no inventory, or are out of stock are excluded from customer-facing listings.
+     */
+    public static Specification<Product> visible() {
+        return (root, query, cb) -> {
+            Subquery<UUID> sub = query.subquery(UUID.class);
+            Root<Inventory> inv = sub.from(Inventory.class);
+            sub.select(inv.get("id"));
+            sub.where(
+                    cb.equal(inv.get("product"), root),
+                    cb.greaterThan(cb.diff(inv.<Integer>get("quantity"), inv.<Integer>get("reserved")), 0));
+            return cb.and(cb.equal(root.get("status"), RecordStatus.ACTIVE), cb.exists(sub));
+        };
     }
 }

@@ -100,6 +100,11 @@ public class Product extends BaseEntity {
     @Column(name = "sales_count", nullable = false)
     private long salesCount = 0;
 
+    /** Available stock (quantity − reserved) for the detail view. Not persisted —
+        the service sets it from the Inventory record when building ProductDetailDto. */
+    @jakarta.persistence.Transient
+    private Integer availableStock;
+
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<ProductImage> images = new ArrayList<>();
 

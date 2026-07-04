@@ -52,6 +52,15 @@ public class InventoryServiceImpl implements InventoryService {
         return new InventoryDto(
                 inv.getProduct().getId(), inv.getProduct().getName(),
                 inv.getQuantity(), inv.getReserved(), inv.getAvailable(),
-                inv.getReorderLevel(), inv.getWarehouseLocation());
+                inv.getReorderLevel(), inv.getWarehouseLocation(),
+                stockStatus(inv));
+    }
+
+    /** IN_STOCK / LOW_STOCK / OUT_OF_STOCK from available vs reorder level. */
+    static String stockStatus(Inventory inv) {
+        int available = inv.getAvailable();
+        if (available <= 0) return "OUT_OF_STOCK";
+        if (available <= inv.getReorderLevel()) return "LOW_STOCK";
+        return "IN_STOCK";
     }
 }

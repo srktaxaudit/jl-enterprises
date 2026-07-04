@@ -72,7 +72,7 @@
     const box = $("results");
     if(!term){ box.innerHTML=""; return; }
     try {
-      const page = await jlApi(`/api/v1/products?size=10&search=${encodeURIComponent(term)}`);
+      const page = await jlApi(`/api/v1/admin/products?size=10&search=${encodeURIComponent(term)}`);
       const rows = page.content || [];
       box.innerHTML = rows.length ? rows.map(p=>`
         <button data-pick="${p.id}" data-name="${esc(p.name)}" class="block w-full text-left px-2 py-1.5 rounded hover:bg-slate-50">
@@ -102,7 +102,7 @@
             <span class="text-[12px] text-slate-400 block">reorder at ${p.reorderLevel}</span></div>
           <b class="text-red-600">${p.available} left</b></div>`).join("")
         : '<div class="text-slate-400">All good — nothing below reorder level. 🎉</div>';
-    } catch(e){ $("low").innerHTML = `<div class="text-red-600">${esc(e.message)}</div>`; }
+    } catch(e){ $("low").innerHTML = `<div class="text-slate-400">Couldn't load low-stock items right now. Please refresh in a moment.</div>`; }
   }
 
   $("results").addEventListener("click", (ev)=>{ const b=ev.target.closest("button[data-pick]"); if(b) pick(b.dataset.pick, b.dataset.name); });

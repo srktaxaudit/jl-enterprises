@@ -67,18 +67,40 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Page<ProductSummaryDto> searchPublic(ProductSearchCriteria c, Pageable pageable) {
+        // Same filters as admin search, but only ACTIVE + in-stock products.
+        Specification<Product> spec = Specification.where(ProductSpecifications.visible())
+                .and(ProductSpecifications.search(c.search()))
+                .and(ProductSpecifications.inCategorySlug(c.categorySlug()))
+                .and(ProductSpecifications.inBrandSlug(c.brandSlug()))
+                .and(ProductSpecifications.priceGoe(c.minPrice()))
+                .and(ProductSpecifications.priceLoe(c.maxPrice()))
+                .and(ProductSpecifications.featured(c.featured()))
+                .and(ProductSpecifications.minRating(c.minRating()));
+        return productRepository.findAll(spec, pageable).map(productMapper::toSummary);
+    }
+
+    @Override
     @Transactional
     public ProductDetailDto getBySlug(String slug) {
         Product product = productRepository.findBySlug(slug)
                 .orElseThrow(() -> ResourceNotFoundException.of("Product", slug));
         product.setViewCount(product.getViewCount() + 1);
+        // Expose available stock so the storefront can disable Add to Cart when out of stock.
+        int available = inventoryRepository.findByProductId(product.getId())
+                .map(Inventory::getAvailable).orElse(0);
+        product.setAvailableStock(available);
         return productMapper.toDetail(product);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<ProductSummaryDto> featured(Pageable pageable) {
-        return productRepository.findByFeaturedTrue(pageable).map(productMapper::toSummary);
+        // Featured carousel is customer-facing → only ACTIVE, in-stock, featured products.
+        Specification<Product> spec = ProductSpecifications.visible()
+                .and(ProductSpecifications.featured(true));
+        return productRepository.findAll(spec, pageable).map(productMapper::toSummary);
     }
 
     @Override
@@ -87,10 +109,11 @@ public class ProductServiceImpl implements ProductService {
         Product product = productRepository.findBySlug(slug)
                 .orElseThrow(() -> ResourceNotFoundException.of("Product", slug));
         if (product.getCategory() == null) return List.of();
-        // Fetch a few extra so we can drop the product itself and still fill the list.
-        Page<Product> page = productRepository.findByCategoryId(
-                product.getCategory().getId(), PageRequest.of(0, limit + 1));
-        return page.getContent().stream()
+        UUID categoryId = product.getCategory().getId();
+        // Related products must also be visible (active + in stock).
+        Specification<Product> spec = ProductSpecifications.visible()
+                .and((root, query, cb) -> cb.equal(root.get("category").get("id"), categoryId));
+        return productRepository.findAll(spec, PageRequest.of(0, limit + 1)).getContent().stream()
                 .filter(p -> !p.getId().equals(product.getId()))
                 .limit(limit)
                 .map(productMapper::toSummary)

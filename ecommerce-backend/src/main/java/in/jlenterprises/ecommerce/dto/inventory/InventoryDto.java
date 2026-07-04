@@ -9,5 +9,6 @@ public record InventoryDto(
         int reserved,
         int available,
         int reorderLevel,
-        String warehouseLocation
+        String warehouseLocation,
+        String stockStatus   // IN_STOCK | LOW_STOCK | OUT_OF_STOCK
 ) {}

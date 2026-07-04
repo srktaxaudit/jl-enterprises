@@ -173,7 +173,10 @@
         statCard("Revenue (30d)", inr(Number(s.revenueLast30Days || 0)), `${s.ordersLast30Days} orders`),
         statCard("Orders", String(s.totalOrders), "all time"),
         statCard("Pending", String(s.pendingOrders), "to fulfil"),
+        statCard("Products", String(s.totalProducts), `${s.totalInventoryItems ?? 0} inventory items`),
+        statCard("In Stock", String(s.inStockCount ?? 0), "available now"),
         statCard("Low Stock", String(s.lowStockCount), "need restock"),
+        statCard("Out of Stock", String(s.outOfStockCount ?? 0), "unavailable"),
         statCard("Customers", String(s.totalUsers), "total users"),
       ].join("");
     } catch (e) {

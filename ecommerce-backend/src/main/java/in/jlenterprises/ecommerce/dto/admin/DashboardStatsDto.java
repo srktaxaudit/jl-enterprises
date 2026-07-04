@@ -10,5 +10,8 @@ public record DashboardStatsDto(
         long pendingOrders,
         long lowStockCount,
         long ordersLast30Days,
-        BigDecimal revenueLast30Days
+        BigDecimal revenueLast30Days,
+        long totalInventoryItems,
+        long inStockCount,
+        long outOfStockCount
 ) {}
