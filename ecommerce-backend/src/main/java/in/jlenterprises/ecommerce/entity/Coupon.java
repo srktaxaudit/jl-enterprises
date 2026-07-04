@@ -33,8 +33,10 @@ public class Coupon extends BaseEntity {
     @Column(name = "description", length = 200)
     private String description;
 
-    /** When true, the coupon is valid only on a customer's very first order. */
-    @Column(name = "first_order_only", nullable = false)
+    /** When true, the coupon is valid only on a customer's very first order.
+        columnDefinition sets a DB default so auto-schema-update can add this NOT NULL
+        column to a coupons table that already has rows. */
+    @Column(name = "first_order_only", nullable = false, columnDefinition = "boolean not null default false")
     private boolean firstOrderOnly = false;
 
     @Enumerated(EnumType.STRING)
