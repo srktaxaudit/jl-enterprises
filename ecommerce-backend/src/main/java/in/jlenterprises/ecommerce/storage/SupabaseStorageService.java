@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 
 import java.net.URI;
 
@@ -49,17 +50,26 @@ public class SupabaseStorageService {
         String base = trimSlash(cfg.url());
         String full = base + "/storage/v1/object/" + cfg.bucket() + "/" + objectPath;
         try {
-            http.put()
+            // Supabase Storage uses POST to CREATE an object (PUT only replaces an
+            // existing one). Both the service-role Bearer AND the apikey header are
+            // required by the Supabase gateway (Kong).
+            http.post()
                     .uri(URI.create(full))
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + cfg.serviceKey())
+                    .header("apikey", cfg.serviceKey())
                     .header("x-upsert", "true")
                     .contentType(contentType == null || contentType.isBlank()
                             ? MediaType.APPLICATION_OCTET_STREAM : MediaType.parseMediaType(contentType))
                     .body(bytes)
                     .retrieve()
                     .toBodilessEntity();
+        } catch (RestClientResponseException e) {
+            // Log the exact status + Supabase response so failures are diagnosable in Render logs.
+            log.warn("Supabase upload failed for {}: HTTP {} {}", objectPath,
+                    e.getStatusCode().value(), e.getResponseBodyAsString());
+            throw new BusinessException(HttpStatus.BAD_GATEWAY, "Image upload failed. Please try again.");
         } catch (Exception e) {
-            log.warn("Supabase upload failed for {}: {}", objectPath, e.getMessage());
+            log.warn("Supabase upload failed for {}: {}", objectPath, e.toString());
             throw new BusinessException(HttpStatus.BAD_GATEWAY, "Image upload failed. Please try again.");
         }
         return base + "/storage/v1/object/public/" + cfg.bucket() + "/" + objectPath;
@@ -76,6 +86,7 @@ public class SupabaseStorageService {
             http.delete()
                     .uri(URI.create(trimSlash(cfg.url()) + "/storage/v1/object/" + cfg.bucket() + "/" + objectPath))
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + cfg.serviceKey())
+                    .header("apikey", cfg.serviceKey())
                     .retrieve()
                     .toBodilessEntity();
         } catch (Exception e) {
