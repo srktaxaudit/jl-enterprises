@@ -47,7 +47,7 @@ public class SupabaseStorageService {
             throw new BusinessException(HttpStatus.SERVICE_UNAVAILABLE,
                     "Image storage is not configured. Set SUPABASE_URL and SUPABASE_SERVICE_KEY on the server.");
         }
-        String base = trimSlash(cfg.url());
+        String base = apiBase(cfg.url());
         String full = base + "/storage/v1/object/" + cfg.bucket() + "/" + objectPath;
         try {
             // Supabase Storage uses POST to CREATE an object (PUT only replaces an
@@ -84,7 +84,7 @@ public class SupabaseStorageService {
         String objectPath = publicUrl.substring(i + marker.length());
         try {
             http.delete()
-                    .uri(URI.create(trimSlash(cfg.url()) + "/storage/v1/object/" + cfg.bucket() + "/" + objectPath))
+                    .uri(URI.create(apiBase(cfg.url()) + "/storage/v1/object/" + cfg.bucket() + "/" + objectPath))
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + cfg.serviceKey())
                     .header("apikey", cfg.serviceKey())
                     .retrieve()
@@ -96,5 +96,27 @@ public class SupabaseStorageService {
 
     private static String trimSlash(String s) {
         return (s != null && s.endsWith("/")) ? s.substring(0, s.length() - 1) : s;
+    }
+
+    /**
+     * Normalise the configured Supabase URL to just {@code scheme://host[:port]},
+     * dropping any path someone may have pasted (e.g. a trailing {@code /rest/v1}),
+     * so the storage path is always built correctly and reaches the Storage API
+     * rather than PostgREST.
+     */
+    private static String apiBase(String raw) {
+        if (raw == null) return "";
+        String s = raw.trim();
+        try {
+            URI u = URI.create(s);
+            if (u.getHost() != null) {
+                String b = (u.getScheme() == null ? "https" : u.getScheme()) + "://" + u.getHost();
+                if (u.getPort() > 0) b += ":" + u.getPort();
+                return b;
+            }
+        } catch (Exception ignored) {
+            // fall through to a simple trim
+        }
+        return trimSlash(s);
     }
 }
