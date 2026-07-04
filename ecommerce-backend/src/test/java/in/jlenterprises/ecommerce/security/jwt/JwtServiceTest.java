@@ -16,7 +16,7 @@ class JwtServiceTest {
         var jwt = new AppProperties.Jwt(
                 "test-secret-that-is-at-least-32-bytes-long!!",
                 Duration.ofMinutes(15), Duration.ofDays(7), Duration.ofDays(30), "jl-test");
-        return new JwtService(new AppProperties(jwt, null, null, null));
+        return new JwtService(new AppProperties(jwt, null, null, null, null, null));
     }
 
     @Test
