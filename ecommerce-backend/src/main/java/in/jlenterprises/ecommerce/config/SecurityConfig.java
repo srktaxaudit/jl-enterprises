@@ -117,9 +117,19 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration cfg = new CorsConfiguration();
         // Auth uses a bearer token (Authorization header), NOT cookies — so we do
-        // not need credentialed CORS. Keeping allowCredentials=false lets a wildcard
-        // origin ("*") work; browsers forbid "*" together with allowCredentials=true.
-        cfg.setAllowedOrigins(props.security().cors().allowedOrigins());
+        // not need credentialed CORS. Keeping allowCredentials=false lets wildcard
+        // origin PATTERNS work; browsers forbid "*"/patterns with allowCredentials=true.
+        //
+        // Use allowedOriginPatterns (not allowedOrigins) so a wildcard host matches:
+        // Vercel gives every deployment its own subdomain (production + every git
+        // preview like jl-enterprises-git-<branch>-<team>.vercel.app). Matching
+        // "https://*.vercel.app" means the storefront works from ALL of them without
+        // having to keep CORS_ORIGINS in sync with each new preview URL.
+        List<String> originPatterns = new java.util.ArrayList<>(props.security().cors().allowedOrigins());
+        if (originPatterns.stream().noneMatch(o -> o.contains("*.vercel.app"))) {
+            originPatterns.add("https://*.vercel.app");
+        }
+        cfg.setAllowedOriginPatterns(originPatterns);
         cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         cfg.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
         cfg.setAllowCredentials(false);

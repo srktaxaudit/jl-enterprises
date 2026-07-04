@@ -11,15 +11,56 @@ const JL_API_BASE = (() => {
   return "https://jl-enterprises-api.onrender.com";   // Render backend
 })();
 
-async function jlPublicApi(path) {
-  const res = await fetch(JL_API_BASE + path);
-  let json = null;
-  try { json = await res.json(); } catch (_) { /* empty */ }
-  if (!res.ok || (json && json.success === false)) {
-    throw { status: res.status, message: (json && json.message) || "Request failed" };
+const jlSleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/** Optional hook: a page can set window.JL_ON_WAKE to show a "server waking up"
+    hint while a cold free-tier backend spins up between retries. */
+function jlNotifyWaking() { if (typeof window.JL_ON_WAKE === "function") { try { window.JL_ON_WAKE(); } catch (_) { /* noop */ } } }
+
+// Backoff schedule that rides out a Render free-tier cold start (a Docker Spring
+// Boot service can take 30–60s to wake). Total wait across all retries ≈ 37s.
+const JL_RETRY_DELAYS = [2000, 4000, 6000, 10000, 15000];
+
+/** Core JSON fetch with envelope-unwrap + transient-failure retry.
+    Retries only on cases where the request never reached the app (network
+    rejection, or Render's 502/503/504 while the container boots) — safe even
+    for non-idempotent POSTs. App-level responses (incl. 4xx/500) are returned
+    to the caller as-is. Set opts.auth to attach the customer bearer token. */
+async function jlFetchJson(path, opts = {}) {
+  const { method, body, auth } = opts;
+  let lastErr = { status: 0, message: "Can't reach the server. Please check your connection and try again." };
+  for (let i = 0; i <= JL_RETRY_DELAYS.length; i++) {
+    let res;
+    try {
+      const tok = auth ? localStorage.getItem(JL_CTOK) : null;
+      res = await fetch(JL_API_BASE + path, {
+        method: method || (body ? "POST" : "GET"),
+        headers: {
+          ...(body ? { "Content-Type": "application/json" } : {}),
+          ...(tok ? { Authorization: "Bearer " + tok } : {}),
+        },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+    } catch (netErr) {
+      if (i < JL_RETRY_DELAYS.length) { jlNotifyWaking(); await jlSleep(JL_RETRY_DELAYS[i]); continue; }
+      throw lastErr;
+    }
+    if ([502, 503, 504].includes(res.status) && i < JL_RETRY_DELAYS.length) {
+      jlNotifyWaking(); await jlSleep(JL_RETRY_DELAYS[i]); continue;
+    }
+    let json = null;
+    try { json = await res.json(); } catch (_) { /* empty */ }
+    if (res.status === 401 && auth) JLCustomer.logout();   // token expired/invalid
+    if (!res.ok || (json && json.success === false)) {
+      throw { status: res.status, message: (json && json.message) || "Request failed" };
+    }
+    return json ? json.data : null;
   }
-  return json ? json.data : null;
+  throw lastErr;
 }
+
+/** Public (unauthenticated) catalog call. */
+function jlPublicApi(path) { return jlFetchJson(path, { auth: false }); }
 
 const JL_CAT_EMOJI = {
   "air-conditioners": "❄️", "televisions": "📺", "refrigerators": "🧊",
@@ -32,48 +73,10 @@ const JL_CAT_EMOJI = {
    — no cookies — matching the backend CORS config (allowCredentials=false). */
 const JL_CTOK = "jl_cust_access", JL_CREFRESH = "jl_cust_refresh", JL_CUSER = "jl_cust_user";
 
-const jlSleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-/** Optional hook: a page can set window.JL_ON_WAKE to show a "server waking up"
-    hint while a cold free-tier backend spins up between retries. */
-function jlNotifyWaking() { if (typeof window.JL_ON_WAKE === "function") { try { window.JL_ON_WAKE(); } catch (_) { /* noop */ } } }
-
-/** Authenticated JSON call. Sends the customer bearer token when present.
-    Used for both auth (no token yet) and authed calls; unwraps the envelope.
-    Retries transient gateway/network failures (Render free-tier cold start:
-    502/503/504 or a dropped connection) — these never reached the app, so a
-    retry is safe even for non-idempotent POSTs. App-level errors are not retried. */
-async function jlAuthApi(path, body, method) {
-  const attempts = 3;
-  for (let i = 0; i < attempts; i++) {
-    let res;
-    try {
-      const tok = localStorage.getItem(JL_CTOK);
-      res = await fetch(JL_API_BASE + path, {
-        method: method || (body ? "POST" : "GET"),
-        headers: {
-          "Content-Type": "application/json",
-          ...(tok ? { Authorization: "Bearer " + tok } : {}),
-        },
-        body: body ? JSON.stringify(body) : undefined,
-      });
-    } catch (netErr) {
-      // fetch rejected (server booting / connection dropped) → retry
-      if (i < attempts - 1) { jlNotifyWaking(); await jlSleep(2500); continue; }
-      throw { status: 0, message: "Can't reach the server. Please check your connection and try again." };
-    }
-    // Render returns 502/503/504 while the container is still starting up
-    if ([502, 503, 504].includes(res.status) && i < attempts - 1) {
-      jlNotifyWaking(); await jlSleep(2500); continue;
-    }
-    let json = null;
-    try { json = await res.json(); } catch (_) { /* empty */ }
-    if (res.status === 401) JLCustomer.logout();   // token expired/invalid
-    if (!res.ok || (json && json.success === false)) {
-      throw { status: res.status, message: (json && json.message) || "Request failed" };
-    }
-    return json ? json.data : null;
-  }
+/** Authenticated JSON call (customer bearer token). Shares the retry/backoff in
+    jlFetchJson so auth flows also survive a free-tier cold start. */
+function jlAuthApi(path, body, method) {
+  return jlFetchJson(path, { method, body, auth: true });
 }
 
 const JLCustomer = {
