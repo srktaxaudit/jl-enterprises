@@ -135,10 +135,10 @@
           <span class="text-xl">💵</span>
           <span><b class="text-navy">Cash on Delivery</b><br><span class="text-[12px] text-slate-500">Pay when your order arrives</span></span>
         </label>
-        <label class="flex items-center gap-3 border border-slate-200 rounded-xl px-4 py-3 mt-2.5 opacity-50 cursor-not-allowed">
-          <input type="radio" name="pay" value="ONLINE" disabled class="accent-brand" />
-          <span class="text-xl">🔒</span>
-          <span><b class="text-navy">Online Payment (UPI / Card)</b><br><span class="text-[12px] text-slate-500">Coming soon</span></span>
+        <label class="flex items-center gap-3 border border-slate-200 hover:border-brand rounded-xl px-4 py-3 mt-2.5 cursor-pointer">
+          <input type="radio" name="pay" value="RAZORPAY" class="accent-brand" />
+          <span class="text-xl">💳</span>
+          <span><b class="text-navy">Pay Online (UPI / Card / Netbanking)</b><br><span class="text-[12px] text-slate-500">Secure payment via Razorpay</span></span>
         </label>
       </div>
     </div>
@@ -169,7 +169,7 @@
     <div class="bg-slate-50 rounded-2xl p-4 my-5 inline-block text-left">
       <div class="text-[12px] text-slate-400 uppercase tracking-wide">Order Number</div>
       <div id="coOrderNo" class="text-xl font-extrabold text-navy">—</div>
-      <div class="text-[13px] text-slate-500 mt-1">Total: <b id="coOrderTotal">—</b> · Cash on Delivery</div>
+      <div class="text-[13px] text-slate-500 mt-1">Total: <b id="coOrderTotal">—</b> · <span id="coPayNote">Cash on Delivery</span></div>
     </div>
     <p class="text-[13px] text-slate-500 mb-5">Our team will call you shortly to confirm delivery.</p>
     <div class="flex gap-3 justify-center flex-wrap">
@@ -210,6 +210,7 @@
   <div class="border-t border-white/10 mt-7 py-4 text-center text-[13px] text-slate-500">© 2026 JL Enterprises, Thoothukudi</div>
 </footer>
 
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script src="store.js"></script>
 <script src="script.js"></script>
 <script>
@@ -261,7 +262,50 @@
     function bad(el) { el.classList.add("co-invalid"); el.focus(); }
     function clearBad() { document.querySelectorAll(".co-invalid").forEach((e) => e.classList.remove("co-invalid")); }
 
-    // 5) Place order: sync cart → create address → place COD order
+    // Reveal the confirmation screen and clear the local cart (the order now lives on the server).
+    function showSuccess(order, payNote) {
+      saveCart([]);
+      localStorage.removeItem("jl_pref_address");
+      layout.classList.add("hidden"); layout.classList.remove("grid");
+      $("coOrderNo").textContent = order.orderNumber || order.id;
+      $("coOrderTotal").textContent = jlInr(order.grandTotal || subtotal);
+      if ($("coPayNote")) $("coPayNote").textContent = payNote;
+      done.classList.remove("hidden");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    // Open Razorpay Checkout. Resolves on successful (verified) payment; rejects on
+    // failure or when the customer dismisses the modal.
+    function payWithRazorpay(order, init, prefill) {
+      return new Promise((resolve, reject) => {
+        if (typeof Razorpay === "undefined") { reject({ message: "Payment library failed to load. Please retry." }); return; }
+        const rzp = new Razorpay({
+          key: init.clientData,                         // public key id from the backend
+          order_id: init.providerReference,             // Razorpay order id
+          amount: Math.round(Number(init.amount) * 100),
+          currency: init.currency || "INR",
+          name: "JL Enterprises",
+          description: "Order " + (order.orderNumber || ""),
+          prefill: prefill,
+          theme: { color: "#0b2447" },
+          handler: async (resp) => {
+            try {
+              await JLCheckout.confirmPayment(order.id, {
+                providerReference: resp.razorpay_payment_id,
+                signature: resp.razorpay_signature,
+                payload: resp.razorpay_order_id,
+              });
+              resolve(true);
+            } catch (e) { reject(e); }
+          },
+          modal: { ondismiss: () => reject({ dismissed: true }) },
+        });
+        rzp.on("payment.failed", (r) => reject({ message: (r && r.error && r.error.description) || "Payment failed." }));
+        rzp.open();
+      });
+    }
+
+    // 5) Place order: sync cart → create address → place order (COD or online)
     $("coPlace").addEventListener("click", async () => {
       clearBad(); showError("");
       const name = $("coName").value.trim();
@@ -289,21 +333,27 @@
           city, state: $("coState").value.trim() || "Tamil Nadu",
           postalCode: pin, country: "India",
         });
-        const order = await JLCheckout.placeOrder(addr.id, $("coNotes").value.trim());
+        const method = (document.querySelector('input[name="pay"]:checked') || {}).value || "COD";
+        const order = await JLCheckout.placeOrder(addr.id, $("coNotes").value.trim(), method);
 
-        // Success — clear the local cart and show confirmation
-        saveCart([]);
-        localStorage.removeItem("jl_pref_address");
-        layout.classList.add("hidden"); layout.classList.remove("grid");
-        $("coOrderNo").textContent = order.orderNumber || order.id;
-        $("coOrderTotal").textContent = jlInr(order.grandTotal || subtotal);
-        done.classList.remove("hidden");
-        window.scrollTo({ top: 0, behavior: "smooth" });
-
-        if (sync.failed.length) {
-          // Some lines couldn't be ordered — surface it after the fact
-          showError("");
+        if (method === "RAZORPAY") {
+          btn.textContent = "Opening payment…";
+          const init = await JLCheckout.initiatePayment(order.id);
+          try {
+            await payWithRazorpay(order, init, {
+              name, contact: phoneDigits, email: (JLCustomer.user() || {}).email || "",
+            });
+            showSuccess(order, "Paid online ✓");
+          } catch (payErr) {
+            // The order is already placed; it just isn't paid yet. Keep it as a
+            // pending order (visible to staff) rather than losing it.
+            showSuccess(order, payErr && payErr.dismissed ? "Payment pending (cancelled)" : "Payment pending");
+          }
+          return;
         }
+
+        // Cash on Delivery
+        showSuccess(order, "Cash on Delivery");
       } catch (err) {
         btn.disabled = false; btn.textContent = old;
         if (err.status === 401) { location.replace("login.html?next=checkout.html"); return; }

@@ -192,6 +192,50 @@
   const dateInput = document.getElementById("svcDate");
   if (dateInput) dateInput.min = new Date().toISOString().split("T")[0];
 </script>
+<script>window.JL_BACKEND_SERVICE = true;</script>
+<script src="store.js"></script>
 <script src="script.js"></script>
+<script>
+  /* Real service booking → POST /api/v1/service-bookings (public). */
+  (function () {
+    const form = document.getElementById("serviceForm");
+    const btn = form.querySelector('button[type="submit"]');
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      clearInvalid(form);
+      const name = document.getElementById("svcName").value.trim();
+      const mobile = document.getElementById("svcMobile");
+      const product = document.getElementById("svcProduct").value;
+      const type = document.getElementById("svcType").value;
+      const address = document.getElementById("svcAddress").value.trim();
+      const date = document.getElementById("svcDate").value;
+      const desc = document.getElementById("svcDesc").value.trim();
+
+      if (!isValidMobile(mobile.value)) { markInvalid(mobile, "svcMobileHint"); return; }
+      if (!name || !product || !type || !address) { form.reportValidity(); return; }
+
+      const digits = mobile.value.replace(/\D/g, "").replace(/^91(?=\d{10}$)/, "");
+      const body = {
+        name,
+        phone: "+91" + digits,
+        serviceType: [product, type].filter(Boolean).join(" — "),
+        message: "Address: " + address + (desc ? " | Complaint: " + desc : ""),
+        preferredDate: date || "",
+      };
+
+      btn.disabled = true; const old = btn.textContent; btn.textContent = "Booking…";
+      try {
+        await jlAuthApi("/api/v1/service-bookings", body);   // public POST, no token needed
+        const summary = document.getElementById("svcSummary");
+        if (summary) summary.textContent = `Thanks ${name}! Our service team will call you on ${digits} within 1 working day to confirm the visit.`;
+        showSuccess(form, "serviceSuccess");
+      } catch (err) {
+        btn.disabled = false; btn.textContent = old;
+        alert(err.message || "Could not submit your request. Please call us on 95149 70444.");
+      }
+    });
+  })();
+</script>
 </body>
 </html>

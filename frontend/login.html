@@ -92,8 +92,7 @@
 
       <!-- forgot password (demo link for now) -->
       <p style="text-align:right;margin:-6px 0 14px">
-        <a href="#" onclick="alert('Password reset will be available soon — please call us on 95149 70111.'); return false;"
-           style="font-size:12.5px;color:var(--brand);text-decoration:none">Forgot password?</a>
+        <a href="#" id="forgotLink" style="font-size:12.5px;color:var(--brand);text-decoration:none">Forgot password?</a>
       </p>
 
       <button type="submit" class="btn-primary">Login 🔑</button>
@@ -167,6 +166,23 @@
 
     // Already logged in? Skip straight to the destination.
     if (JLCustomer.isLoggedIn()) location.replace(next || "index.html");
+
+    // Forgot password → email a reset link (backend always replies success, so we
+    // can't confirm the address exists — that's intentional, to avoid user enumeration).
+    const forgot = document.getElementById("forgotLink");
+    if (forgot) forgot.addEventListener("click", async (e) => {
+      e.preventDefault();
+      const typed = (document.getElementById("liUser").value || "").trim();
+      const email = window.prompt("Enter your account email to receive a password-reset link:", typed.indexOf("@") > -1 ? typed : "");
+      if (email === null) return;
+      if (email.indexOf("@") === -1) { alert("Please enter a valid email address."); return; }
+      try {
+        await jlAuthApi("/api/v1/auth/forgot-password", { email: email.trim() });
+        alert("If an account exists for " + email.trim() + ", a reset link has been emailed. Check your inbox.\n\n(If no email arrives, password reset may not be configured yet — please call 95149 70111.)");
+      } catch (err) {
+        alert(err.message || "Could not send the reset link right now. Please call 95149 70111.");
+      }
+    });
 
     function showError(msg) {
       let box = document.getElementById("loginError");

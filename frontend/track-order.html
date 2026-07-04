@@ -94,16 +94,15 @@
       <button type="submit" class="btn-primary">Track Order 🔍</button>
     </form>
 
-    <!-- Sample order status shown by script.js after clicking Track -->
+    <p id="trackError" style="display:none;text-align:center;color:#dc2626;font-size:13px;font-weight:600;margin-top:10px"></p>
+
+    <!-- Live order status -->
     <div id="trackResult" style="display:none">
       <p style="text-align:center;font-size:13px;color:#94a3b8;margin:18px 0 4px">
-        Showing sample status for order <b id="trackOrderNo" style="color:var(--navy)"></b>
+        Status for order <b id="trackOrderNo" style="color:var(--navy)"></b>
       </p>
-      <!-- the 4 steps are filled in by script.js -->
       <div id="trackSteps" style="margin-top:14px"></div>
-      <p style="text-align:center;font-size:12px;color:#94a3b8;margin-top:16px">
-        Live tracking works in the JL Store app — this page shows a demo status.
-      </p>
+      <p id="trackPlaced" style="text-align:center;font-size:12px;color:#94a3b8;margin-top:16px"></p>
     </div>
   </div>
 
@@ -150,6 +149,65 @@
   <div class="border-t border-white/10 mt-7 py-4 text-center text-[13px] text-slate-500">© 2026 JL Enterprises, Thoothukudi</div>
 </footer>
 
+<script>window.JL_BACKEND_TRACK = true;</script>
+<script src="store.js"></script>
 <script src="script.js"></script>
+<script>
+  /* Live order tracking → GET /api/v1/orders/track?number=&phone= (public). */
+  (function () {
+    const form = document.getElementById("trackForm");
+    const STEPS = [
+      { key: "PENDING",   label: "Order Received", emoji: "🧾" },
+      { key: "CONFIRMED", label: "Confirmed",      emoji: "✅" },
+      { key: "PACKED",    label: "Packed",         emoji: "📦" },
+      { key: "SHIPPED",   label: "Out for Delivery", emoji: "🚚" },
+      { key: "DELIVERED", label: "Delivered",      emoji: "🎉" },
+    ];
+    const $ = (id) => document.getElementById(id);
+    const showErr = (m) => { const e=$("trackError"); e.textContent=m||""; e.style.display=m?"block":"none"; };
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      clearInvalid(form); showErr(""); $("trackResult").style.display = "none";
+      const number = $("toOrderId").value.trim();
+      const mobile = $("toMobile");
+      if (!number) { showErr("Enter your order number."); return; }
+      if (!isValidMobile(mobile.value)) { markInvalid(mobile, "toMobileHint"); return; }
+
+      const btn = form.querySelector('button[type="submit"]');
+      btn.disabled = true; const old = btn.textContent; btn.textContent = "Tracking…";
+      try {
+        const t = await jlPublicApi(`/api/v1/orders/track?number=${encodeURIComponent(number)}&phone=${encodeURIComponent(mobile.value)}`);
+        renderStatus(t);
+      } catch (err) {
+        showErr(err.status === 404 || err.status === 422
+          ? "No order found for that number and mobile. Please check and try again."
+          : (err.message || "Could not track the order. Please try again."));
+      } finally { btn.disabled = false; btn.textContent = old; }
+    });
+
+    function renderStatus(t) {
+      const status = t.status;
+      if (status === "CANCELLED" || status === "REFUNDED") {
+        $("trackSteps").innerHTML = `<div style="text-align:center;padding:16px;background:#fef2f2;border-radius:12px;color:#b91c1c;font-weight:600">This order was ${status.toLowerCase()}.</div>`;
+      } else {
+        const currentIdx = Math.max(0, STEPS.findIndex(s => s.key === status));
+        $("trackSteps").innerHTML = STEPS.map((s, i) => {
+          const done = i <= currentIdx;
+          const isCurrent = i === currentIdx;
+          return `
+            <div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px dashed #e2e8f0">
+              <span style="width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;background:${done ? "#dcfce7" : "#f1f5f9"}">${s.emoji}</span>
+              <b style="flex:1;font-size:14px;color:${done ? "#0b2447" : "#94a3b8"}">${s.label}</b>
+              <span style="font-size:12px;font-weight:700;color:${done ? "#16a34a" : "#cbd5e1"}">${done ? (isCurrent ? "● Current" : "✓ Done") : "Pending"}</span>
+            </div>`;
+        }).join("");
+      }
+      $("trackOrderNo").textContent = "#" + t.orderNumber;
+      try { $("trackPlaced").textContent = "Placed on " + new Date(t.placedAt).toLocaleDateString("en-IN", { dateStyle: "medium" }); } catch(_) { $("trackPlaced").textContent = ""; }
+      $("trackResult").style.display = "block";
+    }
+  })();
+</script>
 </body>
 </html>

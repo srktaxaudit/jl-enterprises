@@ -7,6 +7,7 @@ import in.jlenterprises.ecommerce.constant.PaymentStatus;
 import in.jlenterprises.ecommerce.dto.order.InvoiceDto;
 import in.jlenterprises.ecommerce.dto.order.OrderDto;
 import in.jlenterprises.ecommerce.dto.order.OrderSummaryDto;
+import in.jlenterprises.ecommerce.dto.order.OrderTrackingDto;
 import in.jlenterprises.ecommerce.entity.Address;
 import in.jlenterprises.ecommerce.entity.AddressSnapshot;
 import in.jlenterprises.ecommerce.entity.Cart;
@@ -204,6 +205,24 @@ public class OrderServiceImpl implements OrderService {
     @Transactional(readOnly = true)
     public InvoiceDto invoice(UUID userId, UUID orderId) {
         return orderMapper.toInvoice(ownedOrder(userId, orderId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public OrderTrackingDto track(String orderNumber, String phone) {
+        // Generic "not found" for both a missing order and a phone mismatch, so the
+        // endpoint can't be used to enumerate order numbers.
+        Order order = orderRepository.findByOrderNumber(orderNumber == null ? "" : orderNumber.trim())
+                .filter(o -> o.getShippingAddress() != null
+                        && last10(o.getShippingAddress().getPhone()).equals(last10(phone)))
+                .orElseThrow(() -> new BusinessException("No order found for that number and phone."));
+        return new OrderTrackingDto(order.getOrderNumber(), order.getOrderStatus(), order.getPlacedAt());
+    }
+
+    /** Last 10 digits of a phone number, for tolerant matching (+91/spaces ignored). */
+    private static String last10(String phone) {
+        String digits = phone == null ? "" : phone.replaceAll("\\D", "");
+        return digits.length() > 10 ? digits.substring(digits.length() - 10) : digits;
     }
 
     @Override

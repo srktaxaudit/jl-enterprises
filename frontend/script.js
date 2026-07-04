@@ -164,16 +164,6 @@ function removeItem(index) {
   renderCartPage();
 }
 
-// Checkout button — demo only: clears the cart and shows a success box
-function checkoutCart() {
-  if (getCart().length === 0) return;
-  saveCart([]); // empty the cart
-  const layoutEl = document.getElementById("cartLayout");
-  const doneEl = document.getElementById("cartDone");
-  if (layoutEl) layoutEl.style.display = "none";
-  if (doneEl) doneEl.classList.add("show");
-}
-
 /* ── 5. Search filter on index.html ──────────────────────────────── */
 // Typing in the header search box hides product cards that don't match.
 
@@ -240,7 +230,7 @@ function showSuccess(form, successId) {
 function initForms() {
   // — Service booking form —
   const serviceForm = document.getElementById("serviceForm");
-  if (serviceForm) {
+  if (serviceForm && !window.JL_BACKEND_SERVICE) {
     serviceForm.addEventListener("submit", (e) => {
       e.preventDefault();
       clearInvalid(serviceForm);
@@ -308,7 +298,7 @@ function initForms() {
 
 function initTrackOrder() {
   const form = document.getElementById("trackForm");
-  if (!form) return;
+  if (!form || window.JL_BACKEND_TRACK) return;   // real tracking wired in track-order.html
 
   const STEPS = [
     { label: "Order Received", emoji: "🧾" },

@@ -3,6 +3,7 @@ package in.jlenterprises.ecommerce.controller.order;
 import in.jlenterprises.ecommerce.dto.order.InvoiceDto;
 import in.jlenterprises.ecommerce.dto.order.OrderDto;
 import in.jlenterprises.ecommerce.dto.order.OrderSummaryDto;
+import in.jlenterprises.ecommerce.dto.order.OrderTrackingDto;
 import in.jlenterprises.ecommerce.request.order.PlaceOrderRequest;
 import in.jlenterprises.ecommerce.response.ApiResponse;
 import in.jlenterprises.ecommerce.response.PageResponse;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
@@ -41,6 +43,12 @@ public class OrderController {
     public ResponseEntity<ApiResponse<OrderDto>> place(@Valid @RequestBody PlaceOrderRequest request) {
         OrderDto order = orderService.placeOrder(SecurityUtils.currentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("Order placed", order));
+    }
+
+    @GetMapping("/track")
+    @Operation(summary = "Public order tracking by order number + phone (no login required)")
+    public ApiResponse<OrderTrackingDto> track(@RequestParam String number, @RequestParam String phone) {
+        return ApiResponse.success(orderService.track(number, phone));
     }
 
     @GetMapping

@@ -1,12 +1,14 @@
 package in.jlenterprises.ecommerce.service.impl;
 
 import in.jlenterprises.ecommerce.dto.catalog.ProductDetailDto;
+import in.jlenterprises.ecommerce.dto.catalog.ProductImageDto;
 import in.jlenterprises.ecommerce.dto.catalog.ProductSearchCriteria;
 import in.jlenterprises.ecommerce.dto.catalog.ProductSummaryDto;
 import in.jlenterprises.ecommerce.entity.Brand;
 import in.jlenterprises.ecommerce.entity.Category;
 import in.jlenterprises.ecommerce.entity.Inventory;
 import in.jlenterprises.ecommerce.entity.Product;
+import in.jlenterprises.ecommerce.entity.ProductImage;
 import in.jlenterprises.ecommerce.exception.DuplicateResourceException;
 import in.jlenterprises.ecommerce.exception.ResourceNotFoundException;
 import in.jlenterprises.ecommerce.mapper.ProductMapper;
@@ -17,6 +19,7 @@ import in.jlenterprises.ecommerce.repository.ProductRepository;
 import in.jlenterprises.ecommerce.repository.ProductSpecifications;
 import in.jlenterprises.ecommerce.request.catalog.ProductRequest;
 import in.jlenterprises.ecommerce.service.ProductService;
+import in.jlenterprises.ecommerce.storage.SupabaseStorageService;
 import in.jlenterprises.ecommerce.util.SlugUtil;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -25,6 +28,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
@@ -36,15 +40,17 @@ public class ProductServiceImpl implements ProductService {
     private final BrandRepository brandRepository;
     private final InventoryRepository inventoryRepository;
     private final ProductMapper productMapper;
+    private final SupabaseStorageService storageService;
 
     public ProductServiceImpl(ProductRepository productRepository, CategoryRepository categoryRepository,
                               BrandRepository brandRepository, InventoryRepository inventoryRepository,
-                              ProductMapper productMapper) {
+                              ProductMapper productMapper, SupabaseStorageService storageService) {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
         this.brandRepository = brandRepository;
         this.inventoryRepository = inventoryRepository;
         this.productMapper = productMapper;
+        this.storageService = storageService;
     }
 
     @Override
@@ -141,6 +147,70 @@ public class ProductServiceImpl implements ProductService {
         Product product = getEntity(id);
         product.setDeleted(true);
         productRepository.save(product);
+    }
+
+    // ── Product images ──
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProductImageDto> listImages(UUID productId) {
+        return imageDtos(getEntity(productId));
+    }
+
+    @Override
+    @Transactional
+    public List<ProductImageDto> addImage(UUID productId, String url, String altText) {
+        Product product = getEntity(productId);
+        ProductImage image = new ProductImage();
+        image.setProduct(product);
+        image.setUrl(url);
+        image.setAltText(altText);
+        image.setSortOrder(product.getImages().stream().mapToInt(ProductImage::getSortOrder).max().orElse(-1) + 1);
+        image.setPrimary(product.getImages().isEmpty());   // first image is primary by default
+        product.getImages().add(image);
+        productRepository.save(product);                   // cascade persists the new image
+        return imageDtos(product);
+    }
+
+    @Override
+    @Transactional
+    public List<ProductImageDto> deleteImage(UUID productId, UUID imageId) {
+        Product product = getEntity(productId);
+        ProductImage target = product.getImages().stream()
+                .filter(i -> i.getId().equals(imageId))
+                .findFirst()
+                .orElseThrow(() -> ResourceNotFoundException.of("ProductImage", imageId));
+        boolean wasPrimary = target.isPrimary();
+        String url = target.getUrl();
+        product.getImages().remove(target);               // orphanRemoval deletes the row
+        if (wasPrimary && !product.getImages().isEmpty()) {
+            product.getImages().get(0).setPrimary(true);   // promote a new primary
+        }
+        productRepository.save(product);
+        storageService.deleteByPublicUrl(url);             // best-effort; never throws
+        return imageDtos(product);
+    }
+
+    @Override
+    @Transactional
+    public List<ProductImageDto> setPrimaryImage(UUID productId, UUID imageId) {
+        Product product = getEntity(productId);
+        boolean found = false;
+        for (ProductImage img : product.getImages()) {
+            boolean isTarget = img.getId().equals(imageId);
+            img.setPrimary(isTarget);
+            found = found || isTarget;
+        }
+        if (!found) throw ResourceNotFoundException.of("ProductImage", imageId);
+        productRepository.save(product);
+        return imageDtos(product);
+    }
+
+    private List<ProductImageDto> imageDtos(Product product) {
+        return product.getImages().stream()
+                .sorted(Comparator.comparing(ProductImage::isPrimary).reversed()
+                        .thenComparingInt(ProductImage::getSortOrder))
+                .map(productMapper::toImageDto)
+                .toList();
     }
 
     // ── helpers ──

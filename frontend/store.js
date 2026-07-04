@@ -132,9 +132,19 @@ const JLCheckout = {
       defaultAddress: true,
     });
   },
-  /** Place a Cash-on-Delivery order from the current backend cart. Returns OrderDto. */
-  placeOrder(shippingAddressId, notes) {
-    return jlAuthApi("/api/v1/orders", { shippingAddressId, paymentMethod: "COD", notes: notes || "" });
+  /** Place an order from the current backend cart. method = "COD" | "RAZORPAY". Returns OrderDto. */
+  placeOrder(shippingAddressId, notes, method) {
+    return jlAuthApi("/api/v1/orders",
+      { shippingAddressId, paymentMethod: method || "COD", notes: notes || "" });
+  },
+  /** Start an online payment. Returns PaymentInitResponse
+      { providerReference (razorpay order id), clientData (key id), amount, currency, ... }. */
+  initiatePayment(orderId) {
+    return jlAuthApi("/api/v1/payments/" + encodeURIComponent(orderId) + "/initiate", {}, "POST");
+  },
+  /** Confirm an online payment after the provider callback. */
+  confirmPayment(orderId, body) {
+    return jlAuthApi("/api/v1/payments/" + encodeURIComponent(orderId) + "/confirm", body);
   },
   myOrders: () => jlAuthApi("/api/v1/orders?size=50&sort=placedAt,desc"),
   order: (id) => jlAuthApi("/api/v1/orders/" + encodeURIComponent(id)),
@@ -248,4 +258,12 @@ function jlRenderAuthNav() {
   }
 }
 
-document.addEventListener("DOMContentLoaded", jlRenderAuthNav);
+/** Make the header's icon links (Service/Sign Up/Login/My Orders/Logout) visible on
+    mobile too — the markup hides them with `hidden sm:flex`. Cart is already shown. */
+function jlMobileNav() {
+  document.querySelectorAll("header nav a.hidden").forEach((a) => {
+    if (a.classList.contains("sm:flex")) { a.classList.remove("hidden"); a.classList.add("flex"); }
+  });
+}
+
+document.addEventListener("DOMContentLoaded", () => { jlRenderAuthNav(); jlMobileNav(); });

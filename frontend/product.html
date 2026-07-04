@@ -81,11 +81,80 @@
         </div>
         ${p.description ? `<div class="bg-white border border-slate-200 rounded-2xl p-6 mt-5">
           <h2 class="text-navy font-semibold mb-2">Description</h2>
-          <p class="text-slate-600 text-sm whitespace-pre-line">${escAttr(p.description)}</p></div>` : ""}`;
+          <p class="text-slate-600 text-sm whitespace-pre-line">${escAttr(p.description)}</p></div>` : ""}
+        <div class="bg-white border border-slate-200 rounded-2xl p-6 mt-5">
+          <h2 class="text-navy font-semibold mb-3">Customer Reviews</h2>
+          <div id="reviewList" class="space-y-4 text-sm text-slate-400">Loading reviews…</div>
+          <div id="reviewFormWrap" class="mt-5 pt-5 border-t border-slate-100"></div>
+        </div>`;
+      loadReviews(p.id);
+      renderReviewForm(p.id);
     } catch (e) {
       box.innerHTML = `<p class="text-red-500">${e.status === 404 ? "Product not found." : "Couldn't load this product."}</p>`;
     }
   }
+
+  const fmtDate = (iso) => { try { return new Date(iso).toLocaleDateString("en-IN", { dateStyle: "medium" }); } catch (_) { return ""; } };
+
+  async function loadReviews(productId) {
+    const el = document.getElementById("reviewList");
+    try {
+      const page = await jlPublicApi(`/api/v1/products/${productId}/reviews?size=20`);
+      const rows = (page && page.content) || [];
+      el.innerHTML = rows.length ? rows.map((r) => `
+        <div class="border-b border-slate-100 pb-3 last:border-0">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="text-amber text-sm">${"★".repeat(r.rating)}<span class="text-slate-300">${"★".repeat(5 - r.rating)}</span></span>
+            ${r.title ? `<b class="text-navy text-sm">${escAttr(r.title)}</b>` : ""}
+            ${r.verifiedPurchase ? '<span class="text-[11px] text-green-600 font-semibold">✓ Verified purchase</span>' : ""}
+          </div>
+          ${r.comment ? `<p class="text-slate-600 text-sm mt-1">${escAttr(r.comment)}</p>` : ""}
+          <div class="text-[12px] text-slate-400 mt-1">${escAttr(r.reviewerName || "Customer")} · ${fmtDate(r.createdAt)}</div>
+        </div>`).join("") : '<p class="text-slate-400 text-sm">No reviews yet — be the first to review this product!</p>';
+    } catch (e) {
+      el.innerHTML = '<p class="text-slate-400 text-sm">Could not load reviews.</p>';
+    }
+  }
+
+  function renderReviewForm(productId) {
+    const wrap = document.getElementById("reviewFormWrap");
+    if (!JLCustomer.isLoggedIn()) {
+      const next = encodeURIComponent("product.html" + location.search);
+      wrap.innerHTML = `<p class="text-sm text-slate-500">Want to review this product? <a href="login.html?next=${next}" class="text-brand font-semibold">Log in</a> to write a review.</p>`;
+      return;
+    }
+    wrap.innerHTML = `
+      <h3 class="text-navy font-semibold mb-2 text-sm">Write a review</h3>
+      <div class="flex items-center gap-1 mb-2" id="starPick">${[1,2,3,4,5].map((n) => `<button type="button" data-star="${n}" class="text-2xl text-slate-300 leading-none">★</button>`).join("")}</div>
+      <input id="rvTitle" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm mb-2" placeholder="Title (optional)" maxlength="160" />
+      <textarea id="rvComment" rows="3" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm mb-2" placeholder="Share your experience…" maxlength="2000"></textarea>
+      <p id="rvMsg" class="text-[13px] mb-2"></p>
+      <button type="button" id="rvSubmit" class="bg-navy hover:bg-orange text-white font-semibold rounded-lg px-5 py-2 text-sm">Submit review</button>`;
+    let stars = 0;
+    const msg = (t, ok) => { const m = document.getElementById("rvMsg"); m.textContent = t; m.style.color = ok ? "#16a34a" : "#dc2626"; };
+    document.getElementById("starPick").addEventListener("click", (e) => {
+      const b = e.target.closest("button[data-star]"); if (!b) return;
+      stars = Number(b.dataset.star);
+      document.querySelectorAll("#starPick button").forEach((btn, i) => { btn.style.color = i < stars ? "#fbbf24" : "#cbd5e1"; });
+    });
+    document.getElementById("rvSubmit").addEventListener("click", async () => {
+      if (!stars) { msg("Please select a star rating.", false); return; }
+      const btn = document.getElementById("rvSubmit"); btn.disabled = true; const old = btn.textContent; btn.textContent = "Submitting…";
+      try {
+        await jlAuthApi(`/api/v1/products/${productId}/reviews`, {
+          rating: stars,
+          title: document.getElementById("rvTitle").value.trim(),
+          comment: document.getElementById("rvComment").value.trim(),
+        });
+        msg("Thanks! Your review was submitted and will appear once approved.", true);
+        document.getElementById("rvTitle").value = ""; document.getElementById("rvComment").value = "";
+      } catch (e) {
+        msg(e.status === 401 ? "Please log in again to post your review." : (e.message || "Could not submit review."), false);
+      }
+      btn.disabled = false; btn.textContent = old;
+    });
+  }
+
   loadProduct();
 </script>
 <script src="script.js"></script>

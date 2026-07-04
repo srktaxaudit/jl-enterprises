@@ -9,6 +9,11 @@ spring:
   application:
     name: jl-ecommerce-backend
 
+  servlet:
+    multipart:
+      max-file-size: ${MAX_UPLOAD_SIZE:5MB}      # product image uploads
+      max-request-size: ${MAX_REQUEST_SIZE:6MB}
+
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/jl_ecommerce}
     username: ${DB_USER:jl}
@@ -89,6 +94,21 @@ app:
   mail:
     from: ${MAIL_FROM:no-reply@jlenterprises.in}
     verification-base-url: ${MAIL_VERIFY_URL:http://localhost:8081/api/v1/auth/verify-email}
+    # Where the password-reset email link points — your storefront reset page.
+    # Set PASSWORD_RESET_URL to https://<your-vercel-domain>/reset-password.html in prod.
+    password-reset-base-url: ${PASSWORD_RESET_URL:http://localhost:5500/reset-password.html}
+  # Supabase Storage for product image uploads. Leave url/service-key blank to
+  # disable uploads (the admin UI will report "image storage not configured").
+  # service-key = the Supabase project's service_role key (server-side only).
+  supabase:
+    url: ${SUPABASE_URL:}
+    service-key: ${SUPABASE_SERVICE_KEY:}
+    bucket: ${SUPABASE_BUCKET:product-images}
+  # Razorpay online payments. Leave blank for COD-only (Razorpay checkout stays off).
+  # Use test keys first (rzp_test_...), then switch to live keys.
+  razorpay:
+    key-id: ${RAZORPAY_KEY_ID:}
+    key-secret: ${RAZORPAY_KEY_SECRET:}
 
 springdoc:
   swagger-ui:

@@ -206,7 +206,9 @@ public class AuthServiceImpl implements AuthService {
         // Always behave identically whether or not the account exists (no enumeration).
         userRepository.findByEmailIgnoreCase(normalized).ifPresent(user -> {
             String token = verificationTokenService.issue(PURPOSE_RESET, normalized, RESET_TTL);
-            emailService.sendPasswordResetLink(normalized, token);
+            String sep = props.mail().passwordResetBaseUrl().contains("?") ? "&" : "?";
+            String link = props.mail().passwordResetBaseUrl() + sep + "token=" + token;
+            emailService.sendPasswordResetLink(normalized, link);
         });
     }
 

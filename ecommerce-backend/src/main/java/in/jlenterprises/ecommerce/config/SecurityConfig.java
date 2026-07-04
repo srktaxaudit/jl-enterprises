@@ -84,8 +84,11 @@ public class SecurityConfig {
                 // Public catalog reads (products/categories/brands GETs) are opened per-controller
                 // via method security; everything else requires authentication.
                 .requestMatchers(org.springframework.http.HttpMethod.GET,
-                        "/api/v1/products/**", "/api/v1/categories/**", "/api/v1/brands/**", "/api/v1/banners/**")
+                        "/api/v1/products/**", "/api/v1/categories/**", "/api/v1/brands/**", "/api/v1/banners/**",
+                        "/api/v1/orders/track")
                     .permitAll()
+                // Public service-request submission (staff GET/PATCH still require auth)
+                .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/v1/service-bookings").permitAll()
                 .anyRequest().authenticated()
             )
             .exceptionHandling(ex -> ex

@@ -99,6 +99,30 @@ async function jlTryRefresh() {
   }
 }
 
+/**
+ * Multipart file upload (FormData). Like jlApi but WITHOUT a JSON content-type
+ * (the browser sets the multipart boundary). Rides the same cold-start retry and
+ * 401→refresh handling. Returns the unwrapped `data`.
+ */
+async function jlUpload(path, file, _retried = false) {
+  const fd = new FormData();
+  fd.append("file", file);
+  const headers = {};
+  if (jlTokens.access) headers["Authorization"] = "Bearer " + jlTokens.access;
+
+  const res = await jlFetchWithRetry(JL_API_BASE + path, { method: "POST", headers, body: fd });
+
+  if (res.status === 401 && !_retried && jlTokens.refresh) {
+    if (await jlTryRefresh()) return jlUpload(path, file, true);
+  }
+  let json = null;
+  try { json = await res.json(); } catch (_) { /* empty */ }
+  if (!res.ok || (json && json.success === false)) {
+    throw { status: res.status, message: (json && json.message) || "Upload failed" };
+  }
+  return json ? json.data : null;
+}
+
 // ── auth calls ──
 const JLAuth = {
   async login(email, password) {

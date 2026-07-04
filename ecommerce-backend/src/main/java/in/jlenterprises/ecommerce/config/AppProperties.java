@@ -11,7 +11,9 @@ public record AppProperties(
         Jwt jwt,
         Security security,
         Otp otp,
-        Mail mail
+        Mail mail,
+        Supabase supabase,
+        Razorpay razorpay
 ) {
     public record Jwt(
             String secret,
@@ -28,5 +30,19 @@ public record AppProperties(
 
     public record Otp(int length, Duration ttl, int maxAttempts) {}
 
-    public record Mail(String from, String verificationBaseUrl) {}
+    public record Mail(String from, String verificationBaseUrl, String passwordResetBaseUrl) {}
+
+    /** Supabase Storage — product image uploads. Blank url/serviceKey = uploads disabled. */
+    public record Supabase(String url, String serviceKey, String bucket) {
+        public boolean configured() {
+            return url != null && !url.isBlank() && serviceKey != null && !serviceKey.isBlank();
+        }
+    }
+
+    /** Razorpay online payments. Blank keys = COD-only (Razorpay initiate is rejected clearly). */
+    public record Razorpay(String keyId, String keySecret) {
+        public boolean configured() {
+            return keyId != null && !keyId.isBlank() && keySecret != null && !keySecret.isBlank();
+        }
+    }
 }

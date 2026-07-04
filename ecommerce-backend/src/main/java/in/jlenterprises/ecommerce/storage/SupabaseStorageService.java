@@ -1,0 +1,89 @@
+package in.jlenterprises.ecommerce.storage;
+
+import in.jlenterprises.ecommerce.config.AppProperties;
+import in.jlenterprises.ecommerce.exception.BusinessException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClient;
+
+import java.net.URI;
+
+/**
+ * Uploads product images to a Supabase Storage bucket via its REST API and
+ * returns the public URL. The backend stores only the URL (on {@code ProductImage});
+ * the bytes live in Supabase Storage (Render's disk is ephemeral).
+ *
+ * Config: {@code app.supabase.url}, {@code app.supabase.service-key} (service_role
+ * key — server-side only), {@code app.supabase.bucket} (a PUBLIC bucket). If url/key
+ * are blank, uploads are rejected with a clear message rather than failing obscurely.
+ */
+@Service
+public class SupabaseStorageService {
+
+    private static final Logger log = LoggerFactory.getLogger(SupabaseStorageService.class);
+
+    private final AppProperties.Supabase cfg;
+    private final RestClient http = RestClient.create();
+
+    public SupabaseStorageService(AppProperties props) {
+        this.cfg = props.supabase();
+    }
+
+    public boolean isConfigured() {
+        return cfg != null && cfg.configured();
+    }
+
+    /**
+     * Upload bytes to {bucket}/{objectPath} (upsert) and return the public URL.
+     * objectPath must be a bucket-relative key, e.g. {@code products/<id>/<uuid>.jpg}.
+     */
+    public String upload(String objectPath, byte[] bytes, String contentType) {
+        if (!isConfigured()) {
+            throw new BusinessException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "Image storage is not configured. Set SUPABASE_URL and SUPABASE_SERVICE_KEY on the server.");
+        }
+        String base = trimSlash(cfg.url());
+        String full = base + "/storage/v1/object/" + cfg.bucket() + "/" + objectPath;
+        try {
+            http.put()
+                    .uri(URI.create(full))
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + cfg.serviceKey())
+                    .header("x-upsert", "true")
+                    .contentType(contentType == null || contentType.isBlank()
+                            ? MediaType.APPLICATION_OCTET_STREAM : MediaType.parseMediaType(contentType))
+                    .body(bytes)
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (Exception e) {
+            log.warn("Supabase upload failed for {}: {}", objectPath, e.getMessage());
+            throw new BusinessException(HttpStatus.BAD_GATEWAY, "Image upload failed. Please try again.");
+        }
+        return base + "/storage/v1/object/public/" + cfg.bucket() + "/" + objectPath;
+    }
+
+    /** Best-effort delete of an object given its public URL. Never throws. */
+    public void deleteByPublicUrl(String publicUrl) {
+        if (!isConfigured() || publicUrl == null) return;
+        String marker = "/storage/v1/object/public/" + cfg.bucket() + "/";
+        int i = publicUrl.indexOf(marker);
+        if (i < 0) return;   // not one of our objects
+        String objectPath = publicUrl.substring(i + marker.length());
+        try {
+            http.delete()
+                    .uri(URI.create(trimSlash(cfg.url()) + "/storage/v1/object/" + cfg.bucket() + "/" + objectPath))
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + cfg.serviceKey())
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (Exception e) {
+            log.warn("Supabase delete failed for {} (ignored): {}", objectPath, e.getMessage());
+        }
+    }
+
+    private static String trimSlash(String s) {
+        return (s != null && s.endsWith("/")) ? s.substring(0, s.length() - 1) : s;
+    }
+}
