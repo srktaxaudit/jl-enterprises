@@ -24,6 +24,8 @@ public interface OrderRepository extends JpaRepository<Order, UUID>, JpaSpecific
 
     Page<Order> findByUserId(UUID userId, Pageable pageable);
 
+    long countByUserId(UUID userId);
+
     long countByOrderStatus(OrderStatus status);
 
     // ── Analytics ──

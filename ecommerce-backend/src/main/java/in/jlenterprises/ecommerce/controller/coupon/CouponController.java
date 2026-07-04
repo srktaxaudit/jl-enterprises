@@ -52,6 +52,12 @@ public class CouponController {
         return ApiResponse.success(couponService.activePublic());
     }
 
+    @GetMapping("/eligible")
+    @Operation(summary = "Coupons the current customer can apply to this subtotal (authenticated)")
+    public ApiResponse<List<CouponDto>> eligible(@RequestParam(required = false) BigDecimal subtotal) {
+        return ApiResponse.success(couponService.eligibleFor(subtotal, SecurityUtils.currentUserId()));
+    }
+
     @PostMapping
     @PreAuthorize(STAFF)
     @Operation(summary = "Create a coupon")

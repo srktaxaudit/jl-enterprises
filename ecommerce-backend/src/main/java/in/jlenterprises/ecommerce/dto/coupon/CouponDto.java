@@ -9,6 +9,7 @@ import java.util.UUID;
 public record CouponDto(
         UUID id,
         String code,
+        String name,
         String description,
         CouponType type,
         BigDecimal value,
@@ -17,6 +18,7 @@ public record CouponDto(
         Integer usageLimit,
         int usedCount,
         Integer perUserLimit,
+        boolean firstOrderOnly,
         Instant startsAt,
         Instant expiresAt,
         boolean active

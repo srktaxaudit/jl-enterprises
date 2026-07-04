@@ -12,6 +12,7 @@ import java.time.Instant;
 
 public record CouponRequest(
         @NotBlank @Size(max = 40) String code,
+        @Size(max = 120) String name,
         @Size(max = 200) String description,
         @NotNull CouponType type,
         @NotNull @Positive BigDecimal value,
@@ -19,6 +20,7 @@ public record CouponRequest(
         @PositiveOrZero BigDecimal maxDiscount,
         Integer usageLimit,
         Integer perUserLimit,
+        Boolean firstOrderOnly,
         Instant startsAt,
         Instant expiresAt,
         Boolean active

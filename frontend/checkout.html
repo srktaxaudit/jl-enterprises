@@ -285,11 +285,12 @@
     }
     $("coApply").addEventListener("click", () => applyCoupon($("coCoupon").value));
 
-    // Show available offers as tappable chips (public endpoint)
+    // Show offers THIS customer can actually use (per-user eligible — already-used
+    // or first-order-consumed coupons are excluded by the backend).
     (async function loadOffers() {
       try {
-        const offers = await JLCheckout.activeCoupons();
-        if (!offers || !offers.length) return;
+        const offers = await JLCheckout.eligibleCoupons(subtotal);
+        if (!offers || !offers.length) { $("coOffers").innerHTML = ""; return; }
         $("coOffers").innerHTML = '<div class="text-[11px] text-slate-400 mb-1">Available offers — tap to apply:</div>' +
           offers.map((c) => {
             const val = c.type === "PERCENTAGE" ? (Number(c.value) + "% off") : (jlInr(c.value) + " off");

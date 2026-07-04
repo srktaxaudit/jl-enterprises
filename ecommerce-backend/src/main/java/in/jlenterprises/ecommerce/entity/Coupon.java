@@ -27,8 +27,15 @@ public class Coupon extends BaseEntity {
     @Column(name = "code", nullable = false, length = 40)
     private String code;
 
+    @Column(name = "name", length = 120)
+    private String name;
+
     @Column(name = "description", length = 200)
     private String description;
+
+    /** When true, the coupon is valid only on a customer's very first order. */
+    @Column(name = "first_order_only", nullable = false)
+    private boolean firstOrderOnly = false;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false, length = 20)

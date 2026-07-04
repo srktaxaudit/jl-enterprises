@@ -137,8 +137,10 @@ const JLCheckout = {
     return jlAuthApi("/api/v1/orders",
       { shippingAddressId, paymentMethod: method || "COD", notes: notes || "", couponCode: couponCode || null });
   },
-  /** Active coupons the customer can use (public). */
+  /** Active coupons (public — for browsing/offers page, no per-user filtering). */
   activeCoupons: () => jlPublicApi("/api/v1/coupons/active"),
+  /** Coupons THIS logged-in customer can actually apply to `subtotal` (per-user aware). */
+  eligibleCoupons(subtotal) { return jlAuthApi("/api/v1/coupons/eligible?subtotal=" + (subtotal || 0)); },
   /** Validate a coupon for the logged-in customer; returns {code, discount} or throws. */
   validateCoupon(code, subtotal) {
     return jlAuthApi("/api/v1/coupons/validate?code=" + encodeURIComponent(code) + "&subtotal=" + subtotal);

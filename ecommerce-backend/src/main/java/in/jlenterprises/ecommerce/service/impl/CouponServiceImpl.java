@@ -13,6 +13,7 @@ import in.jlenterprises.ecommerce.exception.ResourceNotFoundException;
 import in.jlenterprises.ecommerce.mapper.CouponMapper;
 import in.jlenterprises.ecommerce.repository.CouponRepository;
 import in.jlenterprises.ecommerce.repository.CouponUsageRepository;
+import in.jlenterprises.ecommerce.repository.OrderRepository;
 import in.jlenterprises.ecommerce.request.coupon.CouponRequest;
 import in.jlenterprises.ecommerce.service.CouponService;
 import org.springframework.stereotype.Service;
@@ -21,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -29,12 +31,14 @@ public class CouponServiceImpl implements CouponService {
 
     private final CouponRepository couponRepository;
     private final CouponUsageRepository couponUsageRepository;
+    private final OrderRepository orderRepository;
     private final CouponMapper couponMapper;
 
     public CouponServiceImpl(CouponRepository couponRepository, CouponUsageRepository couponUsageRepository,
-                             CouponMapper couponMapper) {
+                             OrderRepository orderRepository, CouponMapper couponMapper) {
         this.couponRepository = couponRepository;
         this.couponUsageRepository = couponUsageRepository;
+        this.orderRepository = orderRepository;
         this.couponMapper = couponMapper;
     }
 
@@ -88,6 +92,23 @@ public class CouponServiceImpl implements CouponService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<CouponDto> eligibleFor(BigDecimal subtotal, UUID userId) {
+        // Reuse the full validation: a coupon is eligible only if apply() succeeds
+        // for this user + subtotal (covers per-user limit, first-order, min-order, etc.).
+        List<CouponDto> eligible = new ArrayList<>();
+        for (CouponDto c : activePublic()) {
+            try {
+                apply(c.code(), subtotal == null ? BigDecimal.ZERO : subtotal, userId);
+                eligible.add(c);
+            } catch (RuntimeException ignored) {
+                // not eligible for this user right now — skip it
+            }
+        }
+        return eligible;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public CouponValidationResult validate(String code, BigDecimal subtotal, UUID userId) {
         AppliedCoupon applied = apply(code, subtotal, userId);
         return new CouponValidationResult(applied.coupon().getCode(), applied.discount());
@@ -111,7 +132,9 @@ public class CouponServiceImpl implements CouponService {
             throw new BusinessException("Coupon usage limit reached");
         if (coupon.getPerUserLimit() != null
                 && couponUsageRepository.countByCouponIdAndUserId(coupon.getId(), userId) >= coupon.getPerUserLimit())
-            throw new BusinessException("You have already used this coupon the maximum number of times");
+            throw new BusinessException("You have already used this coupon.");
+        if (coupon.isFirstOrderOnly() && orderRepository.countByUserId(userId) > 0)
+            throw new BusinessException("This coupon is valid only on your first order.");
 
         return new AppliedCoupon(coupon, computeDiscount(coupon, subtotal));
     }
@@ -148,6 +171,7 @@ public class CouponServiceImpl implements CouponService {
     }
 
     private void apply(Coupon coupon, CouponRequest r) {
+        coupon.setName(r.name());
         coupon.setDescription(r.description());
         coupon.setType(r.type());
         coupon.setValue(r.value());
@@ -155,6 +179,7 @@ public class CouponServiceImpl implements CouponService {
         coupon.setMaxDiscount(r.maxDiscount());
         coupon.setUsageLimit(r.usageLimit());
         coupon.setPerUserLimit(r.perUserLimit());
+        coupon.setFirstOrderOnly(r.firstOrderOnly() != null && r.firstOrderOnly());
         coupon.setStartsAt(r.startsAt());
         coupon.setExpiresAt(r.expiresAt());
         if (r.active() != null) coupon.setActive(r.active());

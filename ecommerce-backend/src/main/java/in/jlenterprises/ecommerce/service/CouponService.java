@@ -18,6 +18,10 @@ public interface CouponService {
     /** Public: active, in-window, not-exhausted coupons the storefront can advertise. */
     List<CouponDto> activePublic();
 
+    /** Coupons the given user can actually apply to this subtotal right now
+        (runs the full validation per coupon; excludes used-up / first-order-used / etc.). */
+    List<CouponDto> eligibleFor(BigDecimal subtotal, UUID userId);
+
     CouponDto create(CouponRequest request);
 
     CouponDto update(UUID id, CouponRequest request);
