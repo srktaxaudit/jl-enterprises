@@ -98,8 +98,8 @@
 
       <div class="field">
         <label for="suPassword">Password</label>
-        <input id="suPassword" type="password" required minlength="6" placeholder="At least 6 characters" />
-        <div class="hint" id="suPassHint">Password must be at least 6 characters.</div>
+        <input id="suPassword" type="password" required minlength="8" placeholder="Min 8 chars: upper, lower, number, symbol" />
+        <div class="hint" id="suPassHint">Password must be at least 8 characters with an uppercase, lowercase, number and symbol.</div>
       </div>
 
       <div class="field">
@@ -170,6 +170,76 @@
   <div class="border-t border-white/10 mt-7 py-4 text-center text-[13px] text-slate-500">© 2026 JL Enterprises, Thoothukudi</div>
 </footer>
 
+<script>window.JL_BACKEND_AUTH = true;</script>
+<script src="store.js"></script>
 <script src="script.js"></script>
+<script>
+  /* Real registration → JL backend. On success the customer is auto-logged-in
+     (register returns tokens), so we send them on to checkout if they have a
+     cart, otherwise home. Honours ?next= as well. */
+  (function () {
+    const form = document.getElementById("signupForm");
+    const btn = form.querySelector('button[type="submit"]');
+    const next = new URLSearchParams(location.search).get("next");
+    // ≥8 chars incl. upper, lower, digit and special (mirrors the backend rule)
+    const STRONG = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+
+    function showError(msg) {
+      let box = document.getElementById("signupError");
+      if (!box) {
+        box = document.createElement("p");
+        box.id = "signupError";
+        box.style.cssText = "color:#dc2626;font-size:13px;text-align:center;margin:-4px 0 12px;font-weight:600";
+        form.insertBefore(box, btn);
+      }
+      box.textContent = msg;
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      clearInvalid(form);
+      showError("");
+
+      const nameRaw = document.getElementById("suName").value.trim();
+      const mobile = document.getElementById("suMobile");
+      const email = document.getElementById("suEmail").value.trim();
+      const pass = document.getElementById("suPassword");
+      const confirm = document.getElementById("suConfirm");
+      const address = document.getElementById("suAddress").value.trim();
+
+      let ok = true;
+      if (!isValidMobile(mobile.value)) { markInvalid(mobile, "suMobileHint"); ok = false; }
+      if (!STRONG.test(pass.value)) { markInvalid(pass, "suPassHint"); ok = false; }
+      else if (pass.value !== confirm.value) { markInvalid(confirm, "suConfirmHint"); ok = false; }
+      if (!ok) return;
+
+      // Split the full name into first + last (last name is optional)
+      const parts = nameRaw.split(/\s+/);
+      const firstName = parts.shift() || nameRaw;
+      const lastName = parts.join(" ");
+      // Normalise the 10-digit mobile to E.164-ish for the backend phone rule
+      const digits = mobile.value.replace(/\D/g, "").replace(/^91(?=\d{10}$)/, "");
+      const phone = "+91" + digits;
+
+      // Remember the typed address to pre-fill checkout later (not sent here —
+      // checkout collects the structured city/pincode the order needs).
+      if (address) localStorage.setItem("jl_pref_address", address);
+
+      btn.disabled = true; const old = btn.textContent; btn.textContent = "Creating account…";
+      try {
+        await JLCustomer.register({ email, password: pass.value, firstName, lastName, phone });
+        showSuccess(form, "signupSuccess");
+        const dest = next || (getCart().length ? "checkout.html" : "index.html");
+        setTimeout(() => location.replace(dest), 800);
+      } catch (err) {
+        btn.disabled = false; btn.textContent = old;
+        const dup = err.status === 409 || /exist|already|registered|taken/i.test(err.message || "");
+        showError(dup
+          ? "An account with this email already exists — please log in instead."
+          : (err.message || "Could not create your account. Please try again."));
+      }
+    });
+  })();
+</script>
 </body>
 </html>

@@ -117,9 +117,16 @@ public class AuthServiceImpl implements AuthService {
         user.getRoles().add(customer);
         user = userRepository.save(user);
 
-        // Fire off an email-verification link (async, best-effort).
-        String token = verificationTokenService.issue(PURPOSE_EMAIL_VERIFY, email, EMAIL_VERIFY_TTL);
-        emailService.sendVerificationLink(email, props.mail().verificationBaseUrl() + "?token=" + token);
+        // Fire off an email-verification link — best-effort. This uses Redis
+        // (token store) + SMTP, which are optional; if either is unavailable,
+        // registration must still succeed (email verification is not required
+        // to log in or shop).
+        try {
+            String token = verificationTokenService.issue(PURPOSE_EMAIL_VERIFY, email, EMAIL_VERIFY_TTL);
+            emailService.sendVerificationLink(email, props.mail().verificationBaseUrl() + "?token=" + token);
+        } catch (Exception e) {
+            log.warn("Skipped email verification for {} (token store/mail unavailable): {}", email, e.getMessage());
+        }
 
         return buildAuthResponse(user, false, userAgent, ip);
     }

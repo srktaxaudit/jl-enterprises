@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>My Orders — JL Enterprises</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          navy: { DEFAULT: "#0b2447", 600: "#19376d" },
+          brand: { DEFAULT: "#576cbc", sky: "#a5d7e8" },
+          orange: { DEFAULT: "#f97316", 600: "#ea580c" },
+          amber: { DEFAULT: "#fbbf24" },
+        },
+        boxShadow: { card: "0 12px 30px rgba(15,23,42,.12)" },
+      },
+    },
+  };
+</script>
+<link rel="stylesheet" href="style.css" />
+<style>
+  .no-scrollbar::-webkit-scrollbar { display:none; }
+  .no-scrollbar { -ms-overflow-style:none; scrollbar-width:none; }
+</style>
+</head>
+<body class="text-slate-800">
+
+<div class="bg-navy text-white text-center text-[13px] py-1.5 px-3">
+  🚚 Free door delivery across <b class="text-amber">Tamil Nadu</b> · 💳 Easy EMI &amp; Cash on Delivery · 🔧 Doorstep service &amp; AMC
+</div>
+
+<header class="bg-white border-b border-slate-200 sticky top-0 z-40">
+  <div class="max-w-[1180px] mx-auto px-5 flex items-center gap-5 py-3">
+    <a href="index.html" class="flex items-center gap-2.5 shrink-0">
+      <div class="w-12 h-10 rounded-lg bg-gradient-to-br from-navy to-brand text-white font-extrabold flex items-center justify-center text-lg">JL</div>
+      <div class="leading-tight hidden sm:block">
+        <div class="font-extrabold text-navy">JL ENTERPRISES</div>
+        <div class="text-[10px] font-semibold text-slate-400 tracking-wider">HOME APPLIANCES · THOOTHUKUDI</div>
+      </div>
+    </a>
+    <form action="index.html" method="get" class="flex-1 flex bg-slate-100 border border-slate-200 rounded-full overflow-hidden">
+      <input name="q" autocomplete="off" class="flex-1 bg-transparent px-4 py-2.5 text-sm outline-none text-slate-600" placeholder="Search for AC, TV, Fridge, Washing Machine, Furniture…" />
+      <button type="submit" class="bg-navy text-white px-5 flex items-center font-semibold text-sm">Search</button>
+    </form>
+    <nav class="flex items-center gap-4 text-slate-600">
+      <a href="my-orders.html" class="flex flex-col items-center text-[11px] text-brand font-semibold"><span class="text-xl">📦</span>My Orders</a>
+      <a href="#" id="logoutLink" class="hidden sm:flex flex-col items-center text-[11px]"><span class="text-xl">🚪</span>Logout</a>
+      <a href="cart.html" class="relative flex flex-col items-center text-[11px]">
+        <span class="text-xl">🛒</span>Cart
+        <span id="cartBadge" class="hidden absolute -top-1.5 -right-2 bg-orange text-white text-[11px] font-bold w-[18px] h-[18px] rounded-full items-center justify-center">0</span>
+      </a>
+    </nav>
+  </div>
+  <nav class="bg-navy-600">
+    <div class="max-w-[1180px] mx-auto px-5 flex items-center gap-1 overflow-x-auto no-scrollbar">
+      <a href="index.html" class="bg-orange text-white px-4 py-2.5 text-sm font-bold whitespace-nowrap">☰ All</a>
+      <a href="air-conditioners.html" class="text-blue-100/90 hover:text-white px-4 py-2.5 text-sm whitespace-nowrap border-b-[3px] border-transparent hover:border-orange">Air Conditioners</a>
+      <a href="televisions.html" class="text-blue-100/90 hover:text-white px-4 py-2.5 text-sm whitespace-nowrap border-b-[3px] border-transparent hover:border-orange">Televisions</a>
+      <a href="refrigerators.html" class="text-blue-100/90 hover:text-white px-4 py-2.5 text-sm whitespace-nowrap border-b-[3px] border-transparent hover:border-orange">Refrigerators</a>
+      <a href="washing-machines.html" class="text-blue-100/90 hover:text-white px-4 py-2.5 text-sm whitespace-nowrap border-b-[3px] border-transparent hover:border-orange">Washing Machines</a>
+      <a href="home-theatre.html" class="text-blue-100/90 hover:text-white px-4 py-2.5 text-sm whitespace-nowrap border-b-[3px] border-transparent hover:border-orange">Home Theatre</a>
+      <a href="kitchen.html" class="text-blue-100/90 hover:text-white px-4 py-2.5 text-sm whitespace-nowrap border-b-[3px] border-transparent hover:border-orange">Kitchen &amp; Stove</a>
+      <a href="furniture.html" class="text-blue-100/90 hover:text-white px-4 py-2.5 text-sm whitespace-nowrap border-b-[3px] border-transparent hover:border-orange">Furniture</a>
+    </div>
+  </nav>
+</header>
+
+<main class="min-h-[60vh]">
+<div class="max-w-[900px] mx-auto px-5">
+
+  <div class="flex items-center justify-between mt-6 mb-4 flex-wrap gap-2">
+    <h2 class="text-2xl text-navy font-bold">📦 My Orders</h2>
+    <span id="ordUser" class="text-[13px] text-slate-400"></span>
+  </div>
+
+  <div id="ordLoading" class="text-center py-16 text-slate-400">Loading your orders…</div>
+
+  <div id="ordEmpty" class="hidden text-center py-16">
+    <div class="text-6xl mb-3">🧾</div>
+    <p class="text-slate-500 mb-5">You haven't placed any orders yet.</p>
+    <a href="index.html" class="bg-navy text-white px-6 py-2.5 rounded-full font-semibold text-sm">Start Shopping</a>
+  </div>
+
+  <div id="ordList" class="space-y-4 mb-10"></div>
+
+</div>
+</main>
+
+<footer class="bg-navy text-slate-400 mt-9 py-6 text-center text-[13px]">© 2026 JL Enterprises, Thoothukudi · <a href="index.html" class="text-brand">Home</a> · <a href="cart.html" class="text-brand">Cart</a></footer>
+
+<script src="store.js"></script>
+<script src="script.js"></script>
+<script>
+  (function () {
+    // Login gate
+    if (!JLCustomer.isLoggedIn()) { location.replace("login.html?next=my-orders.html"); return; }
+
+    const $ = (id) => document.getElementById(id);
+    const u = JLCustomer.user() || {};
+    if (u.email) $("ordUser").textContent = u.email;
+
+    const logout = $("logoutLink");
+    if (logout) logout.addEventListener("click", (e) => { e.preventDefault(); JLCustomer.logout(); location.href = "index.html"; });
+
+    const STATUS = {
+      PENDING:   { label: "Pending",   cls: "bg-amber-100 text-amber-700" },
+      CONFIRMED: { label: "Confirmed", cls: "bg-blue-100 text-blue-700" },
+      PACKED:    { label: "Packed",    cls: "bg-indigo-100 text-indigo-700" },
+      SHIPPED:   { label: "Shipped",   cls: "bg-purple-100 text-purple-700" },
+      DELIVERED: { label: "Delivered", cls: "bg-green-100 text-green-700" },
+      CANCELLED: { label: "Cancelled", cls: "bg-red-100 text-red-700" },
+      REFUNDED:  { label: "Refunded",  cls: "bg-slate-200 text-slate-600" },
+    };
+    const badge = (s) => {
+      const m = STATUS[s] || { label: s || "—", cls: "bg-slate-100 text-slate-600" };
+      return `<span class="text-[11px] font-bold px-2.5 py-1 rounded-full ${m.cls}">${m.label}</span>`;
+    };
+    const fmtDate = (iso) => { try { return new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }); } catch { return ""; } };
+
+    async function toggleDetail(id, wrap, btn) {
+      const open = wrap.dataset.open === "1";
+      if (open) { wrap.style.display = "none"; wrap.dataset.open = "0"; btn.textContent = "View items ▾"; return; }
+      btn.textContent = "Loading…";
+      try {
+        const o = await JLCheckout.order(id);
+        const items = (o.items || []).map((it) => `
+          <div class="flex justify-between text-[13px] py-1.5 border-b border-slate-100 last:border-0">
+            <span class="text-slate-600">${jlEsc(it.productName || it.name || "Item")} <span class="text-slate-400">× ${it.quantity || it.qty || 1}</span></span>
+            <span class="font-semibold text-navy">${jlInr(it.lineTotal || it.total || (it.unitPrice || it.price || 0) * (it.quantity || 1))}</span>
+          </div>`).join("");
+        const a = o.shippingAddress || {};
+        const addr = [a.fullName, a.line1, a.line2, a.city, a.state, a.postalCode].filter(Boolean).join(", ");
+        wrap.innerHTML = `
+          <div class="mt-3 pt-3 border-t border-slate-100">
+            ${items || '<p class="text-[13px] text-slate-400">No item details available.</p>'}
+            ${addr ? `<div class="text-[12px] text-slate-500 mt-3">🚚 <b>Deliver to:</b> ${jlEsc(addr)}</div>` : ""}
+            ${o.payment && o.payment.method ? `<div class="text-[12px] text-slate-500 mt-1">💳 ${jlEsc(o.payment.method)}</div>` : ""}
+          </div>`;
+        wrap.style.display = "block"; wrap.dataset.open = "1"; btn.textContent = "Hide items ▴";
+      } catch (err) {
+        btn.textContent = "View items ▾";
+        if (err.status === 401) { location.replace("login.html?next=my-orders.html"); return; }
+        alert(err.message || "Could not load order details.");
+      }
+    }
+
+    (async function load() {
+      try {
+        const page = await JLCheckout.myOrders();
+        const orders = (page && page.content) || [];
+        $("ordLoading").classList.add("hidden");
+        if (!orders.length) { $("ordEmpty").classList.remove("hidden"); return; }
+
+        const list = $("ordList");
+        orders.forEach((o) => {
+          const card = document.createElement("div");
+          card.className = "bg-white border border-slate-200 rounded-2xl p-5";
+          card.innerHTML = `
+            <div class="flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <div class="font-extrabold text-navy">${jlEsc(o.orderNumber || o.id)}</div>
+                <div class="text-[12px] text-slate-400">${fmtDate(o.placedAt)} · ${o.itemCount || 0} item(s)</div>
+              </div>
+              <div class="text-right">
+                <div class="text-lg font-extrabold text-navy">${jlInr(o.grandTotal)}</div>
+                <div class="mt-1">${badge(o.status)}</div>
+              </div>
+            </div>
+            <button type="button" class="mt-3 text-[13px] text-brand font-semibold">View items ▾</button>
+            <div class="detail" style="display:none" data-open="0"></div>`;
+          const btn = card.querySelector("button");
+          const wrap = card.querySelector(".detail");
+          btn.addEventListener("click", () => toggleDetail(o.id, wrap, btn));
+          list.appendChild(card);
+        });
+      } catch (err) {
+        $("ordLoading").classList.add("hidden");
+        if (err.status === 401) { location.replace("login.html?next=my-orders.html"); return; }
+        $("ordEmpty").classList.remove("hidden");
+        $("ordEmpty").querySelector("p").textContent = err.message || "Could not load your orders.";
+      }
+    })();
+  })();
+</script>
+</body>
+</html>

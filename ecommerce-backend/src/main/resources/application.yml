@@ -101,6 +101,13 @@ management:
     health:
       probes:
         enabled: true
+  health:
+    # Redis is optional (only used for OTP/verification). Without a Redis
+    # instance its health check fails and drags /actuator/health to DOWN,
+    # which makes Render treat the service as unhealthy. Disable it here;
+    # re-enable (set true) once a Redis instance is configured.
+    redis:
+      enabled: ${MANAGEMENT_HEALTH_REDIS_ENABLED:false}
 
 logging:
   level:

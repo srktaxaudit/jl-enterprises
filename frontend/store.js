@@ -26,6 +26,94 @@ const JL_CAT_EMOJI = {
   "washing-machines": "🌀", "home-theatre": "🔊", "kitchen": "🍳", "furniture": "🛋️",
 };
 
+/* ── Customer authentication (storefront) ─────────────────────────────
+   Separate token store from the admin panel (admin.js uses jl_access) so a
+   customer session never collides with a staff session. Bearer tokens only
+   — no cookies — matching the backend CORS config (allowCredentials=false). */
+const JL_CTOK = "jl_cust_access", JL_CREFRESH = "jl_cust_refresh", JL_CUSER = "jl_cust_user";
+
+/** Authenticated JSON call. Sends the customer bearer token when present.
+    Used for both auth (no token yet) and authed calls; unwraps the envelope. */
+async function jlAuthApi(path, body, method) {
+  const tok = localStorage.getItem(JL_CTOK);
+  const res = await fetch(JL_API_BASE + path, {
+    method: method || (body ? "POST" : "GET"),
+    headers: {
+      "Content-Type": "application/json",
+      ...(tok ? { Authorization: "Bearer " + tok } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  let json = null;
+  try { json = await res.json(); } catch (_) { /* empty */ }
+  if (res.status === 401) JLCustomer.logout();   // token expired/invalid
+  if (!res.ok || (json && json.success === false)) {
+    throw { status: res.status, message: (json && json.message) || "Request failed" };
+  }
+  return json ? json.data : null;
+}
+
+const JLCustomer = {
+  token: () => localStorage.getItem(JL_CTOK),
+  isLoggedIn: () => !!localStorage.getItem(JL_CTOK),
+  user: () => { try { return JSON.parse(localStorage.getItem(JL_CUSER) || "null"); } catch { return null; } },
+  _save(auth) {
+    if (!auth || !auth.accessToken) return;
+    localStorage.setItem(JL_CTOK, auth.accessToken);
+    if (auth.refreshToken) localStorage.setItem(JL_CREFRESH, auth.refreshToken);
+    localStorage.setItem(JL_CUSER, JSON.stringify(auth.user || {}));
+  },
+  async register({ email, password, firstName, lastName, phone }) {
+    const d = await jlAuthApi("/api/v1/auth/register", { email, password, firstName, lastName, phone });
+    this._save(d); return d;
+  },
+  async login(email, password, rememberMe) {
+    const d = await jlAuthApi("/api/v1/auth/login", { email, password, rememberMe: !!rememberMe });
+    this._save(d); return d;
+  },
+  logout() {
+    localStorage.removeItem(JL_CTOK);
+    localStorage.removeItem(JL_CREFRESH);
+    localStorage.removeItem(JL_CUSER);
+  },
+};
+
+/* ── Checkout helpers (place a real order from the localStorage cart) ──── */
+const JLCheckout = {
+  /** Mirror the localStorage cart into the backend cart. Clears any stale
+      backend lines first, then adds each item. Returns {added, failed:[{name,reason}]}. */
+  async syncCart(cart) {
+    await jlAuthApi("/api/v1/cart", null, "DELETE").catch(() => { /* empty cart is fine */ });
+    let added = 0; const failed = [];
+    for (const it of cart) {
+      try {
+        await jlAuthApi("/api/v1/cart/items", { productId: it.id, quantity: it.qty });
+        added++;
+      } catch (e) {
+        failed.push({ name: it.name || it.id, reason: e.message || "could not be added" });
+      }
+    }
+    return { added, failed };
+  },
+  /** Create a shipping address (type BOTH covers shipping + billing). Returns AddressDto. */
+  addAddress(a) {
+    return jlAuthApi("/api/v1/addresses", {
+      type: "BOTH",
+      fullName: a.fullName, phone: a.phone,
+      line1: a.line1, line2: a.line2 || "",
+      city: a.city, state: a.state || "",
+      postalCode: a.postalCode, country: a.country || "India",
+      defaultAddress: true,
+    });
+  },
+  /** Place a Cash-on-Delivery order from the current backend cart. Returns OrderDto. */
+  placeOrder(shippingAddressId, notes) {
+    return jlAuthApi("/api/v1/orders", { shippingAddressId, paymentMethod: "COD", notes: notes || "" });
+  },
+  myOrders: () => jlAuthApi("/api/v1/orders?size=50&sort=placedAt,desc"),
+  order: (id) => jlAuthApi("/api/v1/orders/" + encodeURIComponent(id)),
+};
+
 const JLStore = {
   /** PageResponse of ProductSummaryDto. Optional search / category / featured filters. */
   products: (opts = {}) => {

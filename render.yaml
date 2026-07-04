@@ -27,7 +27,7 @@ services:
     rootDir: ecommerce-backend
     dockerfilePath: ./Dockerfile
     plan: free
-    healthCheckPath: /actuator/health
+    healthCheckPath: /actuator/health/liveness   # liveness only — not tied to DB/Redis
     envVars:
       # ── Supabase Postgres (Session pooler) — fill these from the dashboard ──
       - key: DB_URL

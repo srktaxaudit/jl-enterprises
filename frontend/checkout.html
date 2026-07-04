@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Checkout — JL Enterprises</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          navy: { DEFAULT: "#0b2447", 600: "#19376d" },
+          brand: { DEFAULT: "#576cbc", sky: "#a5d7e8" },
+          orange: { DEFAULT: "#f97316", 600: "#ea580c" },
+          amber: { DEFAULT: "#fbbf24" },
+        },
+        boxShadow: { card: "0 12px 30px rgba(15,23,42,.12)" },
+      },
+    },
+  };
+</script>
+<link rel="stylesheet" href="style.css" />
+<style>
+  .no-scrollbar::-webkit-scrollbar { display:none; }
+  .no-scrollbar { -ms-overflow-style:none; scrollbar-width:none; }
+  .co-input { width:100%; border:1px solid #e2e8f0; border-radius:10px; padding:10px 12px; font-size:14px; outline:none; color:#334155; }
+  .co-input:focus { border-color:#576cbc; box-shadow:0 0 0 3px rgba(87,108,188,.15); }
+  .co-label { display:block; font-size:12.5px; font-weight:600; color:#475569; margin:0 0 5px; }
+  .co-invalid { border-color:#dc2626 !important; }
+</style>
+</head>
+<body class="text-slate-800">
+
+<!-- ANNOUNCEMENT BAR -->
+<div class="bg-navy text-white text-center text-[13px] py-1.5 px-3">
+  🚚 Free door delivery across <b class="text-amber">Tamil Nadu</b> · 💳 Easy EMI &amp; Cash on Delivery · 🔧 Doorstep service &amp; AMC
+</div>
+
+<!-- HEADER (same design on every page) -->
+<header class="bg-white border-b border-slate-200 sticky top-0 z-40">
+  <div class="max-w-[1180px] mx-auto px-5 flex items-center gap-5 py-3">
+    <a href="index.html" class="flex items-center gap-2.5 shrink-0">
+      <div class="w-12 h-10 rounded-lg bg-gradient-to-br from-navy to-brand text-white font-extrabold flex items-center justify-center text-lg">JL</div>
+      <div class="leading-tight hidden sm:block">
+        <div class="font-extrabold text-navy">JL ENTERPRISES</div>
+        <div class="text-[10px] font-semibold text-slate-400 tracking-wider">HOME APPLIANCES · THOOTHUKUDI</div>
+      </div>
+    </a>
+    <form action="index.html" method="get" class="flex-1 flex bg-slate-100 border border-slate-200 rounded-full overflow-hidden">
+      <input name="q" autocomplete="off" class="flex-1 bg-transparent px-4 py-2.5 text-sm outline-none text-slate-600" placeholder="Search for AC, TV, Fridge, Washing Machine, Furniture…" />
+      <button type="submit" class="bg-navy text-white px-5 flex items-center font-semibold text-sm">Search</button>
+    </form>
+    <nav class="flex items-center gap-4 text-slate-600">
+      <a href="my-orders.html" class="flex flex-col items-center text-[11px]"><span class="text-xl">📦</span>My Orders</a>
+      <a href="cart.html" class="relative flex flex-col items-center text-[11px] text-brand font-semibold">
+        <span class="text-xl">🛒</span>Cart
+        <span id="cartBadge" class="hidden absolute -top-1.5 -right-2 bg-orange text-white text-[11px] font-bold w-[18px] h-[18px] rounded-full items-center justify-center">0</span>
+      </a>
+    </nav>
+  </div>
+  <nav class="bg-navy-600">
+    <div class="max-w-[1180px] mx-auto px-5 flex items-center gap-1 overflow-x-auto no-scrollbar">
+      <a href="index.html" class="bg-orange text-white px-4 py-2.5 text-sm font-bold whitespace-nowrap">☰ All</a>
+      <a href="air-conditioners.html" class="text-blue-100/90 hover:text-white px-4 py-2.5 text-sm whitespace-nowrap border-b-[3px] border-transparent hover:border-orange">Air Conditioners</a>
+      <a href="televisions.html" class="text-blue-100/90 hover:text-white px-4 py-2.5 text-sm whitespace-nowrap border-b-[3px] border-transparent hover:border-orange">Televisions</a>
+      <a href="refrigerators.html" class="text-blue-100/90 hover:text-white px-4 py-2.5 text-sm whitespace-nowrap border-b-[3px] border-transparent hover:border-orange">Refrigerators</a>
+      <a href="washing-machines.html" class="text-blue-100/90 hover:text-white px-4 py-2.5 text-sm whitespace-nowrap border-b-[3px] border-transparent hover:border-orange">Washing Machines</a>
+      <a href="home-theatre.html" class="text-blue-100/90 hover:text-white px-4 py-2.5 text-sm whitespace-nowrap border-b-[3px] border-transparent hover:border-orange">Home Theatre</a>
+      <a href="kitchen.html" class="text-blue-100/90 hover:text-white px-4 py-2.5 text-sm whitespace-nowrap border-b-[3px] border-transparent hover:border-orange">Kitchen &amp; Stove</a>
+      <a href="furniture.html" class="text-blue-100/90 hover:text-white px-4 py-2.5 text-sm whitespace-nowrap border-b-[3px] border-transparent hover:border-orange">Furniture</a>
+    </div>
+  </nav>
+</header>
+
+<main class="min-h-[60vh]">
+<div class="max-w-[1180px] mx-auto px-5">
+
+  <h2 class="text-2xl text-navy font-bold mt-6 mb-4">🧾 Checkout</h2>
+
+  <!-- EMPTY CART -->
+  <div id="coEmpty" class="hidden text-center py-16">
+    <div class="text-6xl mb-3">🛒</div>
+    <p class="text-slate-500 mb-5">Your cart is empty — nothing to check out.</p>
+    <a href="index.html" class="bg-navy text-white px-6 py-2.5 rounded-full font-semibold text-sm">Browse Products</a>
+  </div>
+
+  <!-- CHECKOUT LAYOUT -->
+  <div id="coLayout" class="hidden grid md:grid-cols-[1fr_340px] gap-5 mb-10">
+
+    <!-- LEFT: delivery details + payment -->
+    <div class="space-y-5">
+      <div class="bg-white border border-slate-200 rounded-2xl p-5">
+        <h3 class="text-navy font-semibold mb-4">📍 Delivery Address</h3>
+        <form id="coForm" novalidate class="grid sm:grid-cols-2 gap-3.5">
+          <div>
+            <label class="co-label" for="coName">Full Name *</label>
+            <input id="coName" class="co-input" required placeholder="Recipient name" />
+          </div>
+          <div>
+            <label class="co-label" for="coPhone">Mobile Number *</label>
+            <input id="coPhone" class="co-input" required inputmode="numeric" maxlength="13" placeholder="10-digit mobile" />
+          </div>
+          <div class="sm:col-span-2">
+            <label class="co-label" for="coLine1">Address (House no, street, area) *</label>
+            <input id="coLine1" class="co-input" required placeholder="Door no, street, area" />
+          </div>
+          <div class="sm:col-span-2">
+            <label class="co-label" for="coLine2">Landmark / Line 2</label>
+            <input id="coLine2" class="co-input" placeholder="Optional" />
+          </div>
+          <div>
+            <label class="co-label" for="coCity">City / Town *</label>
+            <input id="coCity" class="co-input" required placeholder="e.g. Thoothukudi" />
+          </div>
+          <div>
+            <label class="co-label" for="coState">State</label>
+            <input id="coState" class="co-input" value="Tamil Nadu" />
+          </div>
+          <div>
+            <label class="co-label" for="coPin">Pincode *</label>
+            <input id="coPin" class="co-input" required inputmode="numeric" maxlength="6" placeholder="6-digit pincode" />
+          </div>
+          <div class="sm:col-span-2">
+            <label class="co-label" for="coNotes">Order Notes</label>
+            <input id="coNotes" class="co-input" placeholder="Any delivery instructions (optional)" />
+          </div>
+        </form>
+      </div>
+
+      <div class="bg-white border border-slate-200 rounded-2xl p-5">
+        <h3 class="text-navy font-semibold mb-3">💳 Payment Method</h3>
+        <label class="flex items-center gap-3 border border-brand bg-brand/5 rounded-xl px-4 py-3 cursor-pointer">
+          <input type="radio" name="pay" value="COD" checked class="accent-brand" />
+          <span class="text-xl">💵</span>
+          <span><b class="text-navy">Cash on Delivery</b><br><span class="text-[12px] text-slate-500">Pay when your order arrives</span></span>
+        </label>
+        <label class="flex items-center gap-3 border border-slate-200 rounded-xl px-4 py-3 mt-2.5 opacity-50 cursor-not-allowed">
+          <input type="radio" name="pay" value="ONLINE" disabled class="accent-brand" />
+          <span class="text-xl">🔒</span>
+          <span><b class="text-navy">Online Payment (UPI / Card)</b><br><span class="text-[12px] text-slate-500">Coming soon</span></span>
+        </label>
+      </div>
+    </div>
+
+    <!-- RIGHT: order summary -->
+    <div>
+      <div class="bg-white border border-slate-200 rounded-2xl p-5 sticky top-24">
+        <h3 class="text-navy font-semibold mb-3">Order Summary</h3>
+        <div id="coItems" class="space-y-3 mb-4 max-h-[300px] overflow-y-auto no-scrollbar"></div>
+        <div class="border-t border-slate-100 pt-3 space-y-2 text-sm">
+          <div class="flex justify-between"><span class="text-slate-500">Items</span><span id="coCount">0</span></div>
+          <div class="flex justify-between"><span class="text-slate-500">Subtotal</span><span id="coSubtotal">₹0</span></div>
+          <div class="flex justify-between"><span class="text-slate-500">Delivery</span><span class="text-green-600 font-semibold">FREE</span></div>
+          <div class="flex justify-between text-lg font-extrabold text-navy pt-1 border-t border-slate-100 mt-1"><span>Total</span><span id="coTotal">₹0</span></div>
+        </div>
+        <p id="coError" class="hidden text-red-600 text-[13px] font-semibold mt-3"></p>
+        <button id="coPlace" type="button" class="btn-primary" style="margin-top:14px">Place Order ✅</button>
+        <p class="text-[11.5px] text-slate-400 text-center mt-2.5">By placing this order you agree to our <a href="terms.html" class="text-brand">Terms</a>.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUCCESS -->
+  <div id="coDone" class="hidden text-center bg-white border border-slate-200 rounded-3xl max-w-lg mx-auto my-10 p-9">
+    <div class="text-6xl mb-2">🎉</div>
+    <h3 class="text-2xl font-bold text-navy mb-1">Order Placed Successfully!</h3>
+    <p class="text-slate-500">Thank you for shopping with JL Enterprises.</p>
+    <div class="bg-slate-50 rounded-2xl p-4 my-5 inline-block text-left">
+      <div class="text-[12px] text-slate-400 uppercase tracking-wide">Order Number</div>
+      <div id="coOrderNo" class="text-xl font-extrabold text-navy">—</div>
+      <div class="text-[13px] text-slate-500 mt-1">Total: <b id="coOrderTotal">—</b> · Cash on Delivery</div>
+    </div>
+    <p class="text-[13px] text-slate-500 mb-5">Our team will call you shortly to confirm delivery.</p>
+    <div class="flex gap-3 justify-center flex-wrap">
+      <a href="my-orders.html" class="bg-navy text-white px-6 py-2.5 rounded-full font-semibold text-sm">📦 View My Orders</a>
+      <a href="index.html" class="border border-slate-300 text-slate-600 px-6 py-2.5 rounded-full font-semibold text-sm">Continue Shopping</a>
+    </div>
+  </div>
+
+</div>
+</main>
+
+<!-- FOOTER -->
+<footer class="footer bg-navy text-slate-300 mt-9 pt-10">
+  <div class="footer-container max-w-[1180px] mx-auto px-5 grid grid-cols-2 md:grid-cols-4 gap-7">
+    <div>
+      <div class="w-14 h-12 rounded-lg bg-white/10 text-white font-extrabold flex items-center justify-center text-xl mb-1">JL</div>
+      <h3>JL ENTERPRISES</h3>
+      <a href="shop-location.html" class="footer-address">185G/1B, Palai Road, Chidambaramnagar,<br>Thoothukudi, Tamil Nadu 628008</a>
+    </div>
+    <div class="footer-column">
+      <h3>📞 Call Us</h3>
+      <a href="tel:+919514970111"><span class="tag">Sales Team</span>95149 70111</a>
+      <a href="tel:+917373970666"><span class="tag">Owner / Enquiries</span>73739 70666</a>
+    </div>
+    <div class="footer-column">
+      <h3>Help</h3>
+      <a href="track-order.html">Track Order</a>
+      <a href="my-orders.html">My Orders</a>
+      <a href="cart.html">My Cart</a>
+    </div>
+    <div class="footer-column">
+      <h3>Company</h3>
+      <a href="about.html">About JL Enterprises</a>
+      <a href="terms.html">Terms &amp; Conditions</a>
+      <a href="privacy.html">Privacy Policy</a>
+    </div>
+  </div>
+  <div class="border-t border-white/10 mt-7 py-4 text-center text-[13px] text-slate-500">© 2026 JL Enterprises, Thoothukudi</div>
+</footer>
+
+<script src="store.js"></script>
+<script src="script.js"></script>
+<script>
+  (function () {
+    // 1) Login gate — bounce to login with a return path
+    if (!JLCustomer.isLoggedIn()) {
+      location.replace("login.html?next=checkout.html");
+      return;
+    }
+
+    const $ = (id) => document.getElementById(id);
+    const cart = getCart();
+    const layout = $("coLayout"), empty = $("coEmpty"), done = $("coDone");
+
+    // 2) Empty cart guard
+    if (!cart.length) { empty.classList.remove("hidden"); return; }
+    layout.classList.remove("hidden");
+    layout.classList.add("grid");
+
+    // 3) Render order summary
+    const subtotal = cart.reduce((s, it) => s + it.price * it.qty, 0);
+    const count = cart.reduce((s, it) => s + it.qty, 0);
+    $("coItems").innerHTML = cart.map((it) => `
+      <div class="flex items-center gap-3">
+        <div class="w-11 h-11 rounded-lg bg-slate-100 flex items-center justify-center text-xl shrink-0">${it.emoji || "📦"}</div>
+        <div class="flex-1 min-w-0">
+          <div class="text-[13px] font-semibold text-navy leading-tight truncate">${jlEsc(it.name)}</div>
+          <div class="text-[12px] text-slate-400">Qty ${it.qty} × ${jlInr(it.price)}</div>
+        </div>
+        <div class="text-[13px] font-bold text-navy">${jlInr(it.price * it.qty)}</div>
+      </div>`).join("");
+    $("coCount").textContent = count;
+    $("coSubtotal").textContent = jlInr(subtotal);
+    $("coTotal").textContent = jlInr(subtotal);
+
+    // 4) Pre-fill name/phone from the account, address hint from signup
+    const u = JLCustomer.user() || {};
+    const fullName = [u.firstName, u.lastName].filter(Boolean).join(" ").trim();
+    if (fullName) $("coName").value = fullName;
+    if (u.phone) $("coPhone").value = String(u.phone).replace(/^\+?91/, "");
+    const pref = localStorage.getItem("jl_pref_address");
+    if (pref) $("coLine1").value = pref;
+
+    function showError(msg) {
+      const box = $("coError");
+      box.textContent = msg;
+      box.classList.toggle("hidden", !msg);
+    }
+    function bad(el) { el.classList.add("co-invalid"); el.focus(); }
+    function clearBad() { document.querySelectorAll(".co-invalid").forEach((e) => e.classList.remove("co-invalid")); }
+
+    // 5) Place order: sync cart → create address → place COD order
+    $("coPlace").addEventListener("click", async () => {
+      clearBad(); showError("");
+      const name = $("coName").value.trim();
+      const phoneDigits = $("coPhone").value.replace(/\D/g, "").replace(/^91(?=\d{10}$)/, "");
+      const line1 = $("coLine1").value.trim();
+      const city = $("coCity").value.trim();
+      const pin = $("coPin").value.replace(/\D/g, "");
+
+      if (!name) return bad($("coName"));
+      if (!/^[6-9]\d{9}$/.test(phoneDigits)) { showError("Enter a valid 10-digit mobile number."); return bad($("coPhone")); }
+      if (!line1) return bad($("coLine1"));
+      if (!city) return bad($("coCity"));
+      if (!/^\d{6}$/.test(pin)) { showError("Enter a valid 6-digit pincode."); return bad($("coPin")); }
+
+      const btn = $("coPlace");
+      btn.disabled = true; const old = btn.textContent; btn.textContent = "Placing order…";
+      try {
+        const sync = await JLCheckout.syncCart(cart);
+        if (sync.added === 0) {
+          throw { message: "None of your items could be added — they may be out of stock. Please review your cart." };
+        }
+        const addr = await JLCheckout.addAddress({
+          fullName: name, phone: "+91" + phoneDigits,
+          line1, line2: $("coLine2").value.trim(),
+          city, state: $("coState").value.trim() || "Tamil Nadu",
+          postalCode: pin, country: "India",
+        });
+        const order = await JLCheckout.placeOrder(addr.id, $("coNotes").value.trim());
+
+        // Success — clear the local cart and show confirmation
+        saveCart([]);
+        localStorage.removeItem("jl_pref_address");
+        layout.classList.add("hidden"); layout.classList.remove("grid");
+        $("coOrderNo").textContent = order.orderNumber || order.id;
+        $("coOrderTotal").textContent = jlInr(order.grandTotal || subtotal);
+        done.classList.remove("hidden");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+
+        if (sync.failed.length) {
+          // Some lines couldn't be ordered — surface it after the fact
+          showError("");
+        }
+      } catch (err) {
+        btn.disabled = false; btn.textContent = old;
+        if (err.status === 401) { location.replace("login.html?next=checkout.html"); return; }
+        showError(err.message || "Could not place your order. Please try again.");
+      }
+    });
+  })();
+</script>
+</body>
+</html>

@@ -257,9 +257,13 @@ function initForms() {
     });
   }
 
+  // Pages that wire sign up / login to the real backend set this flag
+  // (see signup.html / login.html) so the demo handlers below stand down.
+  const backendAuth = window.JL_BACKEND_AUTH === true;
+
   // — Sign Up form —
   const signupForm = document.getElementById("signupForm");
-  if (signupForm) {
+  if (signupForm && !backendAuth) {
     signupForm.addEventListener("submit", (e) => {
       e.preventDefault();
       clearInvalid(signupForm);
@@ -290,7 +294,7 @@ function initForms() {
 
   // — Login form —
   const loginForm = document.getElementById("loginForm");
-  if (loginForm) {
+  if (loginForm && !backendAuth) {
     loginForm.addEventListener("submit", (e) => {
       e.preventDefault();
       showSuccess(loginForm, "loginSuccess");
