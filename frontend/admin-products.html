@@ -55,11 +55,12 @@
           <div id="imagesHint" class="text-[13px] text-slate-400 mb-2">Save the product first — then upload images here.</div>
           <div id="imagesWrap" class="hidden">
             <div id="imageStrip" class="flex flex-wrap gap-3 mb-3"></div>
-            <div class="flex items-center gap-2 flex-wrap">
-              <input id="imageFile" type="file" accept="image/*" class="text-sm" />
-              <button type="button" id="uploadImgBtn" class="bg-brand hover:bg-navy text-white font-semibold rounded-lg px-4 py-2 text-sm">Upload image</button>
-            </div>
-            <p class="text-[12px] text-slate-400 mt-1">JPG/PNG/WebP up to 5&nbsp;MB. The ★ image is the one shown on the storefront.</p>
+            <label class="inline-flex items-center gap-2 bg-brand hover:bg-navy text-white font-semibold rounded-lg px-4 py-2 text-sm cursor-pointer">
+              📷 Choose image to upload
+              <input id="imageFile" type="file" accept="image/*" class="hidden" />
+            </label>
+            <span id="imgStatus" class="text-[13px] text-slate-500 ml-2"></span>
+            <p class="text-[12px] text-slate-400 mt-1">Pick a JPG/PNG/WebP (up to 5&nbsp;MB) — it uploads <b>automatically</b>. The ★ image is the one shown on the storefront. (No need to click Save for images.)</p>
           </div>
         </div>
 
@@ -151,15 +152,21 @@
     catch(e){ $("imageStrip").innerHTML = `<span class="text-[12px] text-red-600">${esc(e.message||"Could not load images")}</span>`; }
   }
 
-  $("uploadImgBtn").addEventListener("click", async ()=>{
-    const pid = $("pid").value; const f = $("imageFile").files[0];
-    if(!pid){ flash("Save the product first.", false); return; }
-    if(!f){ flash("Choose an image file.", false); return; }
-    if(f.size > 5*1024*1024){ flash("Image must be under 5 MB.", false); return; }
-    const btn = $("uploadImgBtn"); btn.disabled=true; const old=btn.textContent; btn.textContent="Uploading…";
-    try { renderImages(await jlUpload(`/api/v1/products/${pid}/images`, f)); $("imageFile").value=""; flash("Image uploaded."); }
-    catch(e){ flash(e.message||"Upload failed", false); }
-    finally { btn.disabled=false; btn.textContent=old; }
+  // Auto-upload the moment a file is chosen (no separate button to miss).
+  $("imageFile").addEventListener("change", async (ev)=>{
+    const pid = $("pid").value; const f = ev.target.files[0];
+    const status = $("imgStatus");
+    if(!pid){ flash("Save the product first.", false); ev.target.value=""; return; }
+    if(!f){ return; }
+    if(f.size > 5*1024*1024){ status.textContent="Image must be under 5 MB."; ev.target.value=""; return; }
+    status.textContent = "Uploading…";
+    try {
+      renderImages(await jlUpload(`/api/v1/products/${pid}/images`, f));
+      status.textContent = "✓ Uploaded"; flash("Image uploaded.");
+    } catch(e){
+      status.textContent = "";
+      flash(e.message || "Upload failed", false);
+    } finally { ev.target.value=""; }
   });
 
   $("imageStrip").addEventListener("click", async (ev)=>{
