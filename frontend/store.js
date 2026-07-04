@@ -191,3 +191,61 @@ function jlProductCard(p) {
       </div>
     </div>`;
 }
+
+/* ── Header login state ────────────────────────────────────────────────
+   Storefront headers are static (they always show Sign Up / Login). When a
+   customer is logged in, swap those for "My Orders" + "Logout" so they can
+   reach their orders and sign out. Runs on every page that loads store.js.
+   Only touches links INSIDE <header> — footer "Login/Sign Up" links are left
+   as-is. Handles both header variants: full (Sign Up + Login) and compact
+   (Login only, on category pages). */
+function jlLogoutAndGo(e) { if (e) e.preventDefault(); JLCustomer.logout(); location.href = "index.html"; }
+
+function jlRenderAuthNav() {
+  const header = document.querySelector("header");
+  if (!header || !JLCustomer.isLoggedIn()) return;
+  const nav = header.querySelector("nav");
+  const login = header.querySelector('a[href="login.html"]');
+  const signup = header.querySelector('a[href="signup.html"]');
+  const hasOrders = header.querySelector('a[href="my-orders.html"]');
+  const linkHTML = (emoji, label) => `<span class="text-xl">${emoji}</span>${label}`;
+
+  if (signup) {                       // full header → signup becomes "My Orders"
+    signup.setAttribute("href", "my-orders.html");
+    signup.innerHTML = linkHTML("📦", "My Orders");
+  }
+  if (login) {
+    if (signup) {                     // …and login becomes "Logout"
+      login.setAttribute("href", "#");
+      login.innerHTML = linkHTML("🚪", "Logout");
+      login.addEventListener("click", jlLogoutAndGo);
+    } else {                          // compact header (Login only): repurpose + add Logout
+      login.setAttribute("href", "my-orders.html");
+      login.innerHTML = linkHTML("📦", "My Orders");
+      const out = login.cloneNode(true);
+      out.setAttribute("href", "#");
+      out.innerHTML = linkHTML("🚪", "Logout");
+      out.addEventListener("click", jlLogoutAndGo);
+      login.parentNode.insertBefore(out, login.nextSibling);
+    }
+    return;
+  }
+  // No login/signup links (e.g. product.html) and no existing orders link:
+  // inject "My Orders" + "Logout" into the header nav, before the Cart link.
+  if (nav && !hasOrders) {
+    const cls = "flex flex-col items-center text-[11px]";
+    const cart = nav.querySelector('a[href="cart.html"]');
+    const mk = (emoji, label, href, onClick) => {
+      const a = document.createElement("a");
+      a.className = cls; a.setAttribute("href", href); a.innerHTML = linkHTML(emoji, label);
+      if (onClick) a.addEventListener("click", onClick);
+      return a;
+    };
+    const orders = mk("📦", "My Orders", "my-orders.html");
+    const out = mk("🚪", "Logout", "#", jlLogoutAndGo);
+    if (cart) { nav.insertBefore(orders, cart); nav.insertBefore(out, cart); }
+    else { nav.appendChild(orders); nav.appendChild(out); }
+  }
+}
+
+document.addEventListener("DOMContentLoaded", jlRenderAuthNav);
