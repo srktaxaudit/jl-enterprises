@@ -34,6 +34,7 @@ public class OrderMapper {
                 toSnapshotDto(o.getShippingAddress()),
                 toSnapshotDto(o.getBillingAddress()),
                 o.getNotes(), o.getPlacedAt(),
+                o.getCancelledAt(), o.getCancellationReason(), o.getReturnReason(), o.getAdminNotes(),
                 o.getItems().stream().map(this::toItemDto).toList(),
                 toPaymentDto(o.getPayment())
         );
