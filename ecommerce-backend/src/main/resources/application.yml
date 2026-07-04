@@ -16,7 +16,12 @@ spring:
     hikari:
       pool-name: jl-ecom-pool
       maximum-pool-size: ${DB_POOL_MAX:10}
-      connection-timeout: 10000
+      # Free-tier Supabase pauses when idle; the first request after a pause has
+      # to wait for the DB to wake. 30s (was 10s) prevents a cold wake-up from
+      # failing the request with a connection-timeout 500.
+      connection-timeout: ${DB_CONN_TIMEOUT:30000}
+      initialization-fail-timeout: 0     # don't crash startup if the DB is briefly waking
+      keepalive-time: 120000             # ping idle connections so they stay alive
 
   jpa:
     # ── ENTITY-DEVELOPMENT PHASE (Step 4) ──

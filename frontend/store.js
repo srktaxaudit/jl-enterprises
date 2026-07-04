@@ -32,25 +32,48 @@ const JL_CAT_EMOJI = {
    — no cookies — matching the backend CORS config (allowCredentials=false). */
 const JL_CTOK = "jl_cust_access", JL_CREFRESH = "jl_cust_refresh", JL_CUSER = "jl_cust_user";
 
+const jlSleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/** Optional hook: a page can set window.JL_ON_WAKE to show a "server waking up"
+    hint while a cold free-tier backend spins up between retries. */
+function jlNotifyWaking() { if (typeof window.JL_ON_WAKE === "function") { try { window.JL_ON_WAKE(); } catch (_) { /* noop */ } } }
+
 /** Authenticated JSON call. Sends the customer bearer token when present.
-    Used for both auth (no token yet) and authed calls; unwraps the envelope. */
+    Used for both auth (no token yet) and authed calls; unwraps the envelope.
+    Retries transient gateway/network failures (Render free-tier cold start:
+    502/503/504 or a dropped connection) — these never reached the app, so a
+    retry is safe even for non-idempotent POSTs. App-level errors are not retried. */
 async function jlAuthApi(path, body, method) {
-  const tok = localStorage.getItem(JL_CTOK);
-  const res = await fetch(JL_API_BASE + path, {
-    method: method || (body ? "POST" : "GET"),
-    headers: {
-      "Content-Type": "application/json",
-      ...(tok ? { Authorization: "Bearer " + tok } : {}),
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  let json = null;
-  try { json = await res.json(); } catch (_) { /* empty */ }
-  if (res.status === 401) JLCustomer.logout();   // token expired/invalid
-  if (!res.ok || (json && json.success === false)) {
-    throw { status: res.status, message: (json && json.message) || "Request failed" };
+  const attempts = 3;
+  for (let i = 0; i < attempts; i++) {
+    let res;
+    try {
+      const tok = localStorage.getItem(JL_CTOK);
+      res = await fetch(JL_API_BASE + path, {
+        method: method || (body ? "POST" : "GET"),
+        headers: {
+          "Content-Type": "application/json",
+          ...(tok ? { Authorization: "Bearer " + tok } : {}),
+        },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+    } catch (netErr) {
+      // fetch rejected (server booting / connection dropped) → retry
+      if (i < attempts - 1) { jlNotifyWaking(); await jlSleep(2500); continue; }
+      throw { status: 0, message: "Can't reach the server. Please check your connection and try again." };
+    }
+    // Render returns 502/503/504 while the container is still starting up
+    if ([502, 503, 504].includes(res.status) && i < attempts - 1) {
+      jlNotifyWaking(); await jlSleep(2500); continue;
+    }
+    let json = null;
+    try { json = await res.json(); } catch (_) { /* empty */ }
+    if (res.status === 401) JLCustomer.logout();   // token expired/invalid
+    if (!res.ok || (json && json.success === false)) {
+      throw { status: res.status, message: (json && json.message) || "Request failed" };
+    }
+    return json ? json.data : null;
   }
-  return json ? json.data : null;
 }
 
 const JLCustomer = {

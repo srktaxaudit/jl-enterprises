@@ -181,6 +181,8 @@
     const form = document.getElementById("signupForm");
     const btn = form.querySelector('button[type="submit"]');
     const next = new URLSearchParams(location.search).get("next");
+    // Shown while a cold free-tier backend spins up (see jlAuthApi retry)
+    window.JL_ON_WAKE = () => { if (btn.disabled) btn.textContent = "Waking up the server… please wait"; };
     // ≥8 chars incl. upper, lower, digit and special (mirrors the backend rule)
     const STRONG = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
 

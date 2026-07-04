@@ -162,6 +162,8 @@
     const form = document.getElementById("loginForm");
     const btn = form.querySelector('button[type="submit"]');
     const next = new URLSearchParams(location.search).get("next");
+    // Shown while a cold free-tier backend spins up (see jlAuthApi retry)
+    window.JL_ON_WAKE = () => { if (btn.disabled) btn.textContent = "Waking up the server… please wait"; };
 
     // Already logged in? Skip straight to the destination.
     if (JLCustomer.isLoggedIn()) location.replace(next || "index.html");
