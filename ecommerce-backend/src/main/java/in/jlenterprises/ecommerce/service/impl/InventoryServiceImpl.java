@@ -6,6 +6,8 @@ import in.jlenterprises.ecommerce.exception.ResourceNotFoundException;
 import in.jlenterprises.ecommerce.repository.InventoryRepository;
 import in.jlenterprises.ecommerce.request.inventory.InventoryUpdateRequest;
 import in.jlenterprises.ecommerce.service.InventoryService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,6 +16,8 @@ import java.util.UUID;
 
 @Service
 public class InventoryServiceImpl implements InventoryService {
+
+    private static final Logger log = LoggerFactory.getLogger(InventoryServiceImpl.class);
 
     private final InventoryRepository inventoryRepository;
 
@@ -40,7 +44,13 @@ public class InventoryServiceImpl implements InventoryService {
     @Override
     @Transactional(readOnly = true)
     public List<InventoryDto> lowStock() {
-        return inventoryRepository.findLowStock().stream().map(this::toDto).toList();
+        try {
+            return inventoryRepository.findLowStock().stream().map(this::toDto).toList();
+        } catch (Exception e) {
+            // Surface the real cause in the logs rather than a generic 500.
+            log.error("Failed to load low-stock inventory: {}", e.toString(), e);
+            throw e;
+        }
     }
 
     private Inventory getEntity(UUID productId) {
