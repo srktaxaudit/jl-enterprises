@@ -29,6 +29,29 @@ const jlTokens = {
   clear() { localStorage.removeItem(ACCESS_KEY); localStorage.removeItem(REFRESH_KEY); },
 };
 
+// ── cold-start resilience ──
+// Render's free tier sleeps when idle and takes 30–60s to wake; the first call
+// then rejects ("Failed to fetch") or returns a 502/503/504 gateway error. These
+// never reached the app, so retrying with backoff is safe even for POST /login.
+const jlSleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const JL_RETRY_DELAYS = [2000, 4000, 6000, 10000, 15000];   // ≈37s total
+function jlNotifyWaking() { if (typeof window.JL_ON_WAKE === "function") { try { window.JL_ON_WAKE(); } catch (_) { /* noop */ } } }
+
+async function jlFetchWithRetry(url, opts) {
+  for (let i = 0; i <= JL_RETRY_DELAYS.length; i++) {
+    try {
+      const res = await fetch(url, opts);
+      if ([502, 503, 504].includes(res.status) && i < JL_RETRY_DELAYS.length) {
+        jlNotifyWaking(); await jlSleep(JL_RETRY_DELAYS[i]); continue;
+      }
+      return res;
+    } catch (_) {
+      if (i < JL_RETRY_DELAYS.length) { jlNotifyWaking(); await jlSleep(JL_RETRY_DELAYS[i]); continue; }
+      throw { status: 0, message: "Can't reach the server. It may be starting up — please wait a moment and try again." };
+    }
+  }
+}
+
 /**
  * fetch() wrapper. Adds the bearer token, unwraps the ApiResponse envelope, and
  * on a 401 tries a single token refresh before giving up. Returns `data`.
@@ -43,7 +66,7 @@ async function jlApi(path, { method = "GET", body, auth = true, _retried = false
   }
   if (auth && jlTokens.access) headers["Authorization"] = "Bearer " + jlTokens.access;
 
-  const res = await fetch(JL_API_BASE + path, opts);
+  const res = await jlFetchWithRetry(JL_API_BASE + path, opts);
 
   if (res.status === 401 && auth && !_retried && jlTokens.refresh) {
     if (await jlTryRefresh()) {
