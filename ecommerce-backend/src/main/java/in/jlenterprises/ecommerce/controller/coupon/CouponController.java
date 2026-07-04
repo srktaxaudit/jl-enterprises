@@ -46,6 +46,12 @@ public class CouponController {
         return ApiResponse.success(couponService.list());
     }
 
+    @GetMapping("/active")
+    @Operation(summary = "List active coupons customers can use (public)")
+    public ApiResponse<List<CouponDto>> active() {
+        return ApiResponse.success(couponService.activePublic());
+    }
+
     @PostMapping
     @PreAuthorize(STAFF)
     @Operation(summary = "Create a coupon")

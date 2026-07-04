@@ -133,9 +133,15 @@ const JLCheckout = {
     });
   },
   /** Place an order from the current backend cart. method = "COD" | "RAZORPAY". Returns OrderDto. */
-  placeOrder(shippingAddressId, notes, method) {
+  placeOrder(shippingAddressId, notes, method, couponCode) {
     return jlAuthApi("/api/v1/orders",
-      { shippingAddressId, paymentMethod: method || "COD", notes: notes || "" });
+      { shippingAddressId, paymentMethod: method || "COD", notes: notes || "", couponCode: couponCode || null });
+  },
+  /** Active coupons the customer can use (public). */
+  activeCoupons: () => jlPublicApi("/api/v1/coupons/active"),
+  /** Validate a coupon for the logged-in customer; returns {code, discount} or throws. */
+  validateCoupon(code, subtotal) {
+    return jlAuthApi("/api/v1/coupons/validate?code=" + encodeURIComponent(code) + "&subtotal=" + subtotal);
   },
   /** Start an online payment. Returns PaymentInitResponse
       { providerReference (razorpay order id), clientData (key id), amount, currency, ... }. */

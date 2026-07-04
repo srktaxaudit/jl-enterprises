@@ -45,6 +45,19 @@ public class CouponServiceImpl implements CouponService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<CouponDto> activePublic() {
+        Instant now = Instant.now();
+        return couponRepository.findAll().stream()
+                .filter(Coupon::isActive)
+                .filter(c -> c.getStartsAt() == null || !now.isBefore(c.getStartsAt()))
+                .filter(c -> c.getExpiresAt() == null || !now.isAfter(c.getExpiresAt()))
+                .filter(c -> c.getUsageLimit() == null || c.getUsedCount() < c.getUsageLimit())
+                .map(couponMapper::toDto)
+                .toList();
+    }
+
+    @Override
     @Transactional
     public CouponDto create(CouponRequest request) {
         String code = request.code().trim().toUpperCase();

@@ -15,6 +15,9 @@ public interface CouponService {
 
     List<CouponDto> list();
 
+    /** Public: active, in-window, not-exhausted coupons the storefront can advertise. */
+    List<CouponDto> activePublic();
+
     CouponDto create(CouponRequest request);
 
     CouponDto update(UUID id, CouponRequest request);
