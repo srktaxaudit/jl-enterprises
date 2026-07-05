@@ -47,7 +47,7 @@
     animation:jlui-fade .15s ease;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
   .jlui-modal{background:#fff;border-radius:18px;max-width:440px;width:100%;padding:24px;
     box-shadow:0 24px 60px rgba(2,6,23,.4);animation:jlui-pop .18s ease}
-  .jlui-modal-ic{font-size:34px;line-height:1;margin-bottom:6px}
+  .jlui-modal-ic{display:none;font-size:34px;line-height:1;margin-bottom:6px}
   .jlui-modal-title{font-size:18px;font-weight:700;color:var(--jlui-navy);margin:0 0 6px}
   .jlui-modal-msg{font-size:14px;color:#475569;line-height:1.5;white-space:pre-line}
   .jlui-modal-in{width:100%;margin-top:14px;border:1px solid #cbd5e1;border-radius:9px;padding:10px 12px;font-size:14px;outline:none;font-family:inherit}
