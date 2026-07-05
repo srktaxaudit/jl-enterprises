@@ -117,8 +117,22 @@
     o.querySelector(".jlui-overlay-msg").textContent = msg || "Please wait…";
     return o;
   }
+  var busyHideTimer = null;
+  function busyTeardown() {
+    busyHideTimer = null;
+    if (busyCount > 0 || !busyEl) return;   // a new request revived the overlay
+    document.removeEventListener("keydown", busyKeyHandler, true);
+    busyKeyHandler = null;
+    busyEl.remove(); busyEl = null;
+    document.documentElement.style.overflow = "";
+    if (busyPrevFocus && busyPrevFocus.focus) { try { busyPrevFocus.focus(); } catch (_) {} }
+    busyPrevFocus = null;
+  }
   var jlBusy = {
     show: function (msg) {
+      // Cancel any pending teardown so back-to-back requests keep ONE continuous
+      // overlay (no flicker / no show-hide-show across sequential or parallel calls).
+      if (busyHideTimer) { clearTimeout(busyHideTimer); busyHideTimer = null; }
       busyCount++;
       if (!busyEl) {
         busyPrevFocus = document.activeElement;
@@ -140,19 +154,20 @@
     text: function (msg) { if (busyEl) busyEl.querySelector(".jlui-overlay-msg").textContent = msg; },
     hide: function () {
       busyCount = Math.max(0, busyCount - 1);
-      if (busyCount === 0 && busyEl) {
-        document.removeEventListener("keydown", busyKeyHandler, true);
-        busyKeyHandler = null;
-        busyEl.remove(); busyEl = null;
-        document.documentElement.style.overflow = "";
-        if (busyPrevFocus && busyPrevFocus.focus) { try { busyPrevFocus.focus(); } catch (_) {} }
-        busyPrevFocus = null;
+      // Defer teardown by a short grace period; if another request starts within it,
+      // show() cancels the timer and the overlay stays up. This aggregates a burst of
+      // requests into a single overlay that appears once and disappears once.
+      if (busyCount === 0 && busyEl && !busyHideTimer) {
+        busyHideTimer = setTimeout(busyTeardown, 140);
       }
     },
-    hideAll: function () { busyCount = 1; jlBusy.hide(); },
+    hideAll: function () { busyCount = 0; if (busyHideTimer) { clearTimeout(busyHideTimer); busyHideTimer = null; } busyTeardown(); },
   };
   window.jlBusy = jlBusy;
 
+  /** Run a promise/thunk under ONE shared page overlay. Ideal for initial page load:
+      call every data-fetch inside `fn` (in parallel or sequence) — the overlay shows
+      once and hides once, after all of them settle (resolve OR reject). */
   window.jlWithBusy = function (fnOrPromise, msg) {
     jlBusy.show(msg);
     var p = typeof fnOrPromise === "function" ? Promise.resolve().then(fnOrPromise) : Promise.resolve(fnOrPromise);
@@ -165,6 +180,34 @@
     return '<span class="jlui-ring" style="width:' + size + 'px;height:' + size + 'px;border-width:' +
       Math.max(2, Math.round(size / 8)) + 'px" role="status" aria-label="' +
       String(label).replace(/"/g, "&quot;") + '"></span>';
+  };
+
+  /** Toggle a button into a loading state: disables it (prevents duplicate clicks),
+      locks its width and shows a small spinner (in the button's own text colour).
+      jlBtn(btn,false) restores it. Used for background create/update/delete actions
+      so the whole page isn't blocked. */
+  window.jlBtn = function (btn, loading, msg) {
+    if (!btn) return;
+    if (loading) {
+      if (btn.__jlBtn) return;
+      btn.__jlBtn = { html: btn.innerHTML, disabled: btn.disabled, minW: btn.style.minWidth };
+      btn.style.minWidth = btn.offsetWidth + "px";
+      btn.disabled = true;
+      btn.setAttribute("aria-busy", "true");
+      btn.innerHTML = '<span class="jlui-ring" style="width:16px;height:16px;border-width:2px;border-color:currentColor;border-right-color:transparent"></span>' +
+        (msg ? '<span style="margin-left:8px">' + String(msg).replace(/[&<>]/g, "") + "</span>" : "");
+    } else {
+      var s = btn.__jlBtn; if (!s) return;
+      btn.innerHTML = s.html; btn.disabled = s.disabled; btn.style.minWidth = s.minW;
+      btn.removeAttribute("aria-busy"); btn.__jlBtn = null;
+    }
+  };
+
+  /** Run an async action with a button loading indicator (no page overlay). Disables
+      the button for the duration (double-submit safe) and restores it after. */
+  window.jlSubmit = function (btn, thunk, msg) {
+    jlBtn(btn, true, msg);
+    return Promise.resolve().then(thunk).finally(function () { jlBtn(btn, false); });
   };
 
   // ── toasts ──────────────────────────────────────────────────────────────

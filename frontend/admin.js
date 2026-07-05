@@ -67,12 +67,12 @@ async function jlFetchWithRetry(url, opts) {
  * Throws { status, message } on failure.
  */
 async function jlApi(path, { method = "GET", body, auth = true, blocking, busyMessage, _retried = false } = {}) {
-  // Every admin API call shows the shared blocking overlay (consistent across the
-  // whole panel: page init, fetch, search, filter, pagination, create/update/delete).
-  // It prevents duplicate requests and interaction until the operation completes.
-  // Only the initial call blocks (not the internal 401→refresh retry); jlBusy is
-  // reference-counted so concurrent calls share one overlay. Pass blocking:false to opt out.
-  const block = (blocking != null ? blocking : true) && !_retried && typeof jlBusy !== "undefined";
+  // The page overlay is OPT-IN (pass blocking:true) — not automatic per call. Initial
+  // page loads wrap all their fetches in one jlWithBusy() so a single overlay covers
+  // them; background ops (search, filter, pagination, create/update/delete) use local
+  // button/table loaders instead of blocking the whole page. Never blocks the internal
+  // 401→refresh retry; jlBusy is reference-counted + debounced so bursts share one overlay.
+  const block = blocking === true && !_retried && typeof jlBusy !== "undefined";
   if (block) jlBusy.show(busyMessage || "Please wait…");
   try {
     const headers = {};
