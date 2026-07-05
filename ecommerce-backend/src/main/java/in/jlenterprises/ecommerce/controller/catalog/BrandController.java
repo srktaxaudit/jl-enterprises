@@ -27,7 +27,7 @@ import java.util.UUID;
 @Tag(name = "Brands", description = "Product brands (public reads, admin writes)")
 public class BrandController {
 
-    private static final String STAFF = "hasAnyRole('ADMIN','SUPER_ADMIN','MANAGER')";
+    private static final String STAFF = "hasAnyRole('ADMIN','SUPER_ADMIN','MANAGER','PRODUCT_MANAGER')";
 
     private final BrandService brandService;
 

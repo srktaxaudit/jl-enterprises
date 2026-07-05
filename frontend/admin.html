@@ -105,6 +105,7 @@
   // ── Auth guard: redirect to login if not authenticated, then show identity ──
   jlWireLogout("#logoutBtn");
   jlRequireAdmin().then((admin) => {
+    renderNav(admin);
     const badge = document.getElementById("adminBadge");
     if (badge && admin) {
       const name = jlDisplayName(admin);
@@ -119,42 +120,58 @@
   const inr = (n) => "₹" + Math.round(n).toLocaleString("en-IN");
 
   // ── Sidebar nav (mirrors AdminSidebar.tsx) ──
+  // roles = bare role names that may see the item; empty/absent = all staff.
+  // adminOnly = only SUPER_ADMIN/ADMIN.
   const NAV = [
     { group:"Overview", items:[
       { label:"Dashboard", emoji:"📊", on:true, href:"admin.html" },
-      { label:"Orders", emoji:"📥", href:"admin-orders.html" },
+      { label:"Orders", emoji:"📥", href:"admin-orders.html", roles:["ORDER_MANAGER","CUSTOMER_SUPPORT"] },
     ]},
     { group:"Catalog & Sales", items:[
-      { label:"Products", emoji:"📦", href:"admin-products.html" },
-      { label:"Inventory", emoji:"🗂️", href:"admin-inventory.html" },
-      { label:"Offers & Deals", emoji:"🏷️", href:"admin-offers.html" },
+      { label:"Products", emoji:"📦", href:"admin-products.html", roles:["PRODUCT_MANAGER"] },
+      { label:"Inventory", emoji:"🗂️", href:"admin-inventory.html", roles:["INVENTORY_MANAGER"] },
+      { label:"Offers & Deals", emoji:"🏷️", href:"admin-offers.html", roles:["MARKETING_MANAGER"] },
     ]},
     { group:"Engage", items:[
-      { label:"Customers (CRM)", emoji:"👥", href:"admin-customers.html" },
-      { label:"Reviews", emoji:"⭐", href:"admin-reviews.html" },
-      { label:"Service Bookings", emoji:"🔧", href:"admin-service.html" },
-      { label:"WhatsApp Offers", emoji:"💬", href:"admin-whatsapp.html" },
+      { label:"Customers (CRM)", emoji:"👥", href:"admin-customers.html", roles:["CUSTOMER_SUPPORT"] },
+      { label:"Reviews", emoji:"⭐", href:"admin-reviews.html", roles:["MARKETING_MANAGER","CUSTOMER_SUPPORT"] },
+      { label:"Service Bookings", emoji:"🔧", href:"admin-service.html", roles:["CUSTOMER_SUPPORT"] },
+      { label:"WhatsApp Offers", emoji:"💬", href:"admin-whatsapp.html", roles:["MARKETING_MANAGER"] },
     ]},
     { group:"Control", items:[
-      { label:"Team", emoji:"👤", href:"admin-team.html" },
-      { label:"Settings", emoji:"⚙️", href:"admin-settings.html" },
+      { label:"Staff", emoji:"🧑‍💼", href:"admin-staff.html", adminOnly:true },
+      { label:"Team & Roles", emoji:"👤", href:"admin-team.html", adminOnly:true },
+      { label:"Settings", emoji:"⚙️", href:"admin-settings.html", adminOnly:true },
     ]},
   ];
-  document.getElementById("nav").innerHTML = NAV.map(g => `
-    <div>
-      <div class="text-[11px] tracking-widest text-slate-400 uppercase px-5 pt-3 pb-1.5">${g.group}</div>
-      ${g.items.map(it => `
-        <a href="${it.href || "#"}" class="flex items-center gap-3 px-5 py-2.5 text-sm border-l-[3px] ${
-          it.on ? "bg-orange/20 border-orange text-white font-semibold" : "border-transparent text-slate-300 hover:bg-white/5 hover:text-white"
-        }"><span class="w-5 text-center">${it.emoji}</span> ${it.label}</a>`).join("")}
-    </div>`).join("");
+  function canSee(user, it){
+    if (it.on) return true;                       // current page (Dashboard)
+    if (it.adminOnly) return jlIsSuper(user);     // Staff/Team/Settings → admins only
+    if (jlIsSuper(user) || jlHasRole(user, "MANAGER")) return true;  // MANAGER = broad access
+    if (!it.roles || !it.roles.length) return true;
+    return jlHasRole(user, ...it.roles);
+  }
+  function renderNav(user){
+    document.getElementById("nav").innerHTML = NAV.map(g => {
+      const items = g.items.filter(it => canSee(user, it));
+      if (!items.length) return "";
+      return `<div>
+        <div class="text-[11px] tracking-widest text-slate-400 uppercase px-5 pt-3 pb-1.5">${g.group}</div>
+        ${items.map(it => `
+          <a href="${it.href || "#"}" class="flex items-center gap-3 px-5 py-2.5 text-sm border-l-[3px] ${
+            it.on ? "bg-orange/20 border-orange text-white font-semibold" : "border-transparent text-slate-300 hover:bg-white/5 hover:text-white"
+          }"><span class="w-5 text-center">${it.emoji}</span> ${it.label}</a>`).join("")}
+      </div>`;
+    }).join("");
+  }
 
   // ── Live dashboard data (from the backend) ──
   const STATUS_STYLE = {
-    PENDING:"bg-blue-50 text-blue-700", CONFIRMED:"bg-cyan-50 text-cyan-700",
-    PACKED:"bg-amber-50 text-amber-700", SHIPPED:"bg-violet-50 text-violet-700",
+    PENDING:"bg-blue-50 text-blue-700", CONFIRMED:"bg-cyan-50 text-cyan-700", PROCESSING:"bg-sky-50 text-sky-700",
+    PACKED:"bg-amber-50 text-amber-700", SHIPPED:"bg-violet-50 text-violet-700", OUT_FOR_DELIVERY:"bg-purple-50 text-purple-700",
     DELIVERED:"bg-green-50 text-green-700", CANCELLED:"bg-red-50 text-red-700",
-    REFUNDED:"bg-slate-100 text-slate-600",
+    RETURN_REQUESTED:"bg-orange-50 text-orange-700", RETURNED:"bg-rose-50 text-rose-700",
+    REFUNDED:"bg-slate-100 text-slate-600", FAILED_PAYMENT:"bg-red-100 text-red-700",
   };
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));

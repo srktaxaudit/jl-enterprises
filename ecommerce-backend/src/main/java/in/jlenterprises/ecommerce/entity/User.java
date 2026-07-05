@@ -55,6 +55,13 @@ public class User extends BaseEntity {
     @Column(name = "last_name", length = 80)
     private String lastName;
 
+    // ── Staff profile (null for customers) ──
+    @Column(name = "department", length = 80)
+    private String department;
+
+    @Column(name = "designation", length = 80)
+    private String designation;
+
     @Column(name = "email_verified", nullable = false)
     private boolean emailVerified = false;
 

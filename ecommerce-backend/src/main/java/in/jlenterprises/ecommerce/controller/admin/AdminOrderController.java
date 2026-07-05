@@ -24,7 +24,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/admin/orders")
-@PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MANAGER')")
+@PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MANAGER','ORDER_MANAGER','CUSTOMER_SUPPORT')")
 @Tag(name = "Admin — Orders", description = "Order management and fulfilment (staff)")
 public class AdminOrderController {
 

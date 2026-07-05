@@ -21,7 +21,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/admin/reviews")
-@PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MANAGER')")
+@PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MANAGER','MARKETING_MANAGER','CUSTOMER_SUPPORT')")
 @Tag(name = "Admin — Reviews", description = "Review moderation (staff)")
 public class AdminReviewController {
 

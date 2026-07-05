@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/admin/whatsapp")
-@PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MANAGER')")
+@PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MANAGER','MARKETING_MANAGER')")
 @Tag(name = "Admin — WhatsApp", description = "Broadcast promotional WhatsApp messages")
 public class WhatsAppController {
 

@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/v1/admin/products")
-@PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MANAGER')")
+@PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MANAGER','PRODUCT_MANAGER','INVENTORY_MANAGER')")
 @Tag(name = "Admin — Products", description = "Full catalog listing for staff (all statuses/stock)")
 public class AdminProductController {
 

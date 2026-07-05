@@ -7,35 +7,47 @@ import in.jlenterprises.ecommerce.dto.auth.UserDto;
 import in.jlenterprises.ecommerce.entity.Role;
 import in.jlenterprises.ecommerce.entity.User;
 import in.jlenterprises.ecommerce.exception.BusinessException;
+import in.jlenterprises.ecommerce.exception.DuplicateResourceException;
 import in.jlenterprises.ecommerce.exception.ResourceNotFoundException;
 import in.jlenterprises.ecommerce.mapper.RoleMapper;
 import in.jlenterprises.ecommerce.mapper.UserMapper;
 import in.jlenterprises.ecommerce.repository.RoleRepository;
 import in.jlenterprises.ecommerce.repository.UserRepository;
+import in.jlenterprises.ecommerce.request.admin.StaffRequest;
 import in.jlenterprises.ecommerce.service.AdminUserService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
 public class AdminUserServiceImpl implements AdminUserService {
 
+    private static final List<RoleName> STAFF_ROLES = List.of(
+            RoleName.ROLE_SUPER_ADMIN, RoleName.ROLE_ADMIN, RoleName.ROLE_MANAGER,
+            RoleName.ROLE_INVENTORY_MANAGER, RoleName.ROLE_ORDER_MANAGER, RoleName.ROLE_PRODUCT_MANAGER,
+            RoleName.ROLE_MARKETING_MANAGER, RoleName.ROLE_CUSTOMER_SUPPORT);
+
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final UserMapper userMapper;
     private final RoleMapper roleMapper;
+    private final PasswordEncoder passwordEncoder;
 
     public AdminUserServiceImpl(UserRepository userRepository, RoleRepository roleRepository,
-                                UserMapper userMapper, RoleMapper roleMapper) {
+                                UserMapper userMapper, RoleMapper roleMapper, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.userMapper = userMapper;
         this.roleMapper = roleMapper;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
@@ -88,7 +100,100 @@ public class AdminUserServiceImpl implements AdminUserService {
         return roleMapper.toDtoList(roleRepository.findAll());
     }
 
+    // ── Staff management ──
+    @Override
+    @Transactional(readOnly = true)
+    public Page<UserDto> listStaff(String search, Pageable pageable) {
+        Specification<User> spec = staffSpec();
+        Specification<User> searchSpec = buildSearch(search);
+        if (searchSpec != null) spec = spec.and(searchSpec);
+        return userRepository.findAll(spec, pageable).map(userMapper::toDto);
+    }
+
+    @Override
+    @Transactional
+    @Auditable(action = "CREATE_STAFF", entity = "user")
+    public UserDto createStaff(StaffRequest r) {
+        String email = r.email().trim().toLowerCase();
+        if (userRepository.existsByEmailIgnoreCase(email)) {
+            throw new DuplicateResourceException("A user with this email already exists");
+        }
+        if (r.password() == null || r.password().isBlank()) {
+            throw new BusinessException("A password is required for a new staff account");
+        }
+        User u = new User();
+        u.setEmail(email);
+        u.setPasswordHash(passwordEncoder.encode(r.password()));
+        u.setFirstName(r.firstName());
+        u.setLastName(r.lastName());
+        u.setPhone(r.phone() == null || r.phone().isBlank() ? null : r.phone().trim());
+        u.setDepartment(r.department());
+        u.setDesignation(r.designation());
+        u.setEmailVerified(true);
+        u.setEnabled(true);
+        applyRoles(u, r.roles());
+        return userMapper.toDto(userRepository.save(u));
+    }
+
+    @Override
+    @Transactional
+    @Auditable(action = "UPDATE_STAFF", entity = "user")
+    public UserDto updateStaff(UUID userId, StaffRequest r) {
+        User u = getEntity(userId);
+        u.setFirstName(r.firstName());
+        u.setLastName(r.lastName());
+        if (r.phone() != null) u.setPhone(r.phone().isBlank() ? null : r.phone().trim());
+        u.setDepartment(r.department());
+        u.setDesignation(r.designation());
+        if (r.roles() != null && !r.roles().isEmpty()) applyRoles(u, r.roles());
+        if (r.password() != null && !r.password().isBlank()) u.setPasswordHash(passwordEncoder.encode(r.password()));
+        return userMapper.toDto(userRepository.save(u));
+    }
+
+    @Override
+    @Transactional
+    @Auditable(action = "RESET_PASSWORD", entity = "user")
+    public UserDto resetPassword(UUID userId, String newPassword) {
+        if (newPassword == null || newPassword.isBlank()) {
+            throw new BusinessException("A new password is required");
+        }
+        User u = getEntity(userId);
+        u.setPasswordHash(passwordEncoder.encode(newPassword));
+        return userMapper.toDto(userRepository.save(u));
+    }
+
+    @Override
+    @Transactional
+    @Auditable(action = "DELETE_STAFF", entity = "user")
+    public void deleteStaff(UUID userId) {
+        User u = getEntity(userId);
+        u.setDeleted(true);
+        u.setEnabled(false);
+        userRepository.save(u);
+    }
+
     // ── helpers ──
+
+    /** Only users holding at least one staff role (excludes plain customers). */
+    private Specification<User> staffSpec() {
+        return (root, query, cb) -> {
+            query.distinct(true);
+            return root.join("roles").get("name").in(STAFF_ROLES);
+        };
+    }
+
+    private void applyRoles(User u, List<RoleName> roles) {
+        if (roles == null || roles.isEmpty()) {
+            throw new BusinessException("Assign at least one role to the staff member");
+        }
+        Set<Role> resolved = new HashSet<>();
+        for (RoleName rn : roles) {
+            resolved.add(roleRepository.findByName(rn)
+                    .orElseThrow(() -> ResourceNotFoundException.of("Role", rn)));
+        }
+        u.getRoles().clear();
+        u.getRoles().addAll(resolved);
+    }
     private User getEntity(UUID userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> ResourceNotFoundException.of("User", userId));

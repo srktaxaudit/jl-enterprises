@@ -162,7 +162,7 @@
   });
 
   jlWireLogout("#logoutBtn");
-  jlRequireAdmin().then((admin) => {
+  jlRequireSuper().then((admin) => {
     CURRENT = admin;
     const badge = document.getElementById("adminBadge");
     badge.textContent = name(admin).split(/[\s@.]+/).filter(Boolean).slice(0, 2)

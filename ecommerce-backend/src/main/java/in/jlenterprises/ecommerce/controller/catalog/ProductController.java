@@ -42,7 +42,7 @@ import java.util.UUID;
 @Tag(name = "Products", description = "Product catalog: search, detail, featured, related (admin writes)")
 public class ProductController {
 
-    private static final String STAFF = "hasAnyRole('ADMIN','SUPER_ADMIN','MANAGER')";
+    private static final String STAFF = "hasAnyRole('ADMIN','SUPER_ADMIN','MANAGER','PRODUCT_MANAGER')";
 
     private final ProductService productService;
     private final SupabaseStorageService storageService;

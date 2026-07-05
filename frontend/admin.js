@@ -16,7 +16,13 @@ const JL_API_BASE = (() => {
 const JL_LOGIN_PAGE = "admin-login.html";
 const ACCESS_KEY = "jl_access";
 const REFRESH_KEY = "jl_refresh";
-const STAFF_ROLES = ["ROLE_SUPER_ADMIN", "ROLE_ADMIN", "ROLE_MANAGER"];
+const STAFF_ROLES = [
+  "ROLE_SUPER_ADMIN", "ROLE_ADMIN", "ROLE_MANAGER",
+  "ROLE_INVENTORY_MANAGER", "ROLE_ORDER_MANAGER", "ROLE_PRODUCT_MANAGER",
+  "ROLE_MARKETING_MANAGER", "ROLE_CUSTOMER_SUPPORT",
+];
+// Full-access roles that can see/do everything in the admin.
+const SUPER_ROLES = ["ROLE_SUPER_ADMIN", "ROLE_ADMIN"];
 
 // ── token storage ──
 const jlTokens = {
@@ -154,11 +160,25 @@ function jlIsStaff(user) {
   return (user.roles || []).some((r) => STAFF_ROLES.includes(r));
 }
 
+/** True if the user is a full-access admin (SUPER_ADMIN/ADMIN). */
+function jlIsSuper(user) {
+  return (user.roles || []).some((r) => SUPER_ROLES.includes(r));
+}
+
+/** True if the user is a super role OR holds any of the given role names (bare, e.g. "ORDER_MANAGER"). */
+function jlHasRole(user, ...roleNames) {
+  if (jlIsSuper(user)) return true;
+  const have = user.roles || [];
+  return roleNames.some((rn) => have.includes("ROLE_" + rn) || have.includes(rn));
+}
+
 /**
  * Guard a protected admin page. Redirects to login if unauthenticated, or back
- * to the store if the user isn't staff. Resolves with the current UserDto.
+ * to the store if the user isn't staff. If `allowedRoles` is given, staff who are
+ * not super-admins must hold at least one of them (else bounced to the dashboard).
+ * Resolves with the current UserDto.
  */
-async function jlRequireAdmin() {
+async function jlRequireAdmin(allowedRoles) {
   let user;
   try {
     user = await JLAuth.me();
@@ -170,6 +190,23 @@ async function jlRequireAdmin() {
   if (!jlIsStaff(user)) {
     alert("This account does not have staff access.");
     location.replace("index.html");
+    return new Promise(() => {});
+  }
+  // MANAGER has broad operational access; super-admins always pass.
+  if (allowedRoles && allowedRoles.length && !jlIsSuper(user) && !jlHasRole(user, "MANAGER", ...allowedRoles)) {
+    alert("You don't have access to this section.");
+    location.replace("admin.html");
+    return new Promise(() => {});
+  }
+  return user;
+}
+
+/** Guard an admin-only page (SUPER_ADMIN / ADMIN only) — e.g. Staff, Settings. */
+async function jlRequireSuper() {
+  const user = await jlRequireAdmin();
+  if (!jlIsSuper(user)) {
+    alert("This section is restricted to administrators.");
+    location.replace("admin.html");
     return new Promise(() => {});
   }
   return user;

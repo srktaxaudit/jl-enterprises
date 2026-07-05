@@ -30,7 +30,7 @@ import java.util.UUID;
 @Tag(name = "Service Bookings", description = "Storefront service requests (public create, staff manage)")
 public class ServiceBookingController {
 
-    private static final String STAFF = "hasAnyRole('ADMIN','SUPER_ADMIN','MANAGER')";
+    private static final String STAFF = "hasAnyRole('ADMIN','SUPER_ADMIN','MANAGER','CUSTOMER_SUPPORT')";
 
     private final ServiceBookingService service;
 

@@ -31,7 +31,7 @@ import java.util.UUID;
 @Tag(name = "Coupons", description = "Coupon management (admin) and validation (customer)")
 public class CouponController {
 
-    private static final String STAFF = "hasAnyRole('ADMIN','SUPER_ADMIN','MANAGER')";
+    private static final String STAFF = "hasAnyRole('ADMIN','SUPER_ADMIN','MANAGER','MARKETING_MANAGER')";
 
     private final CouponService couponService;
 

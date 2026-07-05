@@ -27,7 +27,7 @@ import java.util.UUID;
 @Tag(name = "Categories", description = "Product categories (public reads, admin writes)")
 public class CategoryController {
 
-    private static final String STAFF = "hasAnyRole('ADMIN','SUPER_ADMIN','MANAGER')";
+    private static final String STAFF = "hasAnyRole('ADMIN','SUPER_ADMIN','MANAGER','PRODUCT_MANAGER')";
 
     private final CategoryService categoryService;
 

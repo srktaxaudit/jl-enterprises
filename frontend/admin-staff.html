@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Staff — JL Admin</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = { theme: { extend: { colors: {
+    navy: { DEFAULT: "#0b2447", 600: "#19376d" }, brand: { DEFAULT: "#576cbc", sky: "#a5d7e8" },
+    orange: { DEFAULT: "#f97316" } }, boxShadow: { card: "0 12px 30px rgba(15,23,42,.12)" } } } };
+</script>
+<style> body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .lbl{display:block;font-size:13px;font-weight:600;color:#475569;margin-bottom:4px}
+  .inp{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:9px 12px;font-size:14px;outline:none} .inp:focus{border-color:#576cbc} </style>
+</head>
+<body class="bg-[#eef1f6] min-h-screen text-slate-800">
+
+  <div class="bg-white border-b border-slate-200 px-4 md:px-7 py-3 flex items-center gap-3 sticky top-0 z-10">
+    <a href="admin.html" class="flex items-center gap-2 text-navy">
+      <div class="w-9 h-7 rounded bg-navy text-white text-[11px] font-extrabold flex items-center justify-center">JL</div>
+      <span class="font-bold text-sm">← Dashboard</span>
+    </a>
+    <div class="ml-auto flex items-center gap-3">
+      <span id="adminBadge" class="w-9 h-9 rounded-full bg-gradient-to-br from-navy-600 to-brand text-white flex items-center justify-center font-bold text-[13px]">··</span>
+      <a href="#" id="logoutBtn" class="text-[13px] text-slate-500 hover:text-navy">⎋ Logout</a>
+    </div>
+  </div>
+
+  <div class="max-w-[1100px] mx-auto p-4 md:p-7">
+    <div class="flex items-center gap-3 mb-5">
+      <div><h1 class="text-2xl text-navy font-bold mb-1">Staff</h1>
+        <p class="text-slate-400 text-sm">Create staff accounts and control their roles &amp; access.</p></div>
+      <button id="newBtn" class="ml-auto bg-navy hover:bg-navy-600 text-white font-semibold rounded-lg px-4 py-2 text-sm">+ New staff</button>
+    </div>
+    <div id="msg" class="hidden mb-4 text-[13px] rounded-lg px-3 py-2"></div>
+
+    <!-- FORM -->
+    <div id="formCard" class="hidden bg-white border border-slate-200 rounded-2xl p-5 mb-6">
+      <h2 id="formTitle" class="text-navy font-semibold mb-4">New staff</h2>
+      <form id="form" class="grid md:grid-cols-3 gap-4" novalidate>
+        <input type="hidden" id="sid" />
+        <div><label class="lbl">Email *</label><input id="email" type="email" required class="inp" /></div>
+        <div><label class="lbl">First name *</label><input id="firstName" required class="inp" /></div>
+        <div><label class="lbl">Last name</label><input id="lastName" class="inp" /></div>
+        <div><label class="lbl">Mobile</label><input id="phone" class="inp" placeholder="+91…" /></div>
+        <div><label class="lbl">Department</label><input id="department" class="inp" placeholder="e.g. Operations" /></div>
+        <div><label class="lbl">Designation</label><input id="designation" class="inp" placeholder="e.g. Store Manager" /></div>
+        <div id="pwField"><label class="lbl">Password *</label><input id="password" type="text" class="inp" placeholder="Min 8 chars: upper, lower, number, symbol" /></div>
+        <div class="md:col-span-3">
+          <label class="lbl">Roles *</label>
+          <div id="roleBoxes" class="flex flex-wrap gap-3 text-sm"></div>
+        </div>
+        <div class="md:col-span-3 flex gap-2">
+          <button type="submit" class="bg-navy hover:bg-navy-600 text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Save</button>
+          <button type="button" id="cancelBtn" class="text-slate-500 rounded-lg px-4 py-2.5 text-sm border border-slate-300">Cancel</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-2xl p-5">
+      <div class="flex items-center gap-3 mb-4">
+        <h2 class="text-navy font-semibold">Staff accounts</h2>
+        <input id="search" placeholder="Search name/email…" class="ml-auto w-64 rounded-lg border border-slate-300 px-3 py-1.5 text-sm" />
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead><tr class="text-left text-slate-400 text-[12px] uppercase">
+            <th class="py-2">Name</th><th>Email</th><th>Department</th><th>Roles</th><th>Status</th><th class="text-right">Actions</th>
+          </tr></thead>
+          <tbody id="rows"><tr><td colspan="6" class="py-4 text-slate-400">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+<script src="admin.js"></script>
+<script>
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c)=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+  const $ = (id) => document.getElementById(id);
+  let STAFF = [];
+  // Assignable roles (value = enum name sent to the backend).
+  const ROLES = [
+    ["ROLE_SUPER_ADMIN","Super Admin"], ["ROLE_ADMIN","Admin"], ["ROLE_MANAGER","Manager"],
+    ["ROLE_INVENTORY_MANAGER","Inventory Manager"], ["ROLE_ORDER_MANAGER","Order Manager"],
+    ["ROLE_PRODUCT_MANAGER","Product Manager"], ["ROLE_MARKETING_MANAGER","Marketing Manager"],
+    ["ROLE_CUSTOMER_SUPPORT","Customer Support"],
+  ];
+  const roleLabel = (r) => (ROLES.find(x=>x[0]===r)||[r,r.replace("ROLE_","")])[1];
+
+  function flash(t, ok=true){ const el=$("msg"); el.textContent=t;
+    el.className="mb-4 text-[13px] rounded-lg px-3 py-2 "+(ok?"bg-green-50 text-green-700 border border-green-200":"bg-red-50 text-red-700 border border-red-200");
+    el.classList.remove("hidden"); }
+
+  $("roleBoxes").innerHTML = ROLES.map(([val,lbl]) =>
+    `<label class="flex items-center gap-1.5 border border-slate-200 rounded-lg px-2 py-1"><input type="checkbox" class="roleChk" value="${val}"> ${lbl}</label>`).join("");
+  const selectedRoles = () => [...document.querySelectorAll(".roleChk:checked")].map(c=>c.value);
+  const setRoles = (roles) => document.querySelectorAll(".roleChk").forEach(c => { c.checked = (roles||[]).includes(c.value); });
+
+  async function load(){
+    const search = $("search").value.trim();
+    const body = $("rows");
+    try {
+      const page = await jlApi("/api/v1/admin/staff?size=100" + (search?`&search=${encodeURIComponent(search)}`:""));
+      STAFF = page.content || [];
+      body.innerHTML = STAFF.length ? STAFF.map(u=>`
+        <tr class="border-t border-slate-100">
+          <td class="py-2.5 font-semibold text-navy">${esc([u.firstName,u.lastName].filter(Boolean).join(" ")||"—")}<div class="text-[12px] text-slate-400 font-normal">${esc(u.designation||"")}</div></td>
+          <td class="text-slate-600">${esc(u.email)}</td>
+          <td class="text-slate-500">${esc(u.department||"—")}</td>
+          <td class="text-[12px] text-slate-500">${(u.roles||[]).map(r=>esc(roleLabel(r))).join(", ")}</td>
+          <td>${u.enabled?'<span class="text-green-600">Active</span>':'<span class="text-red-600">Inactive</span>'}</td>
+          <td class="text-right whitespace-nowrap">
+            <button data-edit="${u.id}" class="text-[12px] text-brand mr-2">Edit</button>
+            <button data-pwd="${u.id}" class="text-[12px] text-slate-500 mr-2">Reset pw</button>
+            <button data-toggle="${u.id}" data-on="${!u.enabled}" class="text-[12px] ${u.enabled?"text-amber-600":"text-green-600"} mr-2">${u.enabled?"Deactivate":"Activate"}</button>
+            <button data-del="${u.id}" class="text-[12px] text-red-600">Delete</button>
+          </td>
+        </tr>`).join("") : `<tr><td colspan="6" class="py-4 text-slate-400">No staff yet.</td></tr>`;
+    } catch(e){ body.innerHTML = `<tr><td colspan="6" class="py-4 text-red-600">Could not load (${esc(e.message)}).</td></tr>`; }
+  }
+
+  function showForm(s){ $("formCard").classList.toggle("hidden", !s); if(s) window.scrollTo({top:0,behavior:"smooth"}); }
+  function resetForm(){ $("form").reset(); $("sid").value=""; setRoles([]); $("formTitle").textContent="New staff";
+    $("email").disabled=false; $("pwField").style.display=""; }
+
+  $("newBtn").addEventListener("click", ()=>{ resetForm(); showForm(true); });
+  $("cancelBtn").addEventListener("click", ()=> showForm(false));
+
+  function edit(id){
+    const u = STAFF.find(x=>x.id===id); if(!u) return;
+    $("sid").value=u.id; $("email").value=u.email; $("email").disabled=true;
+    $("firstName").value=u.firstName||""; $("lastName").value=u.lastName||"";
+    $("phone").value=u.phone||""; $("department").value=u.department||""; $("designation").value=u.designation||"";
+    $("password").value=""; $("pwField").style.display="none"; setRoles(u.roles);
+    $("formTitle").textContent="Edit: "+u.email; showForm(true);
+  }
+
+  $("form").addEventListener("submit", async (ev)=>{
+    ev.preventDefault();
+    const roles = selectedRoles();
+    if(!roles.length){ flash("Select at least one role.", false); return; }
+    const body = {
+      email:$("email").value.trim(), firstName:$("firstName").value.trim(), lastName:$("lastName").value.trim()||null,
+      phone:$("phone").value.trim()||null, department:$("department").value.trim()||null,
+      designation:$("designation").value.trim()||null, roles,
+    };
+    const id = $("sid").value;
+    if(!id) body.password = $("password").value;
+    try {
+      if(id) await jlApi(`/api/v1/admin/staff/${id}`, {method:"PUT", body});
+      else await jlApi("/api/v1/admin/staff", {method:"POST", body});
+      flash(id?"Staff updated.":"Staff account created."); showForm(false); load();
+    } catch(e){ flash(e.message||"Save failed", false); }
+  });
+
+  $("rows").addEventListener("click", async (ev)=>{
+    const b = ev.target.closest("button"); if(!b) return;
+    try {
+      if(b.dataset.edit) return edit(b.dataset.edit);
+      if(b.dataset.pwd){ const pw = prompt("New password (min 8 chars: upper, lower, number, symbol):",""); if(!pw) return;
+        await jlApi(`/api/v1/admin/staff/${b.dataset.pwd}/reset-password?password=${encodeURIComponent(pw)}`, {method:"POST"}); flash("Password reset."); return; }
+      if(b.dataset.toggle){ await jlApi(`/api/v1/admin/staff/${b.dataset.toggle}/status?enabled=${b.dataset.on}`, {method:"PATCH"}); flash("Status updated."); load(); return; }
+      if(b.dataset.del){ if(!confirm("Remove this staff account?")) return;
+        await jlApi(`/api/v1/admin/staff/${b.dataset.del}`, {method:"DELETE"}); flash("Staff removed."); load(); }
+    } catch(e){ flash(e.message||"Action failed", false); }
+  });
+
+  let timer; $("search").addEventListener("input", (e)=>{ clearTimeout(timer); timer=setTimeout(load,300); });
+
+  jlWireLogout("#logoutBtn");
+  jlRequireSuper().then((a)=>{
+    $("adminBadge").textContent = jlDisplayName(a).split(/[\s@.]+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join("")||"JL";
+    load();
+  });
+</script>
+</body>
+</html>

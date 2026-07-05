@@ -20,7 +20,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/admin/inventory")
-@PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MANAGER')")
+@PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MANAGER','INVENTORY_MANAGER')")
 @Tag(name = "Admin — Inventory", description = "Stock levels and reorder thresholds (staff)")
 public class InventoryController {
 
