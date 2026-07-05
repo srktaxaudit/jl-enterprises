@@ -97,6 +97,13 @@ document.addEventListener("click", (e) => {
 
 /* ── 4. Cart page (cart.html) ────────────────────────────────────── */
 
+// Escape user/product-controlled strings before injecting them as HTML, so a
+// value like `<img onerror=...>` can never execute (DOM-XSS protection).
+function escHtml(s) {
+  return String(s ?? "").replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
 function renderCartPage() {
   const listEl = document.getElementById("cartItems");
   if (!listEl) return; // not on the cart page
@@ -119,10 +126,10 @@ function renderCartPage() {
     .map(
       (item, i) => `
       <div class="cart-item">
-        <div class="cart-thumb">${item.emoji}</div>
+        <div class="cart-thumb">${escHtml(item.emoji)}</div>
         <div class="cart-info">
-          <div class="brand">${item.brand}</div>
-          <div class="name">${item.name}</div>
+          <div class="brand">${escHtml(item.brand)}</div>
+          <div class="name">${escHtml(item.name)}</div>
           <div class="price">${inrFmt(item.price)}</div>
         </div>
         <div class="qty-box">

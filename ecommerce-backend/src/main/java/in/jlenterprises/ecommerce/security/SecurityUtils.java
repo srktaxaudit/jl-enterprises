@@ -32,4 +32,16 @@ public final class SecurityUtils {
                 .map(UserPrincipal::getUsername)
                 .orElseThrow(() -> new InvalidTokenException("No authenticated user"));
     }
+
+    /** True if the current authenticated principal holds the given authority (e.g. {@code ROLE_SUPER_ADMIN}). */
+    public static boolean hasAuthority(String authority) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth != null && auth.getAuthorities().stream()
+                .anyMatch(a -> authority.equals(a.getAuthority()));
+    }
+
+    /** True if the current caller is a super-admin (top of the role hierarchy). */
+    public static boolean isSuperAdmin() {
+        return hasAuthority("ROLE_SUPER_ADMIN");
+    }
 }

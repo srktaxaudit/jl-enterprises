@@ -95,16 +95,17 @@ public class OrderServiceImpl implements OrderService {
                 .map(i -> i.getUnitPrice().multiply(BigDecimal.valueOf(i.getQuantity())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // 1) Verify stock for every line before touching anything.
+        // Verify + deduct stock under a per-row write lock so two concurrent
+        // checkouts of the last unit can't both succeed (overselling). Each
+        // inventory row is locked (SELECT ... FOR UPDATE), re-checked against the
+        // freshest quantity, then decremented within this same transaction.
         for (CartItem item : cart.getItems()) {
-            Inventory inv = inventoryFor(item.getProduct());
+            Inventory inv = inventoryRepository.findByProductIdForUpdate(item.getProduct().getId())
+                    .orElseThrow(() -> new BusinessException(
+                            "Product is unavailable: " + item.getProduct().getName()));
             if (inv.getAvailable() < item.getQuantity()) {
                 throw new BusinessException("Insufficient stock for " + item.getProduct().getName());
             }
-        }
-        // 2) Deduct (optimistic-lock guarded by @Version on Inventory).
-        for (CartItem item : cart.getItems()) {
-            Inventory inv = inventoryFor(item.getProduct());
             inv.setQuantity(inv.getQuantity() - item.getQuantity());
             inventoryRepository.save(inv);
         }

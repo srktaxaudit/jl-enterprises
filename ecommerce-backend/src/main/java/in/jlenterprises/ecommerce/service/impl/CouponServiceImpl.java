@@ -147,15 +147,20 @@ public class CouponServiceImpl implements CouponService {
     @Transactional
     public void recordUsage(AppliedCoupon applied, User user, Order order) {
         Coupon coupon = applied.coupon();
+
+        // Atomically claim one use under the usage limit. If it returns 0 the limit
+        // was reached by a concurrent order — fail so the whole placeOrder transaction
+        // rolls back (stock is restored) rather than over-redeeming the coupon.
+        if (couponRepository.incrementUsageIfAvailable(coupon.getId()) == 0) {
+            throw new BusinessException("Coupon usage limit reached");
+        }
+
         CouponUsage usage = new CouponUsage();
         usage.setCoupon(coupon);
         usage.setUser(user);
         usage.setOrder(order);
         usage.setDiscountApplied(applied.discount());
         couponUsageRepository.save(usage);
-
-        coupon.setUsedCount(coupon.getUsedCount() + 1);
-        couponRepository.save(coupon);
     }
 
     @Override

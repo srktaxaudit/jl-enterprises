@@ -50,6 +50,10 @@ spring:
     locations: classpath:db/migration
 
   data:
+    web:
+      pageable:
+        default-page-size: 20
+        max-page-size: 100        # clamp ?size= so a client can't request a huge page (memory/DoS guard)
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
@@ -111,11 +115,15 @@ app:
     key-secret: ${RAZORPAY_KEY_SECRET:}
 
 springdoc:
+  # API docs are disabled by default so they are NOT publicly exposed in production
+  # (they map the whole API surface for an attacker). Set SWAGGER_ENABLED=true locally.
+  api-docs:
+    enabled: ${SWAGGER_ENABLED:false}
+    path: /v3/api-docs
   swagger-ui:
+    enabled: ${SWAGGER_ENABLED:false}
     path: /swagger-ui.html
     operations-sorter: method
-  api-docs:
-    path: /v3/api-docs
 
 management:
   endpoints:

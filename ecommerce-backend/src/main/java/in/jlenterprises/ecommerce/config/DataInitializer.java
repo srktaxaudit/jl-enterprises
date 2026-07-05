@@ -23,6 +23,9 @@ public class DataInitializer implements CommandLineRunner {
 
     private static final Logger log = LoggerFactory.getLogger(DataInitializer.class);
 
+    /** Sentinel default — if the resolved bootstrap password is still this, treat it as UNSET. */
+    static final String DEFAULT_ADMIN_PASSWORD = "Admin@12345";
+
     private final RoleRepository roleRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -32,7 +35,7 @@ public class DataInitializer implements CommandLineRunner {
     public DataInitializer(RoleRepository roleRepository, UserRepository userRepository,
                            PasswordEncoder passwordEncoder,
                            @Value("${app.bootstrap.admin-email:admin@jlenterprises.in}") String adminEmail,
-                           @Value("${app.bootstrap.admin-password:Admin@12345}") String adminPassword) {
+                           @Value("${app.bootstrap.admin-password:" + DEFAULT_ADMIN_PASSWORD + "}") String adminPassword) {
         this.roleRepository = roleRepository;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -54,6 +57,15 @@ public class DataInitializer implements CommandLineRunner {
         }
 
         if (!userRepository.existsByEmailIgnoreCase(adminEmail)) {
+            // Never seed a super-admin with the publicly-known default password. If the
+            // bootstrap password wasn't explicitly set, fail fast so a deploy can't come
+            // up with guessable admin credentials. (Existing installs already have the
+            // admin row, so this only triggers on a genuinely fresh database.)
+            if (DEFAULT_ADMIN_PASSWORD.equals(adminPassword)) {
+                throw new IllegalStateException(
+                        "Refusing to seed the bootstrap SUPER_ADMIN with the default password. "
+                        + "Set APP_BOOTSTRAP_ADMIN_PASSWORD (a strong, unique value) and redeploy.");
+            }
             Role superAdmin = roleRepository.findByName(RoleName.ROLE_SUPER_ADMIN).orElseThrow();
             User admin = new User();
             admin.setEmail(adminEmail.toLowerCase());
