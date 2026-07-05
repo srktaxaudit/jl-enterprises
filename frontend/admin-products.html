@@ -218,7 +218,9 @@
       featured:$("featured").checked, currency:"INR",
     };
     const id = $("pid").value;
+    const saveBtn = $("saveBtn");
     try {
+      jlBtn(saveBtn, true);
       if(id){
         await jlApi(`/api/v1/products/${id}`, {method:"PUT", body});
         jlToast("Product updated.",{type:"success"}); showForm(false); load($("search").value.trim());
@@ -230,6 +232,7 @@
         jlToast("Product created — now add images below.",{type:"success"}); load($("search").value.trim());
       }
     } catch(e){ if(e.errors) jlShowServerErrors($("form"), e.errors); jlToast(e.message||"Save failed", {type:"error"}); }
+    finally { jlBtn(saveBtn, false); }
   });
 
   $("rows").addEventListener("click", async (ev)=>{
@@ -246,7 +249,7 @@
   jlWireLogout("#logoutBtn");
   jlRequireAdmin().then(async (a)=>{
     $("adminBadge").textContent = jlDisplayName(a).split(/[\s@.]+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join("")||"JL";
-    await loadRefs(); load();
+    await jlWithBusy(()=>Promise.all([loadRefs(), load()]));
   });
 </script>
 </body>

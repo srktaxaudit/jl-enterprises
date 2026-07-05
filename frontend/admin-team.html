@@ -171,7 +171,7 @@
     badge.textContent = name(admin).split(/[\s@.]+/).filter(Boolean).slice(0, 2)
       .map((w) => w[0].toUpperCase()).join("") || "JL";
     badge.title = `${name(admin)} · ${(admin.roles || []).map((r) => r.replace("ROLE_", "")).join(", ")}`;
-    loadUsers();
+    jlWithBusy(loadUsers);
   });
 </script>
 </body>

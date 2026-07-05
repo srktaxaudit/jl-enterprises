@@ -116,15 +116,17 @@
   $("saveBtn").addEventListener("click", async ()=>{
     if(!jlValidate($("editCard"), INV_RULES).valid) return;
     const body = { quantity:Number($("quantity").value), reorderLevel:Number($("reorderLevel").value), warehouseLocation:$("warehouseLocation").value.trim()||null };
-    try { await jlApi(`/api/v1/admin/inventory/${$("productId").value}`, {method:"PUT", body}); jlToast("Stock updated.",{type:"success"}); loadLow(); }
+    const saveBtn = $("saveBtn");
+    try { jlBtn(saveBtn, true); await jlApi(`/api/v1/admin/inventory/${$("productId").value}`, {method:"PUT", body}); jlToast("Stock updated.",{type:"success"}); loadLow(); }
     catch(e){ if(e.errors) jlShowServerErrors($("editCard"), e.errors); flash(e.message||"Save failed", false); }
+    finally { jlBtn(saveBtn, false); }
   });
   let timer; $("search").addEventListener("input", (e)=>{ clearTimeout(timer); const v=e.target.value.trim(); timer=setTimeout(()=>search(v),300); });
 
   jlWireLogout("#logoutBtn");
   jlRequireAdmin().then((a)=>{
     $("adminBadge").textContent = jlDisplayName(a).split(/[\s@.]+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join("")||"JL";
-    loadLow();
+    jlWithBusy(loadLow);
   });
 </script>
 </body>

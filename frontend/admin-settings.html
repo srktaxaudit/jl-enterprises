@@ -88,9 +88,12 @@
     const v = jlValidate($("form"), { key:[jlV.required(), jlV.maxLen(100)], value:[jlV.maxLen(2000)] });
     if(!v.valid) return;
     const key = $("key").value.trim();
+    const saveBtn = $("form").querySelector('button[type="submit"]');
+    jlBtn(saveBtn, true);
     try { await jlApi(`/api/v1/admin/settings/${encodeURIComponent(key)}`, {method:"PUT", body:{ value:$("value").value }});
       jlToast("Setting saved.", {type:"success"}); $("form").reset(); jlClearErrors($("form")); load(); }
     catch(e){ if(e.errors && jlShowServerErrors($("form"), e.errors)) return; flash(e.message||"Save failed", false); }
+    finally { jlBtn(saveBtn, false); }
   });
 
   $("rows").addEventListener("click", async (ev)=>{
@@ -104,7 +107,7 @@
   jlWireLogout("#logoutBtn");
   jlRequireSuper().then((a)=>{
     $("adminBadge").textContent = jlDisplayName(a).split(/[\s@.]+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join("")||"JL";
-    load();
+    jlWithBusy(load);
   });
 </script>
 </body>

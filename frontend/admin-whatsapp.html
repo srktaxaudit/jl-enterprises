@@ -65,7 +65,7 @@
     if(err){ jlSetError($("message"), err); $("message").focus(); return; }
     jlClearError($("message"));
     if(!(await jlConfirm("Send this broadcast to all matching customers?", {confirmText:"Send"}))) return;
-    $("sendBtn").disabled = true; $("sendBtn").textContent = "Sending…";
+    jlBtn($("sendBtn"), true, "Sending…");
     try {
       const r = await jlApi("/api/v1/admin/whatsapp/broadcast", { method:"POST", body:{ message, onlyVerified:$("onlyVerified").checked }});
       $("result").classList.remove("hidden");
@@ -78,7 +78,7 @@
         </div>`;
       jlToast(r.demoMode ? "Demo mode — configure WHATSAPP_TOKEN/PHONE_ID to send for real." : "Broadcast sent.", {type: r.demoMode ? "info" : "success"});
     } catch(e){ flash(e.message||"Broadcast failed", false); }
-    finally { $("sendBtn").disabled = false; $("sendBtn").textContent = "Send broadcast"; }
+    finally { jlBtn($("sendBtn"), false); }
   });
 
   jlWireLogout("#logoutBtn");

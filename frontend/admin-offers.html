@@ -164,11 +164,14 @@
       active:$("active").checked, description:$("description").value.trim()||null,
     };
     const id = $("cid").value;
+    const saveBtn = $("form").querySelector('button[type=submit]');
     try {
+      jlBtn(saveBtn, true);
       if(id) await jlApi(`/api/v1/coupons/${id}`, {method:"PUT", body});
       else await jlApi("/api/v1/coupons", {method:"POST", body});
       jlToast(id?"Coupon updated.":"Coupon created.",{type:"success"}); showForm(false); load();
     } catch(e){ if(e.errors) jlShowServerErrors($("form"), e.errors); jlToast(e.message||"Save failed", {type:"error"}); }
+    finally { jlBtn(saveBtn, false); }
   });
 
   $("rows").addEventListener("click", async (ev)=>{
@@ -182,7 +185,7 @@
   jlWireLogout("#logoutBtn");
   jlRequireAdmin().then((a)=>{
     $("adminBadge").textContent = jlDisplayName(a).split(/[\s@.]+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join("")||"JL";
-    load();
+    jlWithBusy(load);
   });
 </script>
 </body>

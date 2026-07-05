@@ -185,7 +185,7 @@
       <div class="text-[12px] text-slate-400 mt-0.5">${sub}</div></div>`;
   }
 
-  async function loadDashboard() {
+  async function loadStats() {
     try {
       const s = await jlApi("/api/v1/admin/dashboard/stats");
       document.getElementById("stats").innerHTML = [
@@ -206,7 +206,9 @@
       document.getElementById("stats").innerHTML =
         `<div class="col-span-full text-red-600 text-sm">Could not load stats (${esc(e.message)}).</div>`;
     }
+  }
 
+  async function loadRecentOrders() {
     try {
       const page = await jlApi("/api/v1/admin/orders?size=6");
       const rows = page.content || [];
@@ -221,7 +223,9 @@
       document.getElementById("orders").innerHTML =
         `<tr><td colspan="4" class="py-4 text-red-600">Could not load orders.</td></tr>`;
     }
+  }
 
+  async function loadLowStock() {
     try {
       const low = await jlApi("/api/v1/admin/inventory/low-stock");
       document.getElementById("lowstock").innerHTML = low.length ? low.map((p,i) => `
@@ -236,7 +240,8 @@
     }
   }
 
-  loadDashboard();
+  // Single page overlay covers all initial dashboard fetches (run in parallel).
+  jlWithBusy(() => Promise.all([loadStats(), loadRecentOrders(), loadLowStock()]));
 </script>
 </body>
 </html>
