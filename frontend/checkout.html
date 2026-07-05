@@ -173,18 +173,19 @@
     </div>
   </div>
 
-  <!-- SUCCESS -->
+  <!-- CONFIRMATION (success or payment-pending) -->
   <div id="coDone" class="hidden text-center bg-white border border-slate-200 rounded-3xl max-w-lg mx-auto my-10 p-9">
-    <div class="text-6xl mb-2">🎉</div>
-    <h3 class="text-2xl font-bold text-navy mb-1">Order Placed Successfully!</h3>
-    <p class="text-slate-500">Thank you for shopping with JL Enterprises.</p>
+    <div id="coDoneIcon" class="text-6xl mb-2">🎉</div>
+    <h3 id="coDoneTitle" class="text-2xl font-bold text-navy mb-1">Order Placed Successfully!</h3>
+    <p id="coDoneSubtitle" class="text-slate-500">Thank you for shopping with JL Enterprises.</p>
     <div class="bg-slate-50 rounded-2xl p-4 my-5 inline-block text-left">
       <div class="text-[12px] text-slate-400 uppercase tracking-wide">Order Number</div>
       <div id="coOrderNo" class="text-xl font-extrabold text-navy">—</div>
       <div class="text-[13px] text-slate-500 mt-1">Total: <b id="coOrderTotal">—</b> · <span id="coPayNote">Cash on Delivery</span></div>
     </div>
-    <p class="text-[13px] text-slate-500 mb-5">Our team will call you shortly to confirm delivery.</p>
+    <p id="coDoneFootnote" class="text-[13px] text-slate-500 mb-5">Our team will call you shortly to confirm delivery.</p>
     <div class="flex gap-3 justify-center flex-wrap">
+      <button id="coRetryPay" type="button" class="hidden bg-orange text-white px-6 py-2.5 rounded-full font-semibold text-sm">💳 Complete payment</button>
       <a href="my-orders.html" class="bg-navy text-white px-6 py-2.5 rounded-full font-semibold text-sm">📦 View My Orders</a>
       <a href="index.html" class="border border-slate-300 text-slate-600 px-6 py-2.5 rounded-full font-semibold text-sm">Continue Shopping</a>
     </div>
@@ -320,8 +321,9 @@
     function bad(el) { el.classList.add("co-invalid"); el.focus(); }
     function clearBad() { document.querySelectorAll(".co-invalid").forEach((e) => e.classList.remove("co-invalid")); }
 
-    // Reveal the confirmation screen and clear the local cart (the order now lives on the server).
-    function showSuccess(order, payNote) {
+    // Reveal the confirmation screen. The order already lives on the server, so the
+    // local cart is cleared either way; only the messaging differs for a pending payment.
+    function revealDone(order, payNote) {
       saveCart([]);
       localStorage.removeItem("jl_pref_address");
       layout.classList.add("hidden"); layout.classList.remove("grid");
@@ -330,6 +332,38 @@
       if ($("coPayNote")) $("coPayNote").textContent = payNote;
       done.classList.remove("hidden");
       window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function showSuccess(order, payNote) {
+      $("coDoneIcon").textContent = "🎉";
+      $("coDoneTitle").textContent = "Order Placed Successfully!";
+      $("coDoneSubtitle").textContent = "Thank you for shopping with JL Enterprises.";
+      $("coDoneFootnote").textContent = "Our team will call you shortly to confirm delivery.";
+      $("coRetryPay").classList.add("hidden");
+      revealDone(order, payNote);
+    }
+
+    // Payment was not completed — the order is saved as PENDING. Show a clear
+    // (non-celebratory) state and offer to retry payment for the SAME order.
+    function showPaymentPending(order, prefill, note) {
+      $("coDoneIcon").textContent = "⏳";
+      $("coDoneTitle").textContent = "Payment not completed";
+      $("coDoneSubtitle").textContent = "Your order is saved — complete the payment to confirm it.";
+      $("coDoneFootnote").textContent = "You can complete payment now, or later from My Orders. Cash on Delivery is also available — contact us to switch.";
+      const retry = $("coRetryPay");
+      retry.classList.remove("hidden");
+      retry.disabled = false; retry.textContent = "💳 Complete payment";
+      retry.onclick = async () => {
+        retry.disabled = true; retry.textContent = "Opening payment…";
+        try {
+          const init = await JLCheckout.initiatePayment(order.id);
+          await payWithRazorpay(order, init, prefill);
+          showSuccess(order, "Paid online ✓");
+        } catch (e) {
+          retry.disabled = false; retry.textContent = "💳 Complete payment";
+        }
+      };
+      revealDone(order, note || "Payment pending");
     }
 
     // Open Razorpay Checkout. Resolves on successful (verified) payment; rejects on
@@ -397,16 +431,17 @@
 
         if (method === "RAZORPAY") {
           btn.textContent = "Opening payment…";
+          const prefill = { name, contact: phoneDigits, email: (JLCustomer.user() || {}).email || "" };
           const init = await JLCheckout.initiatePayment(order.id);
           try {
-            await payWithRazorpay(order, init, {
-              name, contact: phoneDigits, email: (JLCustomer.user() || {}).email || "",
-            });
+            await payWithRazorpay(order, init, prefill);
             showSuccess(order, "Paid online ✓");
           } catch (payErr) {
-            // The order is already placed; it just isn't paid yet. Keep it as a
-            // pending order (visible to staff) rather than losing it.
-            showSuccess(order, payErr && payErr.dismissed ? "Payment pending (cancelled)" : "Payment pending");
+            // The order is already placed; it just isn't paid yet. Show a clear
+            // pending state (NOT the success celebration) with a retry option,
+            // rather than misleading the customer.
+            showPaymentPending(order, prefill,
+              payErr && payErr.dismissed ? "Payment cancelled — pending" : "Payment pending");
           }
           return;
         }

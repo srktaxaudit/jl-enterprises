@@ -1,78 +1,58 @@
 # JL Enterprises — Online Store
 
 E-commerce store for **JL Enterprises** (Home Appliances & Furniture, Thoothukudi).
-Built with **Next.js 14 (App Router) + TypeScript + Tailwind + Supabase**.
 
-## Status
+> **Which stack is live?** This repository contains **two** codebases. Read this first so you work on the right one.
 
-**Phase 1 (Storefront MVP) ✅**
-- Home, category, product detail, cart, checkout, service booking, login
-- Floating cart, live cart state (localStorage), responsive design
+## Architecture (the deployed stack)
 
-**Phase 2 (Supabase wiring + auth) ✅ — graceful seed fallback**
-- Server data layer (`lib/data.ts`) reads from Supabase when keys are set, else seed
-- Email-OTP auth via Supabase Auth (`/login`) + guest checkout; session middleware
-- Order persistence: `POST /api/orders` inserts order + items via service role, decrements stock
-- `supabase/schema.sql` + `supabase/seed.sql` ready to run
+The store that is actually built, deployed, and maintained is a **three-part** system:
 
-**Phase 3a (Razorpay + WhatsApp) ✅ — demo fallback**
-- Razorpay: `POST /api/razorpay/order` (create) + `/api/razorpay/verify` (HMAC signature check) → checkout opens the Razorpay modal; falls back to demo order without keys
-- Shared `lib/orders.ts` persists order (PAID for Razorpay, PENDING for COD) + decrements stock
-- WhatsApp (`lib/whatsapp.ts`, Meta Cloud API): order confirmation on every order; `POST /api/whatsapp/broadcast` (token-guarded) for bulk offers — no-op without creds
+| Part | Tech | Location | Deployed to |
+|---|---|---|---|
+| **Storefront + Admin UI** | Static HTML + vanilla JS + Tailwind (CDN) | [`frontend/`](frontend/) | **Vercel** |
+| **API / backend** | Spring Boot 3.3 (Java 21), JPA/Hibernate, JWT auth | [`ecommerce-backend/`](ecommerce-backend/) | **Render** (Docker) |
+| **Database** | PostgreSQL | Supabase | — |
 
-**Phase 3b (Admin / CEO control centre) ✅**
-- `/admin` panel, password-gated (middleware) — demo password `jladmin` (set `ADMIN_PASSWORD`)
-- Dashboard (live stats), Orders (status update → WhatsApp), Products (enable/disable),
-  Inventory (stock edit), Offers, Customers, WhatsApp broadcast UI, Teams & Settings (roles)
-- Store + admin split via route groups: `app/(store)` and `app/admin/(panel)`
-- All actions persist via service-role client when Supabase is set, else demo no-op
+- Customer storefront: `frontend/index.html`, `product.html`, `cart.html`, `checkout.html`, `my-orders.html`, `offers.html`, `track-order.html`, …
+- Admin panel: `frontend/admin.html` + `admin-*.html` (orders, products, inventory, offers, coupons, customers, reviews, staff, activity logs, …), role-gated via JWT.
+- The backend is a modular monolith — auth (JWT + refresh tokens + OTP), catalog, cart, orders (full lifecycle), coupons, payments (COD live; Razorpay wired; Stripe/PayPal are unfinished stubs and refuse), reviews, inventory, RBAC/staff, notifications, and an audit trail.
 
-**Phase 4 (Mobile app + product CRUD + uploads) ✅**
-- Product **create/edit** forms (`/admin/products/new`, `/admin/products/[id]/edit`) + `POST`/`PATCH /api/admin/products`
-- **Image upload** to Supabase Storage (`POST /api/admin/upload`, bucket `product-images`) — storefront shows uploaded image, else emoji
-- **PWA**: `app/manifest.ts` + `public/icon.svg` + `public/sw.js` + meta → installable (Add to Home Screen) for customers and staff
-- **Capacitor**: `capacitor.config.ts` (wraps the live site) + `MOBILE.md` build guide for native customer & staff apps
+**Deployment & operations are documented in [`DEPLOY.md`](DEPLOY.md); the backend internals in [`ecommerce-backend/README.md`](ecommerce-backend/README.md).** Start there.
 
-**Still pending**
-- ⏳ Phone-OTP (needs SMS provider) · per-team granular role enforcement · native APK/IPA builds (need Android Studio/Xcode — see MOBILE.md)
+### Vercel deploy guard (important)
+The Vercel project's **Root Directory is set to `frontend`** so it serves the static storefront and ignores the Next.js app below. This is currently a **dashboard setting** — if it is ever reset, Vercel would auto-detect and build the legacy Next.js app at the repo root instead. Keep Root Directory = `frontend`.
 
-## Admin access
-Visit `/admin` → login with `jladmin` (or your `ADMIN_PASSWORD`).
+## ⚠️ Legacy Next.js app (reference only — NOT deployed)
 
-> Until JL's Supabase keys are in `.env.local`, the store runs on seed data and
-> auth/checkout work in safe demo mode — no errors, nothing to break.
+An earlier **Next.js 14 + Supabase** implementation of the same store still lives at the repo root (`app/`, `components/`, `lib/`, `middleware.ts`, `next.config.mjs`, `package.json`, `tailwind.config.ts`, `capacitor.config.ts`, `MOBILE.md`, and the various `supabase/*.sql` files). It is **frozen, unmaintained, and not deployed**. Do not build on it. It is kept only for reference and may be archived/removed later.
 
-## Run locally
+If you need to run it for reference: `npm install && npm run dev` (opens on `http://localhost:3000`). Its own docs (admin password, phases, Supabase schema) describe *that* app, not the live stack.
 
+## Run the live stack locally
+
+**Backend** (needs JDK 21 + a PostgreSQL DB; see `ecommerce-backend/README.md` and `.env` guidance there):
 ```bash
-npm install
-npm run dev
-# open http://localhost:3000
+cd ecommerce-backend
+mvn spring-boot:run          # serves the API on http://localhost:8081
 ```
 
-The store works immediately with sample products (`lib/catalog.ts`).
+**Frontend** (static — serve the folder with any static server):
+```bash
+cd frontend
+python -m http.server 5500   # then open http://localhost:5500/index.html
+```
+Point the frontend at your API by setting the API base in `frontend/store.js` / `frontend/admin.js` (see those files).
 
-## Connect Supabase (Phase 2)
+## Database
 
-1. Create a **new, separate** Supabase project for JL (not the SRK database).
-2. Run `supabase/schema.sql` in the Supabase SQL editor.
-3. Copy `.env.example` → `.env.local` and fill in JL's keys.
-4. Swap the seed getters in `lib/catalog.ts` for Supabase queries.
+The live schema is owned by the Spring backend. During entity development it is generated by Hibernate (`JPA_DDL_AUTO=update`); the intended production setup is to freeze it into a Flyway migration and switch to `validate` (see `DEPLOY.md`). The `supabase/*.sql` files in this repo belong to the **legacy** app — do not run them against the live database.
 
 ## Keep separate from SRK (important)
 
 | Service | Rule |
 |---|---|
-| Supabase | New isolated project for JL |
+| Supabase | Isolated project for JL |
 | Razorpay | JL's own account → settles to JL's bank |
 | WhatsApp | JL's own Meta Business number |
 | Domain | jlenterprises.in (JL-owned) |
-
-## Structure
-
-```
-app/            routes (home, category, product, cart, checkout, service, login)
-components/     Header, Footer, ProductCard, ProductBuy, FloatingCart
-lib/            catalog (seed), cart context, types, format, supabase clients
-supabase/       schema.sql
-```
