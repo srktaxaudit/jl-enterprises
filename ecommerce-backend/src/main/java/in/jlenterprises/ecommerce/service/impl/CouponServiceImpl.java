@@ -1,5 +1,6 @@
 package in.jlenterprises.ecommerce.service.impl;
 
+import in.jlenterprises.ecommerce.audit.Auditable;
 import in.jlenterprises.ecommerce.constant.CouponType;
 import in.jlenterprises.ecommerce.dto.coupon.CouponDto;
 import in.jlenterprises.ecommerce.dto.coupon.CouponValidationResult;
@@ -63,6 +64,7 @@ public class CouponServiceImpl implements CouponService {
 
     @Override
     @Transactional
+    @Auditable(action = "CREATE_COUPON", entity = "coupon")
     public CouponDto create(CouponRequest request) {
         String code = request.code().trim().toUpperCase();
         if (couponRepository.existsByCodeIgnoreCase(code)) {
@@ -76,6 +78,7 @@ public class CouponServiceImpl implements CouponService {
 
     @Override
     @Transactional
+    @Auditable(action = "UPDATE_COUPON", entity = "coupon")
     public CouponDto update(UUID id, CouponRequest request) {
         Coupon coupon = getEntity(id);
         apply(coupon, request);
@@ -84,6 +87,7 @@ public class CouponServiceImpl implements CouponService {
 
     @Override
     @Transactional
+    @Auditable(action = "DELETE_COUPON", entity = "coupon")
     public void delete(UUID id) {
         Coupon coupon = getEntity(id);
         coupon.setDeleted(true);

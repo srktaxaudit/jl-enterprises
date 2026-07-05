@@ -19,4 +19,7 @@ public interface NotificationService {
 
     /** Server-side helper used by other modules (e.g. order placed) to notify a user. */
     void notifyUser(UUID userId, NotificationType type, String title, String message, String link);
+
+    /** Notify every admin / super-admin (e.g. new order, low stock). Best-effort; never throws. */
+    void notifyAdmins(NotificationType type, String title, String message, String link);
 }

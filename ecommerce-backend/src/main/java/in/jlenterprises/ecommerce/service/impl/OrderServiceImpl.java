@@ -170,6 +170,9 @@ public class OrderServiceImpl implements OrderService {
         cartRepository.save(cart);
         notificationService.notifyUser(userId, NotificationType.ORDER, "Order placed",
                 "Your order " + saved.getOrderNumber() + " has been placed.", "/orders/" + saved.getId());
+        notificationService.notifyAdmins(NotificationType.ORDER, "New order placed",
+                "Order " + saved.getOrderNumber() + " for " + saved.getCurrency() + " " + saved.getGrandTotal()
+                        + " was placed by " + user.getEmail() + ".", "/admin-orders.html");
 
         return orderMapper.toDto(saved);
     }

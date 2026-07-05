@@ -1,11 +1,14 @@
 package in.jlenterprises.ecommerce.service.impl;
 
+import in.jlenterprises.ecommerce.audit.Auditable;
+import in.jlenterprises.ecommerce.constant.NotificationType;
 import in.jlenterprises.ecommerce.dto.inventory.InventoryDto;
 import in.jlenterprises.ecommerce.entity.Inventory;
 import in.jlenterprises.ecommerce.exception.ResourceNotFoundException;
 import in.jlenterprises.ecommerce.repository.InventoryRepository;
 import in.jlenterprises.ecommerce.request.inventory.InventoryUpdateRequest;
 import in.jlenterprises.ecommerce.service.InventoryService;
+import in.jlenterprises.ecommerce.service.NotificationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -20,9 +23,11 @@ public class InventoryServiceImpl implements InventoryService {
     private static final Logger log = LoggerFactory.getLogger(InventoryServiceImpl.class);
 
     private final InventoryRepository inventoryRepository;
+    private final NotificationService notificationService;
 
-    public InventoryServiceImpl(InventoryRepository inventoryRepository) {
+    public InventoryServiceImpl(InventoryRepository inventoryRepository, NotificationService notificationService) {
         this.inventoryRepository = inventoryRepository;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -33,12 +38,24 @@ public class InventoryServiceImpl implements InventoryService {
 
     @Override
     @Transactional
+    @Auditable(action = "UPDATE_INVENTORY", entity = "inventory")
     public InventoryDto update(UUID productId, InventoryUpdateRequest request) {
         Inventory inv = getEntity(productId);
         inv.setQuantity(request.quantity());
         inv.setReorderLevel(request.reorderLevel());
         inv.setWarehouseLocation(request.warehouseLocation());
-        return toDto(inventoryRepository.save(inv));
+        Inventory saved = inventoryRepository.save(inv);
+
+        // Alert admins when stock drops to/below the reorder level (or runs out).
+        String status = stockStatus(saved);
+        if (!"IN_STOCK".equals(status)) {
+            String product = saved.getProduct().getName();
+            notificationService.notifyAdmins(NotificationType.SYSTEM,
+                    "OUT_OF_STOCK".equals(status) ? "Out of stock: " + product : "Low stock: " + product,
+                    product + " has " + saved.getAvailable() + " available (reorder at " + saved.getReorderLevel() + ").",
+                    "/admin-inventory.html");
+        }
+        return toDto(saved);
     }
 
     @Override

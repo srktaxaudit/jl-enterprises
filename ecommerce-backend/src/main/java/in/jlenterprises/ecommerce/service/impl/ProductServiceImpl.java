@@ -1,5 +1,6 @@
 package in.jlenterprises.ecommerce.service.impl;
 
+import in.jlenterprises.ecommerce.audit.Auditable;
 import in.jlenterprises.ecommerce.dto.catalog.ProductDetailDto;
 import in.jlenterprises.ecommerce.dto.catalog.ProductImageDto;
 import in.jlenterprises.ecommerce.dto.catalog.ProductSearchCriteria;
@@ -122,6 +123,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional
+    @Auditable(action = "CREATE_PRODUCT", entity = "product")
     public ProductDetailDto create(ProductRequest request) {
         String slug = resolveSlug(request);
         if (productRepository.existsBySlug(slug)) {
@@ -145,6 +147,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional
+    @Auditable(action = "UPDATE_PRODUCT", entity = "product")
     public ProductDetailDto update(UUID id, ProductRequest request) {
         Product product = getEntity(id);
         String slug = resolveSlug(request);
@@ -166,6 +169,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional
+    @Auditable(action = "DELETE_PRODUCT", entity = "product")
     public void delete(UUID id) {
         Product product = getEntity(id);
         product.setDeleted(true);
