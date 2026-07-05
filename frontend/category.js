@@ -45,7 +45,7 @@
   }
 
   async function boot() {
-    grid.innerHTML = `<div class="col-span-full text-center py-12 text-slate-400">Loading…</div>`;
+    grid.innerHTML = `<div class="col-span-full text-center py-12">${typeof jlSpinnerHTML === "function" ? jlSpinnerHTML({label:"Loading products"}) : '<span class="text-slate-400">Loading…</span>'}</div>`;
     try {
       const page = await JLStore.products({ category: slug, size: 100 });
       all = (page && page.content) || [];

@@ -46,12 +46,13 @@
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead><tr class="text-left text-slate-400 text-[12px] uppercase"><th class="py-2">Key</th><th>Value</th><th>Updated</th><th class="text-right">Actions</th></tr></thead>
-          <tbody id="rows"><tr><td colspan="4" class="py-4 text-slate-400">Loading…</td></tr></tbody>
+          <tbody id="rows"><tr><td colspan="4" class="py-6 text-center text-slate-400"></td></tr></tbody>
         </table>
       </div>
     </div>
   </div>
 
+<script src="jl-ui.js"></script>
 <script src="admin.js"></script>
 <script>
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c)=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
@@ -63,6 +64,7 @@
 
   async function load(){
     const body = $("rows");
+    body.innerHTML = `<tr><td colspan="4" class="py-6 text-center text-slate-400">${jlSpinnerHTML({label:"Loading settings"})}</td></tr>`;
     try {
       const rows = await jlApi("/api/v1/admin/settings");
       body.innerHTML = rows.length ? rows.map(s=>`
@@ -78,19 +80,24 @@
     } catch(e){ body.innerHTML = `<tr><td colspan="4" class="py-4 text-red-600">Could not load (${esc(e.message)}).</td></tr>`; }
   }
 
+  jlField($("key"), [jlV.required(), jlV.maxLen(100)]);
+  jlField($("value"), [jlV.maxLen(2000)]);
+
   $("form").addEventListener("submit", async (ev)=>{
     ev.preventDefault();
-    const key = $("key").value.trim(); if(!key) return;
+    const v = jlValidate($("form"), { key:[jlV.required(), jlV.maxLen(100)], value:[jlV.maxLen(2000)] });
+    if(!v.valid) return;
+    const key = $("key").value.trim();
     try { await jlApi(`/api/v1/admin/settings/${encodeURIComponent(key)}`, {method:"PUT", body:{ value:$("value").value }});
-      flash("Setting saved."); $("form").reset(); load(); }
-    catch(e){ flash(e.message||"Save failed", false); }
+      jlToast("Setting saved.", {type:"success"}); $("form").reset(); jlClearErrors($("form")); load(); }
+    catch(e){ if(e.errors && jlShowServerErrors($("form"), e.errors)) return; flash(e.message||"Save failed", false); }
   });
 
   $("rows").addEventListener("click", async (ev)=>{
     const b = ev.target.closest("button"); if(!b) return;
     if(b.dataset.edit!==undefined && b.dataset.edit!==""){ $("key").value=b.dataset.edit; $("value").value=b.dataset.val; window.scrollTo({top:0,behavior:"smooth"}); return; }
-    if(b.dataset.del){ if(!confirm(`Delete setting "${b.dataset.del}"?`)) return;
-      try { await jlApi(`/api/v1/admin/settings/${encodeURIComponent(b.dataset.del)}`, {method:"DELETE"}); flash("Deleted."); load(); }
+    if(b.dataset.del){ if(!(await jlConfirm(`Delete setting "${b.dataset.del}"?`, {danger:true, confirmText:"Delete"}))) return;
+      try { await jlApi(`/api/v1/admin/settings/${encodeURIComponent(b.dataset.del)}`, {method:"DELETE"}); jlToast("Deleted.", {type:"success"}); load(); }
       catch(e){ flash(e.message||"Delete failed", false); } }
   });
 

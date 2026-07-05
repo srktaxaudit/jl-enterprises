@@ -38,13 +38,12 @@
   <p class="text-slate-400 text-sm mb-5">Apply these codes at checkout to save on your order.</p>
 
   <div id="msg" class="hidden mb-4 text-[13px] rounded-lg px-3 py-2 bg-green-50 text-green-700 border border-green-200"></div>
-  <div id="grid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
-    <div class="text-slate-400 text-sm">Loading offers…</div>
-  </div>
+  <div id="grid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10"></div>
 </div></main>
 
 <footer class="bg-navy text-slate-400 mt-9 py-6 text-center text-[13px]">© 2026 JL Enterprises, Thoothukudi · <a href="index.html" class="text-brand">Home</a> · <a href="cart.html" class="text-brand">Cart</a></footer>
 
+<script src="jl-ui.js"></script>
 <script src="store.js"></script>
 <script src="script.js"></script>
 <script>
@@ -88,6 +87,7 @@
   }
 
   (async function load(){
+    $("grid").innerHTML = '<div class="col-span-full" style="text-align:center;padding:24px">' + jlSpinnerHTML({ size: 28, label: "Loading offers…" }) + '</div>';
     try {
       const coupons = await JLCheckout.activeCoupons();
       const grid = $("grid");
@@ -96,8 +96,8 @@
         : '<div class="text-slate-400 text-sm col-span-full py-8 text-center">No active offers right now — check back soon! 🎉</div>';
       grid.addEventListener("click", async (e)=>{
         const b = e.target.closest("button[data-copy]"); if(!b) return;
-        try { await navigator.clipboard.writeText(b.dataset.copy); flash("Copied " + b.dataset.copy + " — apply it at checkout!"); }
-        catch(_) { flash("Coupon code: " + b.dataset.copy); }
+        try { await navigator.clipboard.writeText(b.dataset.copy); jlToast("Copied " + b.dataset.copy + " — apply it at checkout!", { type: "success", title: "Coupon copied" }); }
+        catch(_) { jlToast("Coupon code: " + b.dataset.copy, { type: "info" }); }
       });
     } catch(e){ $("grid").innerHTML = '<div class="text-slate-400 text-sm col-span-full">Could not load offers right now. Please refresh.</div>'; }
   })();

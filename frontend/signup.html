@@ -171,6 +171,7 @@
 </footer>
 
 <script>window.JL_BACKEND_AUTH = true;</script>
+<script src="jl-ui.js"></script>
 <script src="store.js"></script>
 <script src="script.js"></script>
 <script>
@@ -185,6 +186,18 @@
     window.JL_ON_WAKE = () => { if (btn.disabled) btn.textContent = "Waking up the server… please wait"; };
     // ≥8 chars incl. upper, lower, digit and special (mirrors the backend rule)
     const STRONG = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+
+    // Real-time inline validation (mirrors the submit checks below)
+    const suName = document.getElementById("suName");
+    const suMobileEl = document.getElementById("suMobile");
+    const suEmailEl = document.getElementById("suEmail");
+    const suPasswordEl = document.getElementById("suPassword");
+    const suConfirmEl = document.getElementById("suConfirm");
+    jlField(suName, [jlV.required("Please enter your full name.")]);
+    jlField(suMobileEl, [jlV.required("Please enter your mobile number."), jlV.phoneIN()]);
+    jlField(suEmailEl, [jlV.required("Please enter your email."), jlV.email()]);
+    jlField(suPasswordEl, [jlV.required("Please choose a password."), jlV.strongPassword()]);
+    jlField(suConfirmEl, [jlV.required("Please re-enter your password."), jlV.match(() => suPasswordEl.value, "Passwords do not match.")]);
 
     function showError(msg) {
       let box = document.getElementById("signupError");
@@ -201,6 +214,15 @@
       e.preventDefault();
       clearInvalid(form);
       showError("");
+
+      const vres = jlValidate(form, {
+        suName: [jlV.required("Please enter your full name.")],
+        suMobile: [jlV.required("Please enter your mobile number."), jlV.phoneIN()],
+        suEmail: [jlV.required("Please enter your email."), jlV.email()],
+        suPassword: [jlV.required("Please choose a password."), jlV.strongPassword()],
+        suConfirm: [jlV.required("Please re-enter your password."), jlV.match(() => suPasswordEl.value, "Passwords do not match.")],
+      });
+      if (!vres.valid) return;
 
       const nameRaw = document.getElementById("suName").value.trim();
       const mobile = document.getElementById("suMobile");
@@ -235,6 +257,7 @@
         setTimeout(() => location.replace(dest), 800);
       } catch (err) {
         btn.disabled = false; btn.textContent = old;
+        if (err.errors && jlShowServerErrors(form, err.errors)) return;
         const dup = err.status === 409 || /exist|already|registered|taken/i.test(err.message || "");
         showError(dup
           ? "An account with this email already exists — please log in instead."

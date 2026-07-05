@@ -193,6 +193,7 @@
   if (dateInput) dateInput.min = new Date().toISOString().split("T")[0];
 </script>
 <script>window.JL_BACKEND_SERVICE = true;</script>
+<script src="jl-ui.js"></script>
 <script src="store.js"></script>
 <script src="script.js"></script>
 <script>
@@ -201,9 +202,27 @@
     const form = document.getElementById("serviceForm");
     const btn = form.querySelector('button[type="submit"]');
 
+    // Real-time inline validation
+    jlField(document.getElementById("svcName"), [jlV.required("Please enter your name.")]);
+    jlField(document.getElementById("svcMobile"), [jlV.required("Please enter your mobile number."), jlV.phoneIN()]);
+    jlField(document.getElementById("svcProduct"), [jlV.required("Please select a product type.")]);
+    jlField(document.getElementById("svcType"), [jlV.required("Please select a service type.")]);
+    jlField(document.getElementById("svcAddress"), [jlV.required("Please enter your address.")]);
+    jlField(document.getElementById("svcDate"), [jlV.required("Please choose a preferred date.")]);
+
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       clearInvalid(form);
+      const vres = jlValidate(form, {
+        svcName: [jlV.required("Please enter your name.")],
+        svcMobile: [jlV.required("Please enter your mobile number."), jlV.phoneIN()],
+        svcProduct: [jlV.required("Please select a product type.")],
+        svcType: [jlV.required("Please select a service type.")],
+        svcAddress: [jlV.required("Please enter your address.")],
+        svcDate: [jlV.required("Please choose a preferred date.")],
+      });
+      if (!vres.valid) return;
+
       const name = document.getElementById("svcName").value.trim();
       const mobile = document.getElementById("svcMobile");
       const product = document.getElementById("svcProduct").value;
@@ -232,7 +251,8 @@
         showSuccess(form, "serviceSuccess");
       } catch (err) {
         btn.disabled = false; btn.textContent = old;
-        alert(err.message || "Could not submit your request. Please call us on 95149 70444.");
+        if (err.errors && jlShowServerErrors(form, err.errors)) return;
+        await jlAlert(err.message || "Could not submit your request. Please call us on 95149 70444.", { type: "error", title: "Booking failed" });
       }
     });
   })();

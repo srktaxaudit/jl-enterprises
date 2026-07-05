@@ -72,6 +72,7 @@
     </div>
   </div>
 
+<script src="jl-ui.js"></script>
 <script src="admin.js"></script>
 <script>
   const inr = (n) => "₹" + Math.round(Number(n||0)).toLocaleString("en-IN");
@@ -88,6 +89,7 @@
 
   async function load(){
     const body = $("rows");
+    body.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:20px">${jlSpinnerHTML()}</td></tr>`;
     try {
       COUPONS = await jlApi("/api/v1/coupons");
       body.innerHTML = COUPONS.length ? COUPONS.map(c=>`
@@ -106,7 +108,7 @@
   }
 
   function showForm(s){ $("formCard").classList.toggle("hidden", !s); if(s) window.scrollTo({top:0,behavior:"smooth"}); }
-  function resetForm(){ $("form").reset(); $("cid").value=""; $("active").checked=true; $("formTitle").textContent="New coupon"; }
+  function resetForm(){ $("form").reset(); $("cid").value=""; $("active").checked=true; $("formTitle").textContent="New coupon"; jlClearErrors($("form")); }
 
   $("newBtn").addEventListener("click", ()=>{ resetForm(); showForm(true); });
   $("cancelBtn").addEventListener("click", ()=> showForm(false));
@@ -121,8 +123,26 @@
     $("formTitle").textContent="Edit: "+c.code; showForm(true);
   }
 
+  // Build validation rules; value cap depends on coupon type, optional limits require ≥ 1 when filled.
+  function couponRules(){
+    const pct = $("type").value === "PERCENTAGE";
+    return {
+      code: [jlV.required()],
+      value: [jlV.required(), jlV.number(pct ? {min:0, max:100} : {min:0}, pct ? "Enter a percentage between 0 and 100." : undefined)],
+      usageLimit: [jlV.number({min:1})],
+      perUserLimit: [jlV.number({min:1})],
+    };
+  }
+  jlField($("code"), [jlV.required()]);
+  jlField($("value"), [jlV.required(), jlV.number({min:0})]);
+  jlField($("usageLimit"), [jlV.number({min:1})]);
+  jlField($("perUserLimit"), [jlV.number({min:1})]);
+  // Re-check value against the percentage cap when the type changes.
+  $("type").addEventListener("change", ()=>{ if($("value").value!=="") jlValidate($("form"), { value: couponRules().value }); });
+
   $("form").addEventListener("submit", async (ev)=>{
     ev.preventDefault();
+    if(!jlValidate($("form"), couponRules()).valid) return;
     const body = {
       code:$("code").value.trim().toUpperCase(), name:$("name").value.trim()||null, type:$("type").value, value:$("value").value,
       minOrderAmount:$("minOrderAmount").value||null, maxDiscount:$("maxDiscount").value||null,
@@ -136,15 +156,15 @@
     try {
       if(id) await jlApi(`/api/v1/coupons/${id}`, {method:"PUT", body});
       else await jlApi("/api/v1/coupons", {method:"POST", body});
-      flash(id?"Coupon updated.":"Coupon created."); showForm(false); load();
-    } catch(e){ flash(e.message||"Save failed", false); }
+      jlToast(id?"Coupon updated.":"Coupon created.",{type:"success"}); showForm(false); load();
+    } catch(e){ if(e.errors) jlShowServerErrors($("form"), e.errors); flash(e.message||"Save failed", false); }
   });
 
   $("rows").addEventListener("click", async (ev)=>{
     const b = ev.target.closest("button"); if(!b) return;
     if(b.dataset.edit) return edit(b.dataset.edit);
-    if(b.dataset.del){ if(!confirm("Delete this coupon?")) return;
-      try { await jlApi(`/api/v1/coupons/${b.dataset.del}`, {method:"DELETE"}); flash("Coupon deleted."); load(); }
+    if(b.dataset.del){ if(!(await jlConfirm("Delete this coupon?",{title:"Delete coupon",confirmText:"Delete",danger:true}))) return;
+      try { await jlApi(`/api/v1/coupons/${b.dataset.del}`, {method:"DELETE"}); jlToast("Coupon deleted.",{type:"success"}); load(); }
       catch(e){ flash(e.message||"Delete failed", false); } }
   });
 

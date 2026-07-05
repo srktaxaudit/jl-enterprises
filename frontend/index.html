@@ -206,6 +206,7 @@
   🛒 <span id="floatCount">0</span> item(s) · <span id="floatTotal">₹0</span>
 </a>
 
+<script src="jl-ui.js"></script>
 <script src="store.js"></script>
 <script>
   // ── Live catalog: products come from the backend API (Supabase-backed). ──
@@ -248,7 +249,7 @@
 
   async function loadProducts() {
     const grid = document.getElementById("products");
-    grid.innerHTML = `<div class="col-span-full text-center py-12 text-slate-400">Loading products…</div>`;
+    grid.innerHTML = `<div class="col-span-full text-center py-12">${jlSpinnerHTML({ label: "Loading products…" })}</div>`;
     try {
       const page = await JLStore.products();
       const items = (page && page.content) || [];

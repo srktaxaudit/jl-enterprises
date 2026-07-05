@@ -150,6 +150,7 @@
 </footer>
 
 <script>window.JL_BACKEND_TRACK = true;</script>
+<script src="jl-ui.js"></script>
 <script src="store.js"></script>
 <script src="script.js"></script>
 <script>
@@ -166,9 +167,18 @@
     const $ = (id) => document.getElementById(id);
     const showErr = (m) => { const e=$("trackError"); e.textContent=m||""; e.style.display=m?"block":"none"; };
 
+    // Real-time inline validation
+    jlField($("toOrderId"), [jlV.required("Enter your order number.")]);
+    jlField($("toMobile"), [jlV.required("Please enter your mobile number."), jlV.phoneIN()]);
+
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       clearInvalid(form); showErr(""); $("trackResult").style.display = "none";
+      const vres = jlValidate(form, {
+        toOrderId: [jlV.required("Enter your order number.")],
+        toMobile: [jlV.required("Please enter your mobile number."), jlV.phoneIN()],
+      });
+      if (!vres.valid) return;
       const number = $("toOrderId").value.trim();
       const mobile = $("toMobile");
       if (!number) { showErr("Enter your order number."); return; }

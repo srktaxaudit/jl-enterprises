@@ -76,7 +76,7 @@
     <span id="ordUser" class="text-[13px] text-slate-400"></span>
   </div>
 
-  <div id="ordLoading" class="text-center py-16 text-slate-400">Loading your orders…</div>
+  <div id="ordLoading" class="text-center py-16 text-slate-400"></div>
 
   <div id="ordEmpty" class="hidden text-center py-16">
     <div class="text-6xl mb-3">🧾</div>
@@ -91,6 +91,7 @@
 
 <footer class="bg-navy text-slate-400 mt-9 py-6 text-center text-[13px]">© 2026 JL Enterprises, Thoothukudi · <a href="index.html" class="text-brand">Home</a> · <a href="cart.html" class="text-brand">Cart</a></footer>
 
+<script src="jl-ui.js"></script>
 <script src="store.js"></script>
 <script src="script.js"></script>
 <script>
@@ -99,6 +100,7 @@
     if (!JLCustomer.isLoggedIn()) { location.replace("login.html?next=my-orders.html"); return; }
 
     const $ = (id) => document.getElementById(id);
+    $("ordLoading").innerHTML = '<div style="text-align:center;padding:24px">' + jlSpinnerHTML({ size: 28, label: "Loading your orders…" }) + '</div>';
     const u = JLCustomer.user() || {};
     if (u.email) $("ordUser").textContent = u.email;
 
@@ -143,22 +145,22 @@
       } catch (err) {
         btn.textContent = "View items ▾";
         if (err.status === 401) { location.replace("login.html?next=my-orders.html"); return; }
-        alert(err.message || "Could not load order details.");
+        await jlAlert(err.message || "Could not load order details.", { type: "error", title: "Couldn't load details" });
       }
     }
 
     async function cancelOrder(id) {
-      const reason = prompt("Reason for cancelling (optional):", "");
+      const reason = await jlPrompt("Reason for cancelling (optional):", { title: "Cancel order", required: false, placeholder: "Optional" });
       if (reason === null) return;
-      if (!confirm("Cancel this order? This can't be undone.")) return;
-      try { await JLCheckout.cancelOrder(id, reason); alert("Order cancelled. Any payment will be refunded."); location.reload(); }
-      catch (e) { alert(e.message || "Could not cancel this order."); }
+      if (!(await jlConfirm("Cancel this order? This can't be undone.", { title: "Cancel order", confirmText: "Cancel order", cancelText: "Keep order", danger: true }))) return;
+      try { await JLCheckout.cancelOrder(id, reason); jlToast("Order cancelled. Any payment will be refunded.", { type: "success", title: "Order cancelled" }); location.reload(); }
+      catch (e) { await jlAlert(e.message || "Could not cancel this order.", { type: "error", title: "Couldn't cancel" }); }
     }
     async function returnOrder(id) {
-      const reason = prompt("Reason for return:", "");
+      const reason = await jlPrompt("Reason for return:", { title: "Request return", required: false });
       if (reason === null) return;
-      try { await JLCheckout.requestReturn(id, reason); alert("Return requested — our team will review it shortly."); location.reload(); }
-      catch (e) { alert(e.message || "Could not request a return."); }
+      try { await JLCheckout.requestReturn(id, reason); jlToast("Return requested — our team will review it shortly.", { type: "success", title: "Return requested" }); location.reload(); }
+      catch (e) { await jlAlert(e.message || "Could not request a return.", { type: "error", title: "Couldn't request return" }); }
     }
     async function downloadInvoice(id) {
       try {
@@ -167,7 +169,7 @@
         const a = o.shippingAddress || {};
         const addr = [a.fullName, a.line1, a.line2, a.city, a.state, a.postalCode].filter(Boolean).join(", ");
         const w = window.open("", "_blank");
-        if (!w) { alert("Please allow pop-ups to view the invoice."); return; }
+        if (!w) { await jlAlert("Please allow pop-ups to view the invoice.", { type: "warn", title: "Pop-up blocked" }); return; }
         w.document.write(`<html><head><title>Invoice ${jlEsc(o.orderNumber)}</title>
           <style>body{font-family:system-ui,Arial,sans-serif;padding:28px;color:#0b2447}h1{margin:0}table{width:100%;border-collapse:collapse;margin-top:16px}th,td{border-bottom:1px solid #e2e8f0;padding:8px;font-size:14px}th{text-align:left;color:#64748b}.t{text-align:right;margin-top:6px}</style></head>
           <body>
@@ -182,7 +184,7 @@
             <scr` + `ipt>window.onload=function(){window.print()}</scr` + `ipt>
           </body></html>`);
         w.document.close();
-      } catch (e) { alert(e.message || "Could not load the invoice."); }
+      } catch (e) { await jlAlert(e.message || "Could not load the invoice.", { type: "error", title: "Couldn't load invoice" }); }
     }
 
     (async function load() {

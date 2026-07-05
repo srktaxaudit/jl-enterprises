@@ -41,7 +41,7 @@
           <thead><tr class="text-left text-slate-400 text-[12px] uppercase">
             <th class="py-2">Name</th><th>Email</th><th>Phone</th><th>Verified</th><th>Roles</th><th class="text-right">Orders</th>
           </tr></thead>
-          <tbody id="rows"><tr><td colspan="5" class="py-4 text-slate-400">Loading…</td></tr></tbody>
+          <tbody id="rows"><tr><td colspan="6" style="text-align:center;padding:20px"></td></tr></tbody>
         </table>
       </div>
       <div class="flex items-center justify-between mt-4 text-sm">
@@ -52,6 +52,7 @@
     </div>
   </div>
 
+<script src="jl-ui.js"></script>
 <script src="admin.js"></script>
 <script>
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c)=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
@@ -63,6 +64,7 @@
     const search = $("search").value.trim();
     const q = `?page=${state.page}&size=${state.size}` + (search?`&search=${encodeURIComponent(search)}`:"");
     const body = $("rows");
+    body.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:20px">${jlSpinnerHTML()}</td></tr>`;
     try {
       const page = await jlApi("/api/v1/admin/users" + q);
       state.totalPages = page.totalPages || 1;
@@ -91,7 +93,7 @@
     const cell = row.querySelector("td");
     if(!row.classList.contains("hidden")){ row.classList.add("hidden"); return; }
     row.classList.remove("hidden");
-    cell.innerHTML = "Loading orders…";
+    cell.innerHTML = `<div style="text-align:center;padding:12px">${jlSpinnerHTML({label:"Loading orders…"})}</div>`;
     try {
       const page = await jlApi(`/api/v1/admin/orders/user/${userId}?size=20`);
       const orders = page.content || [];

@@ -43,7 +43,7 @@
           <thead><tr class="text-left text-slate-400 text-[12px] uppercase">
             <th class="py-2">Order</th><th>Placed</th><th>Items</th><th class="text-right">Total</th><th>Status</th><th class="text-right">Update</th>
           </tr></thead>
-          <tbody id="rows"><tr><td colspan="6" class="py-4 text-slate-400">Loading…</td></tr></tbody>
+          <tbody id="rows"><tr><td colspan="6" style="text-align:center;padding:20px"></td></tr></tbody>
         </table>
       </div>
       <div class="flex items-center justify-between mt-4 text-sm">
@@ -54,6 +54,7 @@
     </div>
   </div>
 
+<script src="jl-ui.js"></script>
 <script src="admin.js"></script>
 <script>
   const STATUSES = ["PENDING","CONFIRMED","PROCESSING","PACKED","SHIPPED","OUT_FOR_DELIVERY","DELIVERED","CANCELLED","RETURN_REQUESTED","RETURNED","REFUNDED","FAILED_PAYMENT"];
@@ -77,6 +78,7 @@
     const status = document.getElementById("statusFilter").value;
     const q = `?page=${state.page}&size=${state.size}` + (status?`&status=${status}`:"");
     const body = document.getElementById("rows");
+    body.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:20px">${jlSpinnerHTML()}</td></tr>`;
     try {
       const page = await jlApi("/api/v1/admin/orders" + q);
       state.totalPages = page.totalPages || 1;
@@ -110,16 +112,16 @@
     try {
       if(b.dataset.upd){
         const status = document.querySelector(`[data-sel="${b.dataset.upd}"]`).value;
-        await jlApi(`/api/v1/admin/orders/${b.dataset.upd}/status?status=${status}`, {method:"PATCH"}); flash("Status updated."); load();
+        await jlApi(`/api/v1/admin/orders/${b.dataset.upd}/status?status=${status}`, {method:"PATCH"}); jlToast("Status updated.",{type:"success"}); load();
       } else if(b.dataset.approve){
-        if(!confirm("Approve this return? Stock will be restored and payment refunded.")) return;
-        await jlApi(`/api/v1/admin/orders/${b.dataset.approve}/return/approve`, {method:"POST"}); flash("Return approved."); load();
+        if(!(await jlConfirm("Approve this return? Stock will be restored and payment refunded.",{title:"Approve return",confirmText:"Approve",danger:true}))) return;
+        await jlApi(`/api/v1/admin/orders/${b.dataset.approve}/return/approve`, {method:"POST"}); jlToast("Return approved.",{type:"success"}); load();
       } else if(b.dataset.reject){
-        const reason = prompt("Reason for rejecting the return:", ""); if(reason===null) return;
-        await jlApi(`/api/v1/admin/orders/${b.dataset.reject}/return/reject?reason=${encodeURIComponent(reason)}`, {method:"POST"}); flash("Return rejected."); load();
+        const reason = await jlPrompt("Reason for rejecting the return:",{title:"Reject return",required:false}); if(reason===null) return;
+        await jlApi(`/api/v1/admin/orders/${b.dataset.reject}/return/reject?reason=${encodeURIComponent(reason)}`, {method:"POST"}); jlToast("Return rejected.",{type:"success"}); load();
       } else if(b.dataset.note){
-        const notes = prompt("Internal note for this order (staff-only):", ""); if(notes===null) return;
-        await jlApi(`/api/v1/admin/orders/${b.dataset.note}/notes?notes=${encodeURIComponent(notes)}`, {method:"PATCH"}); flash("Note saved.");
+        const notes = await jlPrompt("Internal note for this order (staff-only):",{title:"Internal note",required:false}); if(notes===null) return;
+        await jlApi(`/api/v1/admin/orders/${b.dataset.note}/notes?notes=${encodeURIComponent(notes)}`, {method:"PATCH"}); jlToast("Note saved.",{type:"success"});
       }
     } catch(e){ flash(e.message||"Action failed", false); }
   });

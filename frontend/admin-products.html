@@ -89,6 +89,7 @@
 
   <style> .lbl{display:block;font-size:13px;font-weight:600;color:#475569;margin-bottom:4px} .inp{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:9px 12px;font-size:14px;outline:none} .inp:focus{border-color:#576cbc} </style>
 
+<script src="jl-ui.js"></script>
 <script src="admin.js"></script>
 <script>
   const inr = (n) => "₹" + Math.round(Number(n||0)).toLocaleString("en-IN");
@@ -108,6 +109,7 @@
 
   async function load(search=""){
     const body = $("rows");
+    body.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:20px">${jlSpinnerHTML()}</td></tr>`;
     try {
       const page = await jlApi("/api/v1/admin/products?size=50" + (search?`&search=${encodeURIComponent(search)}`:""));
       const rows = page.content || [];
@@ -127,7 +129,7 @@
   }
 
   function showForm(show){ $("formCard").classList.toggle("hidden", !show); if(show) window.scrollTo({top:0,behavior:"smooth"}); }
-  function resetForm(){ $("form").reset(); $("pid").value=""; $("formTitle").textContent="New product"; reflectImagesSection(); }
+  function resetForm(){ $("form").reset(); $("pid").value=""; $("formTitle").textContent="New product"; jlClearErrors($("form")); reflectImagesSection(); }
 
   // ── Product images ──
   function reflectImagesSection(){
@@ -162,7 +164,7 @@
     status.textContent = "Uploading…";
     try {
       renderImages(await jlUpload(`/api/v1/products/${pid}/images`, f));
-      status.textContent = "✓ Uploaded"; flash("Image uploaded.");
+      status.textContent = "✓ Uploaded"; jlToast("Image uploaded.",{type:"success"});
     } catch(e){
       status.textContent = "";
       flash(e.message || "Upload failed", false);
@@ -174,7 +176,7 @@
     const pid = $("pid").value;
     try {
       if(b.dataset.primary){ renderImages(await jlApi(`/api/v1/products/${pid}/images/${b.dataset.primary}/primary`, {method:"PATCH"})); }
-      if(b.dataset.delimg){ if(!confirm("Remove this image?")) return; renderImages(await jlApi(`/api/v1/products/${pid}/images/${b.dataset.delimg}`, {method:"DELETE"})); }
+      if(b.dataset.delimg){ if(!(await jlConfirm("Remove this image?",{title:"Remove image",confirmText:"Remove",danger:true}))) return; renderImages(await jlApi(`/api/v1/products/${pid}/images/${b.dataset.delimg}`, {method:"DELETE"})); }
     } catch(e){ flash(e.message||"Action failed", false); }
   });
 
@@ -193,8 +195,14 @@
     } catch(e){ flash(e.message||"Could not load product", false); }
   }
 
+  const PRODUCT_RULES = { name:[jlV.required()], sku:[jlV.required()], price:[jlV.required(), jlV.number({min:0})] };
+  jlField($("name"), PRODUCT_RULES.name);
+  jlField($("sku"), PRODUCT_RULES.sku);
+  jlField($("price"), PRODUCT_RULES.price);
+
   $("form").addEventListener("submit", async (ev)=>{
     ev.preventDefault();
+    if(!jlValidate($("form"), PRODUCT_RULES).valid) return;
     const body = {
       name:$("name").value.trim(), sku:$("sku").value.trim(),
       price:$("price").value, comparePrice:$("comparePrice").value||null,
@@ -206,7 +214,7 @@
     try {
       if(id){
         await jlApi(`/api/v1/products/${id}`, {method:"PUT", body});
-        flash("Product updated."); showForm(false); load($("search").value.trim());
+        jlToast("Product updated.",{type:"success"}); showForm(false); load($("search").value.trim());
       } else {
         // Keep the form open in edit mode so images can be uploaded straight away.
         const created = await jlApi("/api/v1/products", {method:"POST", body});
@@ -214,7 +222,7 @@
         reflectImagesSection(); renderImages(created.images||[]);
         flash("Product created — now add images below."); load($("search").value.trim());
       }
-    } catch(e){ flash(e.message||"Save failed", false); }
+    } catch(e){ if(e.errors) jlShowServerErrors($("form"), e.errors); flash(e.message||"Save failed", false); }
   });
 
   $("rows").addEventListener("click", async (ev)=>{
@@ -222,7 +230,7 @@
     try {
       if(b.dataset.edit) return editProduct(b.dataset.edit);
       if(b.dataset.feat){ await jlApi(`/api/v1/products/${b.dataset.feat}/featured?featured=${b.dataset.on}`, {method:"PATCH"}); load($("search").value.trim()); return; }
-      if(b.dataset.del){ if(!confirm("Delete this product?")) return; await jlApi(`/api/v1/products/${b.dataset.del}`, {method:"DELETE"}); flash("Product deleted."); load($("search").value.trim()); }
+      if(b.dataset.del){ if(!(await jlConfirm("Delete this product?",{title:"Delete product",confirmText:"Delete",danger:true}))) return; await jlApi(`/api/v1/products/${b.dataset.del}`, {method:"DELETE"}); jlToast("Product deleted.",{type:"success"}); load($("search").value.trim()); }
     } catch(e){ flash(e.message||"Action failed", false); }
   });
 

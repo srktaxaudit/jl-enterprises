@@ -41,7 +41,7 @@
           <thead><tr class="text-left text-slate-400 text-[12px] uppercase">
             <th class="py-2">When</th><th>Actor</th><th>Action</th><th>Entity</th><th>Detail</th><th>IP</th>
           </tr></thead>
-          <tbody id="rows"><tr><td colspan="6" class="py-4 text-slate-400">Loading…</td></tr></tbody>
+          <tbody id="rows"><tr><td colspan="6" class="py-6 text-center text-slate-400"></td></tr></tbody>
         </table>
       </div>
       <div class="flex items-center gap-2 mt-4 text-sm">
@@ -52,6 +52,7 @@
     </div>
   </div>
 
+<script src="jl-ui.js"></script>
 <script src="admin.js"></script>
 <script>
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c)=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
@@ -72,6 +73,7 @@
 
   async function load(){
     const body = $("rows");
+    body.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-slate-400">${jlSpinnerHTML({label:"Loading activity logs"})}</td></tr>`;
     try {
       const page = await jlApi(`/api/v1/admin/audit-logs?page=${PAGE}&size=${SIZE}`);
       const rows = page.content || [];

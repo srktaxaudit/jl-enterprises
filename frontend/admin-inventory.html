@@ -55,11 +55,12 @@
       <!-- Low stock -->
       <div class="bg-white border border-slate-200 rounded-2xl p-5">
         <h2 class="text-navy font-semibold mb-3">⚠️ Low stock</h2>
-        <div id="low" class="text-sm">Loading…</div>
+        <div id="low" class="text-sm"></div>
       </div>
     </div>
   </div>
 
+<script src="jl-ui.js"></script>
 <script src="admin.js"></script>
 <script>
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c)=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
@@ -94,6 +95,7 @@
   }
 
   async function loadLow(){
+    $("low").innerHTML = `<div style="text-align:center;padding:20px">${jlSpinnerHTML()}</div>`;
     try {
       const low = await jlApi("/api/v1/admin/inventory/low-stock");
       $("low").innerHTML = low.length ? low.map(p=>`
@@ -106,10 +108,16 @@
   }
 
   $("results").addEventListener("click", (ev)=>{ const b=ev.target.closest("button[data-pick]"); if(b) pick(b.dataset.pick, b.dataset.name); });
+
+  const INV_RULES = { quantity:[jlV.required(), jlV.number({min:0})], reorderLevel:[jlV.required(), jlV.number({min:0})] };
+  jlField($("quantity"), INV_RULES.quantity);
+  jlField($("reorderLevel"), INV_RULES.reorderLevel);
+
   $("saveBtn").addEventListener("click", async ()=>{
+    if(!jlValidate($("editCard"), INV_RULES).valid) return;
     const body = { quantity:Number($("quantity").value), reorderLevel:Number($("reorderLevel").value), warehouseLocation:$("warehouseLocation").value.trim()||null };
-    try { await jlApi(`/api/v1/admin/inventory/${$("productId").value}`, {method:"PUT", body}); flash("Stock updated."); loadLow(); }
-    catch(e){ flash(e.message||"Save failed", false); }
+    try { await jlApi(`/api/v1/admin/inventory/${$("productId").value}`, {method:"PUT", body}); jlToast("Stock updated.",{type:"success"}); loadLow(); }
+    catch(e){ if(e.errors) jlShowServerErrors($("editCard"), e.errors); flash(e.message||"Save failed", false); }
   });
   let timer; $("search").addEventListener("input", (e)=>{ clearTimeout(timer); const v=e.target.value.trim(); timer=setTimeout(()=>search(v),300); });
 

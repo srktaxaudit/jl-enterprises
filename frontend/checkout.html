@@ -224,6 +224,7 @@
 </footer>
 
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script src="jl-ui.js"></script>
 <script src="store.js"></script>
 <script src="script.js"></script>
 <script>
@@ -278,6 +279,7 @@
         appliedCoupon = { code: r.code, discount: r.discount };
         $("coCoupon").value = r.code;
         couponMsg("✓ Coupon applied — you save " + jlInr(r.discount), true);
+        jlToast("Coupon applied — you save " + jlInr(r.discount), { type: "success", title: "Coupon applied" });
         renderTotals();
       } catch (e) {
         appliedCoupon = null; renderTotals();
@@ -312,6 +314,14 @@
     if (u.phone) $("coPhone").value = String(u.phone).replace(/^\+?91/, "");
     const pref = localStorage.getItem("jl_pref_address");
     if (pref) $("coLine1").value = pref;
+
+    // Real-time inline validation on the delivery-address fields (complements the
+    // existing bad()/showError checks in the place-order handler below).
+    jlField($("coName"), [jlV.required("Please enter the recipient name.")]);
+    jlField($("coPhone"), [jlV.required("Please enter a mobile number."), jlV.phoneIN()]);
+    jlField($("coLine1"), [jlV.required("Please enter the delivery address.")]);
+    jlField($("coCity"), [jlV.required("Please enter the city / town.")]);
+    jlField($("coPin"), [jlV.required("Please enter a pincode."), jlV.pincodeIN()]);
 
     function showError(msg) {
       const box = $("coError");
@@ -400,6 +410,14 @@
     // 5) Place order: sync cart → create address → place order (COD or online)
     $("coPlace").addEventListener("click", async () => {
       clearBad(); showError("");
+      const vres = jlValidate($("coForm"), {
+        coName: [jlV.required("Please enter the recipient name.")],
+        coPhone: [jlV.required("Please enter a mobile number."), jlV.phoneIN()],
+        coLine1: [jlV.required("Please enter the delivery address.")],
+        coCity: [jlV.required("Please enter the city / town.")],
+        coPin: [jlV.required("Please enter a pincode."), jlV.pincodeIN()],
+      });
+      if (!vres.valid) return;
       const name = $("coName").value.trim();
       const phoneDigits = $("coPhone").value.replace(/\D/g, "").replace(/^91(?=\d{10}$)/, "");
       const line1 = $("coLine1").value.trim();
@@ -451,6 +469,7 @@
       } catch (err) {
         btn.disabled = false; btn.textContent = old;
         if (err.status === 401) { location.replace("login.html?next=checkout.html"); return; }
+        if (err.errors && jlShowServerErrors($("coForm"), err.errors)) return;
         showError(err.message || "Could not place your order. Please try again.");
       }
     });

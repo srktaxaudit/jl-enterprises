@@ -38,11 +38,12 @@
 
 <main class="max-w-[1000px] mx-auto px-5 py-6 min-h-[60vh]">
   <a href="index.html" class="text-brand text-sm">← Back to store</a>
-  <div id="product" class="mt-4 text-slate-400">Loading…</div>
+  <div id="product" class="mt-4 text-slate-400"></div>
 </main>
 
 <footer class="bg-navy text-slate-400 mt-9 py-6 text-center text-[13px]">© 2026 JL Enterprises, Thoothukudi</footer>
 
+<script src="jl-ui.js"></script>
 <script src="store.js"></script>
 <script>
   const inr = (n) => "₹" + Math.round(Number(n || 0)).toLocaleString("en-IN");
@@ -51,6 +52,7 @@
 
   async function loadProduct() {
     const box = document.getElementById("product");
+    box.innerHTML = '<div style="text-align:center;padding:24px">' + jlSpinnerHTML({ size: 28 }) + '</div>';
     const slug = new URLSearchParams(location.search).get("slug");
     if (!slug) { box.innerHTML = '<p class="text-red-500">No product specified.</p>'; return; }
     try {
@@ -101,6 +103,7 @@
 
   async function loadReviews(productId) {
     const el = document.getElementById("reviewList");
+    el.innerHTML = '<div style="text-align:center;padding:24px">' + jlSpinnerHTML({ size: 22, label: "Loading reviews…" }) + '</div>';
     try {
       const page = await jlPublicApi(`/api/v1/products/${productId}/reviews?size=20`);
       const rows = (page && page.content) || [];
@@ -135,6 +138,9 @@
       <button type="button" id="rvSubmit" class="bg-navy hover:bg-orange text-white font-semibold rounded-lg px-5 py-2 text-sm">Submit review</button>`;
     let stars = 0;
     const msg = (t, ok) => { const m = document.getElementById("rvMsg"); m.textContent = t; m.style.color = ok ? "#16a34a" : "#dc2626"; };
+    // Real-time length validation on the free-text fields
+    jlField(document.getElementById("rvTitle"), [jlV.maxLen(160, "Title must be at most 160 characters.")]);
+    jlField(document.getElementById("rvComment"), [jlV.maxLen(2000, "Comment must be at most 2000 characters.")]);
     document.getElementById("starPick").addEventListener("click", (e) => {
       const b = e.target.closest("button[data-star]"); if (!b) return;
       stars = Number(b.dataset.star);
@@ -142,14 +148,17 @@
     });
     document.getElementById("rvSubmit").addEventListener("click", async () => {
       if (!stars) { msg("Please select a star rating.", false); return; }
+      const commentVal = document.getElementById("rvComment").value.trim();
+      if (commentVal.length > 2000) { jlSetError(document.getElementById("rvComment"), "Comment must be at most 2000 characters."); return; }
       const btn = document.getElementById("rvSubmit"); btn.disabled = true; const old = btn.textContent; btn.textContent = "Submitting…";
       try {
         await jlAuthApi(`/api/v1/products/${productId}/reviews`, {
           rating: stars,
           title: document.getElementById("rvTitle").value.trim(),
-          comment: document.getElementById("rvComment").value.trim(),
+          comment: commentVal,
         });
         msg("Thanks! Your review was submitted and will appear once approved.", true);
+        jlToast("Review submitted — it will appear once approved.", { type: "success", title: "Review submitted" });
         document.getElementById("rvTitle").value = ""; document.getElementById("rvComment").value = "";
       } catch (e) {
         msg(e.status === 401 ? "Please log in again to post your review." : (e.message || "Could not submit review."), false);

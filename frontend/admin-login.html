@@ -65,6 +65,7 @@
     </p>
   </div>
 
+<script src="jl-ui.js"></script>
 <script src="admin.js"></script>
 <script>
   const form = document.getElementById("loginForm");
@@ -80,9 +81,14 @@
   // If already logged in, skip the form.
   JLAuth.me().then(() => location.replace(nextPage())).catch(() => {});
 
+  // Real-time inline validation.
+  jlField(document.getElementById("email"), [jlV.required(), jlV.email()]);
+  jlField(document.getElementById("password"), [jlV.required()]);
+
   form.addEventListener("submit", async (ev) => {
     ev.preventDefault();
     errorBox.classList.add("hidden");
+    if (!jlValidate(form, { email: [jlV.required(), jlV.email()], password: [jlV.required()] }).valid) return;
     btn.disabled = true;
     btn.textContent = "Signing in…";
     try {

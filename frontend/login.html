@@ -153,6 +153,7 @@
 </footer>
 
 <script>window.JL_BACKEND_AUTH = true;</script>
+<script src="jl-ui.js"></script>
 <script src="store.js"></script>
 <script src="script.js"></script>
 <script>
@@ -173,14 +174,20 @@
     if (forgot) forgot.addEventListener("click", async (e) => {
       e.preventDefault();
       const typed = (document.getElementById("liUser").value || "").trim();
-      const email = window.prompt("Enter your account email to receive a password-reset link:", typed.indexOf("@") > -1 ? typed : "");
+      const email = await jlPrompt("Enter your account email to receive a password-reset link:", {
+        title: "Reset password",
+        defaultValue: typed.indexOf("@") > -1 ? typed : "",
+        placeholder: "you@example.com",
+        inputType: "email",
+        required: true,
+        validate: jlV.email(),
+      });
       if (email === null) return;
-      if (email.indexOf("@") === -1) { alert("Please enter a valid email address."); return; }
       try {
         await jlAuthApi("/api/v1/auth/forgot-password", { email: email.trim() });
-        alert("If an account exists for " + email.trim() + ", a reset link has been emailed. Check your inbox.\n\n(If no email arrives, password reset may not be configured yet — please call 95149 70111.)");
+        await jlAlert("If an account exists for " + email.trim() + ", a reset link has been emailed. Check your inbox.\n\n(If no email arrives, password reset may not be configured yet — please call 95149 70111.)", { type: "success", title: "Reset link sent" });
       } catch (err) {
-        alert(err.message || "Could not send the reset link right now. Please call 95149 70111.");
+        await jlAlert(err.message || "Could not send the reset link right now. Please call 95149 70111.", { type: "error", title: "Couldn't send link" });
       }
     });
 
@@ -195,8 +202,20 @@
       box.textContent = msg;
     }
 
+    // Real-time inline validation. Keep the existing "email only" rule (mobile
+    // login isn't supported yet), surfaced as an email-format check.
+    const liUser = document.getElementById("liUser");
+    const liPassword = document.getElementById("liPassword");
+    jlField(liUser, [jlV.required("Enter your email address."), jlV.email("Please log in with your email address (mobile login isn't supported yet).")]);
+    jlField(liPassword, [jlV.required("Enter your password.")]);
+
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
+      const v = jlValidate(form, {
+        liUser: [jlV.required("Enter your email address."), jlV.email("Please log in with your email address (mobile login isn't supported yet).")],
+        liPassword: [jlV.required("Enter your password.")],
+      });
+      if (!v.valid) return;
       const user = document.getElementById("liUser").value.trim();
       const pass = document.getElementById("liPassword").value;
       if (!user || !pass) { showError("Please enter your email and password."); return; }
