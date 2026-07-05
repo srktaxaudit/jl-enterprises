@@ -14,8 +14,12 @@ const JL_API_BASE = (() => {
 const jlSleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /** Optional hook: a page can set window.JL_ON_WAKE to show a "server waking up"
-    hint while a cold free-tier backend spins up between retries. */
-function jlNotifyWaking() { if (typeof window.JL_ON_WAKE === "function") { try { window.JL_ON_WAKE(); } catch (_) { /* noop */ } } }
+    hint while a cold free-tier backend spins up between retries. Also updates the
+    blocking overlay text (if one is showing) so the user knows why it's slow. */
+function jlNotifyWaking() {
+  if (typeof jlBusy !== "undefined") jlBusy.text("Waking up the server… this can take a moment.");
+  if (typeof window.JL_ON_WAKE === "function") { try { window.JL_ON_WAKE(); } catch (_) { /* noop */ } }
+}
 
 // Backoff schedule that rides out a Render free-tier cold start (a Docker Spring
 // Boot service can take 30–60s to wake). Total wait across all retries ≈ 37s.
@@ -27,6 +31,20 @@ const JL_RETRY_DELAYS = [2000, 4000, 6000, 10000, 15000];
     for non-idempotent POSTs. App-level responses (incl. 4xx/500) are returned
     to the caller as-is. Set opts.auth to attach the customer bearer token. */
 async function jlFetchJson(path, opts = {}) {
+  const method = opts.method || (opts.body ? "POST" : "GET");
+  // Any state-changing call (POST/PUT/PATCH/DELETE) shows the blocking overlay so
+  // the user can't double-submit or interact mid-operation. Reads stay non-blocking
+  // (pages use inline spinners for content). Pass opts.blocking:false to opt out.
+  const blocking = method !== "GET" && opts.blocking !== false && typeof jlBusy !== "undefined";
+  if (blocking) jlBusy.show(opts.busyMessage || "Please wait…");
+  try {
+    return await jlFetchJsonRaw(path, { ...opts, method });
+  } finally {
+    if (blocking) jlBusy.hide();
+  }
+}
+
+async function jlFetchJsonRaw(path, opts) {
   const { method, body, auth } = opts;
   let lastErr = { status: 0, message: "Can't reach the server. Please check your connection and try again." };
   for (let i = 0; i <= JL_RETRY_DELAYS.length; i++) {
@@ -52,7 +70,10 @@ async function jlFetchJson(path, opts = {}) {
     try { json = await res.json(); } catch (_) { /* empty */ }
     if (res.status === 401 && auth) JLCustomer.logout();   // token expired/invalid
     if (!res.ok || (json && json.success === false)) {
-      throw { status: res.status, message: (json && json.message) || "Request failed" };
+      // On a 400 "Validation failed", the backend returns a {field:message} map in
+      // `data` — carry it as `errors` so forms can show inline server-side messages.
+      const errors = (json && json.data && typeof json.data === "object" && !Array.isArray(json.data)) ? json.data : undefined;
+      throw { status: res.status, message: (json && json.message) || "Request failed", errors };
     }
     return json ? json.data : null;
   }

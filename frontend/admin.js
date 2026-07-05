@@ -41,7 +41,10 @@ const jlTokens = {
 // never reached the app, so retrying with backoff is safe even for POST /login.
 const jlSleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const JL_RETRY_DELAYS = [2000, 4000, 6000, 10000, 15000];   // ≈37s total
-function jlNotifyWaking() { if (typeof window.JL_ON_WAKE === "function") { try { window.JL_ON_WAKE(); } catch (_) { /* noop */ } } }
+function jlNotifyWaking() {
+  if (typeof jlBusy !== "undefined") jlBusy.text("Waking up the server… this can take a moment.");
+  if (typeof window.JL_ON_WAKE === "function") { try { window.JL_ON_WAKE(); } catch (_) { /* noop */ } }
+}
 
 async function jlFetchWithRetry(url, opts) {
   for (let i = 0; i <= JL_RETRY_DELAYS.length; i++) {
@@ -63,30 +66,40 @@ async function jlFetchWithRetry(url, opts) {
  * on a 401 tries a single token refresh before giving up. Returns `data`.
  * Throws { status, message } on failure.
  */
-async function jlApi(path, { method = "GET", body, auth = true, _retried = false } = {}) {
-  const headers = {};
-  const opts = { method, headers };
-  if (body !== undefined) {
-    headers["Content-Type"] = "application/json";
-    opts.body = JSON.stringify(body);
-  }
-  if (auth && jlTokens.access) headers["Authorization"] = "Bearer " + jlTokens.access;
-
-  const res = await jlFetchWithRetry(JL_API_BASE + path, opts);
-
-  if (res.status === 401 && auth && !_retried && jlTokens.refresh) {
-    if (await jlTryRefresh()) {
-      return jlApi(path, { method, body, auth, _retried: true });
+async function jlApi(path, { method = "GET", body, auth = true, blocking, busyMessage, _retried = false } = {}) {
+  // State-changing calls show the blocking overlay (prevents double-submit / mid-op
+  // interaction). Reads stay non-blocking. Only the initial call blocks (not the
+  // internal 401→refresh retry), and jlBusy is reference-counted for concurrent calls.
+  const block = (blocking != null ? blocking : method !== "GET") && !_retried && typeof jlBusy !== "undefined";
+  if (block) jlBusy.show(busyMessage || "Please wait…");
+  try {
+    const headers = {};
+    const opts = { method, headers };
+    if (body !== undefined) {
+      headers["Content-Type"] = "application/json";
+      opts.body = JSON.stringify(body);
     }
-  }
+    if (auth && jlTokens.access) headers["Authorization"] = "Bearer " + jlTokens.access;
 
-  let json = null;
-  try { json = await res.json(); } catch (_) { /* empty body */ }
+    const res = await jlFetchWithRetry(JL_API_BASE + path, opts);
 
-  if (!res.ok || (json && json.success === false)) {
-    throw { status: res.status, message: (json && json.message) || "Request failed" };
+    if (res.status === 401 && auth && !_retried && jlTokens.refresh) {
+      if (await jlTryRefresh()) {
+        return await jlApi(path, { method, body, auth, blocking: false, _retried: true });
+      }
+    }
+
+    let json = null;
+    try { json = await res.json(); } catch (_) { /* empty body */ }
+
+    if (!res.ok || (json && json.success === false)) {
+      const errors = (json && json.data && typeof json.data === "object" && !Array.isArray(json.data)) ? json.data : undefined;
+      throw { status: res.status, message: (json && json.message) || "Request failed", errors };
+    }
+    return json ? json.data : null;
+  } finally {
+    if (block) jlBusy.hide();
   }
-  return json ? json.data : null;
 }
 
 async function jlTryRefresh() {
@@ -111,22 +124,28 @@ async function jlTryRefresh() {
  * 401→refresh handling. Returns the unwrapped `data`.
  */
 async function jlUpload(path, file, _retried = false) {
-  const fd = new FormData();
-  fd.append("file", file);
-  const headers = {};
-  if (jlTokens.access) headers["Authorization"] = "Bearer " + jlTokens.access;
+  const block = !_retried && typeof jlBusy !== "undefined";
+  if (block) jlBusy.show("Uploading…");
+  try {
+    const fd = new FormData();
+    fd.append("file", file);
+    const headers = {};
+    if (jlTokens.access) headers["Authorization"] = "Bearer " + jlTokens.access;
 
-  const res = await jlFetchWithRetry(JL_API_BASE + path, { method: "POST", headers, body: fd });
+    const res = await jlFetchWithRetry(JL_API_BASE + path, { method: "POST", headers, body: fd });
 
-  if (res.status === 401 && !_retried && jlTokens.refresh) {
-    if (await jlTryRefresh()) return jlUpload(path, file, true);
+    if (res.status === 401 && !_retried && jlTokens.refresh) {
+      if (await jlTryRefresh()) return await jlUpload(path, file, true);
+    }
+    let json = null;
+    try { json = await res.json(); } catch (_) { /* empty */ }
+    if (!res.ok || (json && json.success === false)) {
+      throw { status: res.status, message: (json && json.message) || "Upload failed" };
+    }
+    return json ? json.data : null;
+  } finally {
+    if (block) jlBusy.hide();
   }
-  let json = null;
-  try { json = await res.json(); } catch (_) { /* empty */ }
-  if (!res.ok || (json && json.success === false)) {
-    throw { status: res.status, message: (json && json.message) || "Upload failed" };
-  }
-  return json ? json.data : null;
 }
 
 // ── auth calls ──
@@ -149,6 +168,11 @@ const JLAuth = {
     }
   },
 };
+
+/** Blocking notice via the UI toolkit, with a plain-alert fallback if it's absent. */
+function jlNotify(msg, opts) {
+  return (typeof jlAlert === "function") ? jlAlert(msg, opts) : Promise.resolve(window.alert(msg));
+}
 
 /** Human-friendly display name from a UserDto. */
 function jlDisplayName(user) {
@@ -188,13 +212,13 @@ async function jlRequireAdmin(allowedRoles) {
     return new Promise(() => {});
   }
   if (!jlIsStaff(user)) {
-    alert("This account does not have staff access.");
+    await jlNotify("This account does not have staff access.", { title: "Access denied", type: "error" });
     location.replace("index.html");
     return new Promise(() => {});
   }
   // MANAGER has broad operational access; super-admins always pass.
   if (allowedRoles && allowedRoles.length && !jlIsSuper(user) && !jlHasRole(user, "MANAGER", ...allowedRoles)) {
-    alert("You don't have access to this section.");
+    await jlNotify("You don't have access to this section.", { title: "Access denied", type: "warn" });
     location.replace("admin.html");
     return new Promise(() => {});
   }
@@ -205,7 +229,7 @@ async function jlRequireAdmin(allowedRoles) {
 async function jlRequireSuper() {
   const user = await jlRequireAdmin();
   if (!jlIsSuper(user)) {
-    alert("This section is restricted to administrators.");
+    await jlNotify("This section is restricted to administrators.", { title: "Restricted", type: "warn" });
     location.replace("admin.html");
     return new Promise(() => {});
   }
