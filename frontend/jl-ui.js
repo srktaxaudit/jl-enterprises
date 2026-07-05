@@ -368,6 +368,14 @@
     strongPassword: function (msg) { return function (v) { if (!v) return null; return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s]).{8,}$/.test(v) ? null : (msg || "Min 8 chars incl. upper, lower, number & symbol."); }; },
     match: function (getOther, msg) { return function (v) { var other = typeof getOther === "function" ? getOther() : getOther; return v === other ? null : (msg || "Values do not match."); }; },
     number: function (o, msg) { o = o || {}; return function (v) { if (v === "" || v == null) return null; var n = Number(v); if (isNaN(n)) return msg || "Enter a valid number."; if (o.min != null && n < o.min) return msg || ("Must be ≥ " + o.min + "."); if (o.max != null && n > o.max) return msg || ("Must be ≤ " + o.max + "."); return null; }; },
+    // Letters, spaces and name punctuation only (Unicode-aware: accepts any language's letters).
+    name: function (msg) { return function (v) { if (!v) return null; return /^[\p{L}\p{M}][\p{L}\p{M}\s.'-]*$/u.test(String(v).trim()) ? null : (msg || "Only letters and spaces are allowed."); }; },
+    // Brand/category-style: letters, digits, spaces and & . - ' (so "3M", "V-Guard", "Bosch Series 6" pass).
+    title: function (msg) { return function (v) { if (!v) return null; return /^[\p{L}\p{M}\p{N}][\p{L}\p{M}\p{N}\s.&'-]*$/u.test(String(v).trim()) ? null : (msg || "Use only letters, numbers and spaces."); }; },
+    // Whole number (digits only), optional range.
+    integer: function (o, msg) { o = o || {}; return function (v) { if (v === "" || v == null) return null; if (!/^\d+$/.test(String(v).trim())) return msg || "Enter a whole number (digits only)."; var n = Number(v); if (o.min != null && n < o.min) return msg || ("Must be ≥ " + o.min + "."); if (o.max != null && n > o.max) return msg || ("Must be ≤ " + o.max + "."); return null; }; },
+    // Decimal number, optional range and max decimal places.
+    decimal: function (o, msg) { o = o || {}; return function (v) { if (v === "" || v == null) return null; var re = o.maxDecimals != null ? new RegExp("^\\d+(\\.\\d{1," + o.maxDecimals + "})?$") : /^\d+(\.\d+)?$/; if (!re.test(String(v).trim())) return msg || "Enter a valid amount."; var n = Number(v); if (o.min != null && n < o.min) return msg || ("Must be ≥ " + o.min + "."); if (o.max != null && n > o.max) return msg || ("Must be ≤ " + o.max + "."); return null; }; },
   };
 
   // run a set of validators over a value; return first error or null
@@ -413,4 +421,89 @@
     if (first) first.focus();
     return shown;
   };
+
+  // ── typed input restriction (block invalid characters at the source) ───────
+  // Presets: what each field TYPE is allowed to contain, a cleaner that strips the
+  // rest (Unicode-aware — Array.from iterates code points so emoji/surrogates go
+  // cleanly), and the message shown when the user tries to enter something invalid.
+  var RESTRICT = {
+    // Person names, city, state: letters, spaces and . ' - only.
+    name: { ok: /[\p{L}\p{M}\s.'-]/u, msg: "Only letters and spaces are allowed.", inputmode: "text" },
+    // Brand/category: letters, digits, spaces and & . ' - (keeps "3M", "V-Guard").
+    title: { ok: /[\p{L}\p{M}\p{N}\s.&'-]/u, msg: "Use only letters, numbers and spaces.", inputmode: "text" },
+    // Whole numbers only (phone, pincode, quantity, stock, OTP, usage limits, age).
+    digits: { ok: /[0-9]/, msg: "Only numbers are allowed.", inputmode: "numeric" },
+    // Money / percentages: digits and a single decimal point.
+    decimal: { decimal: true, msg: "Only numbers and a decimal point are allowed.", inputmode: "decimal" },
+    // Coupon code etc.: uppercase letters + digits (auto-uppercased).
+    code: { ok: /[A-Za-z0-9]/, upper: true, msg: "Only letters and numbers are allowed.", inputmode: "text" },
+  };
+
+  function cleanValue(value, type, opts) {
+    var cfg = RESTRICT[type] || RESTRICT.name;
+    var out;
+    if (cfg.decimal) {
+      // keep digits + dots, then collapse to a single dot and trim decimal places
+      var kept = Array.from(value).filter(function (c) { return /[0-9.]/.test(c); }).join("");
+      var parts = kept.split(".");
+      out = parts.length > 1 ? parts[0] + "." + parts.slice(1).join("") : kept;
+      var md = opts && opts.maxDecimals != null ? opts.maxDecimals : 2;
+      var dot = out.indexOf(".");
+      if (dot !== -1 && md >= 0) out = out.slice(0, dot + 1 + md);
+    } else {
+      out = Array.from(value).filter(function (c) { return cfg.ok.test(c); }).join("");
+      if (cfg.upper) out = out.toUpperCase();
+    }
+    if (opts && opts.maxLength != null) out = out.slice(0, opts.maxLength);
+    return out;
+  }
+
+  /** Restrict an input to a TYPE, filtering invalid characters on typing, paste,
+      drag-drop and autofill, preserving the caret, and flashing an inline message
+      when something is blocked. Also sets inputmode/maxlength for good mobile UX. */
+  window.jlRestrict = function (input, type, opts) {
+    if (!input || input.__jlRestrict) return; input.__jlRestrict = true;
+    opts = opts || {};
+    var cfg = RESTRICT[type] || RESTRICT.name;
+    if (cfg.inputmode && !input.getAttribute("inputmode")) input.setAttribute("inputmode", cfg.inputmode);
+    if (opts.maxLength != null && !input.getAttribute("maxlength")) input.setAttribute("maxlength", String(opts.maxLength));
+    var msgTimer;
+    function flash() {
+      jlSetError(input, cfg.msg);
+      clearTimeout(msgTimer);
+      msgTimer = setTimeout(function () { if (!input.classList.contains("jlui-invalid-sticky")) jlClearError(input); }, 2000);
+    }
+    function sanitize() {
+      var before = input.value;
+      if (before === "") return;
+      var pos = input.selectionStart;
+      var cleaned = cleanValue(before, type, opts);
+      if (cleaned === before) return;
+      // count how many chars before the caret were removed, to keep the caret sensible
+      var removedBeforeCaret = Array.from(before.slice(0, pos)).length - Array.from(cleanValue(before.slice(0, pos), type, opts)).length;
+      input.value = cleaned;
+      try { var np = Math.max(0, (pos || cleaned.length) - removedBeforeCaret); input.setSelectionRange(np, np); } catch (_) {}
+      flash();
+    }
+    // 'input' covers typing, paste and drag-drop; 'change'/'blur' back-stop autofill.
+    input.addEventListener("input", sanitize);
+    input.addEventListener("change", sanitize);
+    input.addEventListener("blur", sanitize);
+    // some browsers fire autofill without input — sweep shortly after load
+    setTimeout(sanitize, 400);
+  };
+
+  /** Scan for inputs with a data-jl="type" attribute and restrict them. Optional
+      data-jl-maxlength / data-jl-decimals refine the rule. Idempotent; also runs
+      automatically on DOMContentLoaded, and can be re-run for injected forms. */
+  window.jlAutoRestrict = function (root) {
+    (root || document).querySelectorAll("[data-jl]").forEach(function (el) {
+      var opts = {};
+      if (el.dataset.jlMaxlength) opts.maxLength = +el.dataset.jlMaxlength;
+      if (el.dataset.jlDecimals) opts.maxDecimals = +el.dataset.jlDecimals;
+      jlRestrict(el, el.dataset.jl, opts);
+    });
+  };
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", function () { jlAutoRestrict(); });
+  else jlAutoRestrict();
 })();
