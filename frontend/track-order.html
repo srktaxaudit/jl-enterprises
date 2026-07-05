@@ -87,7 +87,7 @@
 
       <div class="field">
         <label for="toMobile">Mobile Number</label>
-        <input id="toMobile" type="tel" required inputmode="numeric" maxlength="13" placeholder="10-digit mobile number" />
+        <input id="toMobile" type="tel" required inputmode="numeric" data-jl="digits" data-jl-maxlength="10" maxlength="10" placeholder="10-digit mobile number" />
         <div class="hint" id="toMobileHint">Please enter a valid 10-digit mobile number.</div>
       </div>
 
@@ -169,14 +169,14 @@
 
     // Real-time inline validation
     jlField($("toOrderId"), [jlV.required("Enter your order number.")]);
-    jlField($("toMobile"), [jlV.required("Please enter your mobile number."), jlV.phoneIN()]);
+    jlField($("toMobile"), [jlV.required("Please enter your mobile number."), jlV.integer(), jlV.phoneIN()]);
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       clearInvalid(form); showErr(""); $("trackResult").style.display = "none";
       const vres = jlValidate(form, {
         toOrderId: [jlV.required("Enter your order number.")],
-        toMobile: [jlV.required("Please enter your mobile number."), jlV.phoneIN()],
+        toMobile: [jlV.required("Please enter your mobile number."), jlV.integer(), jlV.phoneIN()],
       });
       if (!vres.valid) return;
       const number = $("toOrderId").value.trim();

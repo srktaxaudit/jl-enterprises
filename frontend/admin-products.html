@@ -41,8 +41,8 @@
         <input type="hidden" id="pid" />
         <div><label class="lbl">Name *</label><input id="name" required class="inp" /></div>
         <div><label class="lbl">SKU *</label><input id="sku" required class="inp" /></div>
-        <div><label class="lbl">Price (₹) *</label><input id="price" type="number" step="0.01" required class="inp" /></div>
-        <div><label class="lbl">Compare price (₹)</label><input id="comparePrice" type="number" step="0.01" class="inp" /></div>
+        <div><label class="lbl">Price (₹) *</label><input id="price" data-jl="decimal" type="number" step="0.01" required class="inp" /></div>
+        <div><label class="lbl">Compare price (₹)</label><input id="comparePrice" data-jl="decimal" type="number" step="0.01" class="inp" /></div>
         <div><label class="lbl">Category</label><select id="categoryId" class="inp"></select></div>
         <div><label class="lbl">Brand</label><select id="brandId" class="inp"></select></div>
         <div class="md:col-span-2"><label class="lbl">Short description</label><input id="shortDescription" maxlength="500" class="inp" /></div>
@@ -195,7 +195,7 @@
     } catch(e){ flash(e.message||"Could not load product", false); }
   }
 
-  const PRODUCT_RULES = { name:[jlV.required()], sku:[jlV.required()], price:[jlV.required(), jlV.number({min:0})] };
+  const PRODUCT_RULES = { name:[jlV.required()], sku:[jlV.required()], price:[jlV.required(), jlV.decimal({min:0})] };
   jlField($("name"), PRODUCT_RULES.name);
   jlField($("sku"), PRODUCT_RULES.sku);
   jlField($("price"), PRODUCT_RULES.price);

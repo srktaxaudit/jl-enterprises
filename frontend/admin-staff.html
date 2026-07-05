@@ -42,11 +42,11 @@
       <form id="form" class="grid md:grid-cols-3 gap-4" novalidate>
         <input type="hidden" id="sid" />
         <div><label class="lbl">Email *</label><input id="email" type="email" required class="inp" /></div>
-        <div><label class="lbl">First name *</label><input id="firstName" required class="inp" /></div>
-        <div><label class="lbl">Last name</label><input id="lastName" class="inp" /></div>
-        <div><label class="lbl">Mobile</label><input id="phone" class="inp" placeholder="+91…" /></div>
-        <div><label class="lbl">Department</label><input id="department" class="inp" placeholder="e.g. Operations" /></div>
-        <div><label class="lbl">Designation</label><input id="designation" class="inp" placeholder="e.g. Store Manager" /></div>
+        <div><label class="lbl">First name *</label><input id="firstName" data-jl="name" required class="inp" /></div>
+        <div><label class="lbl">Last name</label><input id="lastName" data-jl="name" class="inp" /></div>
+        <div><label class="lbl">Mobile</label><input id="phone" data-jl="digits" data-jl-maxlength="10" class="inp" placeholder="+91…" /></div>
+        <div><label class="lbl">Department</label><input id="department" data-jl="title" class="inp" placeholder="e.g. Operations" /></div>
+        <div><label class="lbl">Designation</label><input id="designation" data-jl="title" class="inp" placeholder="e.g. Store Manager" /></div>
         <div id="pwField"><label class="lbl">Password *</label><input id="password" type="text" class="inp" placeholder="Min 8 chars: upper, lower, number, symbol" /></div>
         <div class="md:col-span-3">
           <label class="lbl">Roles *</label>
@@ -129,8 +129,11 @@
 
   // Real-time field validation.
   jlField($("email"), [jlV.required(), jlV.email()]);
-  jlField($("firstName"), [jlV.required()]);
+  jlField($("firstName"), [jlV.required(), jlV.name()]);
+  jlField($("lastName"), [jlV.name()]);
   jlField($("phone"), [jlV.phoneIN()]);
+  jlField($("department"), [jlV.title()]);
+  jlField($("designation"), [jlV.title()]);
   jlField($("password"), [jlV.strongPassword()]);
 
   $("newBtn").addEventListener("click", ()=>{ resetForm(); jlClearErrors($("form")); showForm(true); });
@@ -148,7 +151,7 @@
   $("form").addEventListener("submit", async (ev)=>{
     ev.preventDefault();
     const id = $("sid").value;
-    const rules = { email:[jlV.required(), jlV.email()], firstName:[jlV.required()], phone:[jlV.phoneIN()] };
+    const rules = { email:[jlV.required(), jlV.email()], firstName:[jlV.required(), jlV.name()], lastName:[jlV.name()], phone:[jlV.phoneIN()], department:[jlV.title()], designation:[jlV.title()] };
     if(!id) rules.password = [jlV.required(), jlV.strongPassword()];
     const v = jlValidate($("form"), rules);
     const roles = selectedRoles();

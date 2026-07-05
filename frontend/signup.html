@@ -82,12 +82,12 @@
     <form id="signupForm" novalidate>
       <div class="field">
         <label for="suName">Full Name</label>
-        <input id="suName" type="text" required minlength="2" placeholder="Your full name" />
+        <input id="suName" type="text" required minlength="2" data-jl="name" placeholder="Your full name" />
       </div>
 
       <div class="field">
         <label for="suMobile">Mobile Number</label>
-        <input id="suMobile" type="tel" required inputmode="numeric" maxlength="13" placeholder="10-digit mobile number" />
+        <input id="suMobile" type="tel" required inputmode="numeric" data-jl="digits" data-jl-maxlength="10" maxlength="10" placeholder="10-digit mobile number" />
         <div class="hint" id="suMobileHint">Mobile number must be a valid 10-digit number.</div>
       </div>
 
@@ -193,8 +193,8 @@
     const suEmailEl = document.getElementById("suEmail");
     const suPasswordEl = document.getElementById("suPassword");
     const suConfirmEl = document.getElementById("suConfirm");
-    jlField(suName, [jlV.required("Please enter your full name.")]);
-    jlField(suMobileEl, [jlV.required("Please enter your mobile number."), jlV.phoneIN()]);
+    jlField(suName, [jlV.required("Please enter your full name."), jlV.name()]);
+    jlField(suMobileEl, [jlV.required("Please enter your mobile number."), jlV.integer(), jlV.phoneIN()]);
     jlField(suEmailEl, [jlV.required("Please enter your email."), jlV.email()]);
     jlField(suPasswordEl, [jlV.required("Please choose a password."), jlV.strongPassword()]);
     jlField(suConfirmEl, [jlV.required("Please re-enter your password."), jlV.match(() => suPasswordEl.value, "Passwords do not match.")]);
@@ -216,8 +216,8 @@
       showError("");
 
       const vres = jlValidate(form, {
-        suName: [jlV.required("Please enter your full name.")],
-        suMobile: [jlV.required("Please enter your mobile number."), jlV.phoneIN()],
+        suName: [jlV.required("Please enter your full name."), jlV.name()],
+        suMobile: [jlV.required("Please enter your mobile number."), jlV.integer(), jlV.phoneIN()],
         suEmail: [jlV.required("Please enter your email."), jlV.email()],
         suPassword: [jlV.required("Please choose a password."), jlV.strongPassword()],
         suConfirm: [jlV.required("Please re-enter your password."), jlV.match(() => suPasswordEl.value, "Passwords do not match.")],

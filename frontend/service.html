@@ -83,12 +83,12 @@
     <form id="serviceForm" novalidate>
       <div class="field">
         <label for="svcName">Customer Name</label>
-        <input id="svcName" type="text" required minlength="2" placeholder="Your full name" />
+        <input id="svcName" type="text" required minlength="2" data-jl="name" placeholder="Your full name" />
       </div>
 
       <div class="field">
         <label for="svcMobile">Mobile Number</label>
-        <input id="svcMobile" type="tel" required inputmode="numeric" maxlength="13" placeholder="10-digit mobile number" />
+        <input id="svcMobile" type="tel" required inputmode="numeric" data-jl="digits" data-jl-maxlength="10" maxlength="10" placeholder="10-digit mobile number" />
         <div class="hint" id="svcMobileHint">Please enter a valid 10-digit mobile number.</div>
       </div>
 
@@ -203,8 +203,8 @@
     const btn = form.querySelector('button[type="submit"]');
 
     // Real-time inline validation
-    jlField(document.getElementById("svcName"), [jlV.required("Please enter your name.")]);
-    jlField(document.getElementById("svcMobile"), [jlV.required("Please enter your mobile number."), jlV.phoneIN()]);
+    jlField(document.getElementById("svcName"), [jlV.required("Please enter your name."), jlV.name()]);
+    jlField(document.getElementById("svcMobile"), [jlV.required("Please enter your mobile number."), jlV.integer(), jlV.phoneIN()]);
     jlField(document.getElementById("svcProduct"), [jlV.required("Please select a product type.")]);
     jlField(document.getElementById("svcType"), [jlV.required("Please select a service type.")]);
     jlField(document.getElementById("svcAddress"), [jlV.required("Please enter your address.")]);
@@ -214,8 +214,8 @@
       e.preventDefault();
       clearInvalid(form);
       const vres = jlValidate(form, {
-        svcName: [jlV.required("Please enter your name.")],
-        svcMobile: [jlV.required("Please enter your mobile number."), jlV.phoneIN()],
+        svcName: [jlV.required("Please enter your name."), jlV.name()],
+        svcMobile: [jlV.required("Please enter your mobile number."), jlV.integer(), jlV.phoneIN()],
         svcProduct: [jlV.required("Please select a product type.")],
         svcType: [jlV.required("Please select a service type.")],
         svcAddress: [jlV.required("Please enter your address.")],

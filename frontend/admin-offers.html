@@ -40,15 +40,15 @@
       <h2 id="formTitle" class="text-navy font-semibold mb-4">New coupon</h2>
       <form id="form" class="grid md:grid-cols-3 gap-4" novalidate>
         <input type="hidden" id="cid" />
-        <div><label class="lbl">Code *</label><input id="code" required class="inp uppercase" /></div>
-        <div><label class="lbl">Name</label><input id="name" maxlength="120" class="inp" placeholder="e.g. Welcome Offer" /></div>
+        <div><label class="lbl">Code *</label><input id="code" data-jl="code" required class="inp uppercase" /></div>
+        <div><label class="lbl">Name</label><input id="name" data-jl="title" maxlength="120" class="inp" placeholder="e.g. Welcome Offer" /></div>
         <div><label class="lbl">Type *</label><select id="type" class="inp"><option value="PERCENTAGE">Percentage</option><option value="FIXED">Fixed ₹</option></select></div>
-        <div><label class="lbl">Value *</label><input id="value" type="number" step="0.01" required class="inp" /></div>
-        <div><label class="lbl">Min order (₹)</label><input id="minOrderAmount" type="number" step="0.01" class="inp" /></div>
-        <div><label class="lbl">Max discount (₹)</label><input id="maxDiscount" type="number" step="0.01" class="inp" /></div>
+        <div><label class="lbl">Value *</label><input id="value" data-jl="decimal" type="number" step="0.01" required class="inp" /></div>
+        <div><label class="lbl">Min order (₹)</label><input id="minOrderAmount" data-jl="decimal" type="number" step="0.01" class="inp" /></div>
+        <div><label class="lbl">Max discount (₹)</label><input id="maxDiscount" data-jl="decimal" type="number" step="0.01" class="inp" /></div>
         <div><label class="lbl">Expires at</label><input id="expiresAt" type="datetime-local" class="inp" /></div>
-        <div><label class="lbl">Usage limit (total)</label><input id="usageLimit" type="number" class="inp" placeholder="blank = unlimited" /></div>
-        <div><label class="lbl">Per-user limit</label><input id="perUserLimit" type="number" class="inp" placeholder="e.g. 1" /></div>
+        <div><label class="lbl">Usage limit (total)</label><input id="usageLimit" data-jl="digits" type="number" class="inp" placeholder="blank = unlimited" /></div>
+        <div><label class="lbl">Per-user limit</label><input id="perUserLimit" data-jl="digits" type="number" class="inp" placeholder="e.g. 1" /></div>
         <label class="flex items-center gap-2 text-sm mt-6"><input id="active" type="checkbox" checked /> Active</label>
         <label class="flex items-center gap-2 text-sm mt-6"><input id="firstOrderOnly" type="checkbox" /> First order only</label>
         <div class="md:col-span-3"><label class="lbl">Description</label><input id="description" maxlength="200" class="inp" /></div>
@@ -127,16 +127,22 @@
   function couponRules(){
     const pct = $("type").value === "PERCENTAGE";
     return {
-      code: [jlV.required()],
-      value: [jlV.required(), jlV.number(pct ? {min:0, max:100} : {min:0}, pct ? "Enter a percentage between 0 and 100." : undefined)],
-      usageLimit: [jlV.number({min:1})],
-      perUserLimit: [jlV.number({min:1})],
+      code: [jlV.required(), jlV.code()],
+      name: [jlV.title()],
+      value: [jlV.required(), jlV.decimal(pct ? {min:0, max:100} : {min:0}, pct ? "Enter a percentage between 0 and 100." : undefined)],
+      minOrderAmount: [jlV.decimal({min:0})],
+      maxDiscount: [jlV.decimal({min:0})],
+      usageLimit: [jlV.integer({min:1})],
+      perUserLimit: [jlV.integer({min:1})],
     };
   }
-  jlField($("code"), [jlV.required()]);
-  jlField($("value"), [jlV.required(), jlV.number({min:0})]);
-  jlField($("usageLimit"), [jlV.number({min:1})]);
-  jlField($("perUserLimit"), [jlV.number({min:1})]);
+  jlField($("code"), [jlV.required(), jlV.code()]);
+  jlField($("name"), [jlV.title()]);
+  jlField($("value"), [jlV.required(), jlV.decimal({min:0})]);
+  jlField($("minOrderAmount"), [jlV.decimal({min:0})]);
+  jlField($("maxDiscount"), [jlV.decimal({min:0})]);
+  jlField($("usageLimit"), [jlV.integer({min:1})]);
+  jlField($("perUserLimit"), [jlV.integer({min:1})]);
   // Re-check value against the percentage cap when the type changes.
   $("type").addEventListener("change", ()=>{ if($("value").value!=="") jlValidate($("form"), { value: couponRules().value }); });
 

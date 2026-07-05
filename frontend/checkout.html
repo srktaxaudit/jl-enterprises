@@ -95,11 +95,11 @@
         <form id="coForm" novalidate class="grid sm:grid-cols-2 gap-3.5">
           <div>
             <label class="co-label" for="coName">Full Name *</label>
-            <input id="coName" class="co-input" required placeholder="Recipient name" />
+            <input id="coName" class="co-input" required data-jl="name" placeholder="Recipient name" />
           </div>
           <div>
             <label class="co-label" for="coPhone">Mobile Number *</label>
-            <input id="coPhone" class="co-input" required inputmode="numeric" maxlength="13" placeholder="10-digit mobile" />
+            <input id="coPhone" class="co-input" required inputmode="numeric" data-jl="digits" data-jl-maxlength="13" maxlength="13" placeholder="10-digit mobile" />
           </div>
           <div class="sm:col-span-2">
             <label class="co-label" for="coLine1">Address (House no, street, area) *</label>
@@ -111,15 +111,15 @@
           </div>
           <div>
             <label class="co-label" for="coCity">City / Town *</label>
-            <input id="coCity" class="co-input" required placeholder="e.g. Thoothukudi" />
+            <input id="coCity" class="co-input" required data-jl="name" placeholder="e.g. Thoothukudi" />
           </div>
           <div>
             <label class="co-label" for="coState">State</label>
-            <input id="coState" class="co-input" value="Tamil Nadu" />
+            <input id="coState" class="co-input" data-jl="name" value="Tamil Nadu" />
           </div>
           <div>
             <label class="co-label" for="coPin">Pincode *</label>
-            <input id="coPin" class="co-input" required inputmode="numeric" maxlength="6" placeholder="6-digit pincode" />
+            <input id="coPin" class="co-input" required inputmode="numeric" data-jl="digits" data-jl-maxlength="6" maxlength="6" placeholder="6-digit pincode" />
           </div>
           <div class="sm:col-span-2">
             <label class="co-label" for="coNotes">Order Notes</label>
@@ -317,11 +317,11 @@
 
     // Real-time inline validation on the delivery-address fields (complements the
     // existing bad()/showError checks in the place-order handler below).
-    jlField($("coName"), [jlV.required("Please enter the recipient name.")]);
-    jlField($("coPhone"), [jlV.required("Please enter a mobile number."), jlV.phoneIN()]);
+    jlField($("coName"), [jlV.required("Please enter the recipient name."), jlV.name()]);
+    jlField($("coPhone"), [jlV.required("Please enter a mobile number."), jlV.integer(), jlV.phoneIN()]);
     jlField($("coLine1"), [jlV.required("Please enter the delivery address.")]);
-    jlField($("coCity"), [jlV.required("Please enter the city / town.")]);
-    jlField($("coPin"), [jlV.required("Please enter a pincode."), jlV.pincodeIN()]);
+    jlField($("coCity"), [jlV.required("Please enter the city / town."), jlV.name()]);
+    jlField($("coPin"), [jlV.required("Please enter a pincode."), jlV.integer(), jlV.pincodeIN()]);
 
     function showError(msg) {
       const box = $("coError");
@@ -411,11 +411,11 @@
     $("coPlace").addEventListener("click", async () => {
       clearBad(); showError("");
       const vres = jlValidate($("coForm"), {
-        coName: [jlV.required("Please enter the recipient name.")],
-        coPhone: [jlV.required("Please enter a mobile number."), jlV.phoneIN()],
+        coName: [jlV.required("Please enter the recipient name."), jlV.name()],
+        coPhone: [jlV.required("Please enter a mobile number."), jlV.integer(), jlV.phoneIN()],
         coLine1: [jlV.required("Please enter the delivery address.")],
-        coCity: [jlV.required("Please enter the city / town.")],
-        coPin: [jlV.required("Please enter a pincode."), jlV.pincodeIN()],
+        coCity: [jlV.required("Please enter the city / town."), jlV.name()],
+        coPin: [jlV.required("Please enter a pincode."), jlV.integer(), jlV.pincodeIN()],
       });
       if (!vres.valid) return;
       const name = $("coName").value.trim();
