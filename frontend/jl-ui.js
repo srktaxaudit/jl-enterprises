@@ -384,6 +384,8 @@
     integer: function (o, msg) { o = o || {}; return function (v) { if (v === "" || v == null) return null; if (!/^\d+$/.test(String(v).trim())) return msg || "Enter a whole number (digits only)."; var n = Number(v); if (o.min != null && n < o.min) return msg || ("Must be ≥ " + o.min + "."); if (o.max != null && n > o.max) return msg || ("Must be ≤ " + o.max + "."); return null; }; },
     // Decimal number, optional range and max decimal places.
     decimal: function (o, msg) { o = o || {}; return function (v) { if (v === "" || v == null) return null; var re = o.maxDecimals != null ? new RegExp("^\\d+(\\.\\d{1," + o.maxDecimals + "})?$") : /^\d+(\.\d+)?$/; if (!re.test(String(v).trim())) return msg || "Enter a valid amount."; var n = Number(v); if (o.min != null && n < o.min) return msg || ("Must be ≥ " + o.min + "."); if (o.max != null && n > o.max) return msg || ("Must be ≤ " + o.max + "."); return null; }; },
+    // Alphanumeric code (e.g. coupon code).
+    code: function (msg) { return function (v) { if (!v) return null; return /^[A-Za-z0-9]+$/.test(String(v).trim()) ? null : (msg || "Use only letters and numbers."); }; },
   };
 
   // run a set of validators over a value; return first error or null

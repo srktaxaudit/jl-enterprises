@@ -123,7 +123,12 @@
     } catch(e){ body.innerHTML = `<tr><td colspan="6" class="py-4 text-red-600">Could not load (${esc(e.message)}).</td></tr>`; }
   }
 
-  function showForm(s){ $("formCard").classList.toggle("hidden", !s); if(s) window.scrollTo({top:0,behavior:"smooth"}); }
+  // Open/close the staff form as a modal dialog (no layout shift; table stays put).
+  let staffDlg = null;
+  function showForm(s){
+    if(s){ if(!staffDlg) staffDlg = jlDialog($("formCard"), { title: $("formTitle").textContent, size:"lg", dismissable:false, onClose:()=>{ staffDlg=null; } }); }
+    else if(staffDlg){ staffDlg.close(); staffDlg=null; }
+  }
   function resetForm(){ $("form").reset(); $("sid").value=""; setRoles([]); $("formTitle").textContent="New staff";
     $("email").disabled=false; $("pwField").style.display=""; }
 
@@ -155,7 +160,7 @@
     if(!id) rules.password = [jlV.required(), jlV.strongPassword()];
     const v = jlValidate($("form"), rules);
     const roles = selectedRoles();
-    if(!roles.length) flash("Select at least one role.", false);
+    if(!roles.length) jlToast("Select at least one role.", {type:"warn"});
     if(!v.valid || !roles.length) return;
     const body = {
       email:$("email").value.trim(), firstName:$("firstName").value.trim(), lastName:$("lastName").value.trim()||null,
@@ -167,7 +172,7 @@
       if(id) await jlApi(`/api/v1/admin/staff/${id}`, {method:"PUT", body});
       else await jlApi("/api/v1/admin/staff", {method:"POST", body});
       jlToast(id?"Staff updated.":"Staff account created.", {type:"success"}); showForm(false); load();
-    } catch(e){ if(e.errors && jlShowServerErrors($("form"), e.errors)) return; flash(e.message||"Save failed", false); }
+    } catch(e){ if(e.errors && jlShowServerErrors($("form"), e.errors)) return; jlToast(e.message||"Save failed", {type:"error"}); }
   });
 
   $("rows").addEventListener("click", async (ev)=>{
@@ -179,7 +184,7 @@
       if(b.dataset.toggle){ await jlApi(`/api/v1/admin/staff/${b.dataset.toggle}/status?enabled=${b.dataset.on}`, {method:"PATCH"}); jlToast("Status updated.", {type:"success"}); load(); return; }
       if(b.dataset.del){ if(!(await jlConfirm("Remove this staff account?", {danger:true, confirmText:"Remove"}))) return;
         await jlApi(`/api/v1/admin/staff/${b.dataset.del}`, {method:"DELETE"}); jlToast("Staff removed.", {type:"success"}); load(); }
-    } catch(e){ flash(e.message||"Action failed", false); }
+    } catch(e){ jlToast(e.message||"Action failed", {type:"error"}); }
   });
 
   let timer; $("search").addEventListener("input", (e)=>{ clearTimeout(timer); timer=setTimeout(load,300); });

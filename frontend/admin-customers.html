@@ -106,7 +106,8 @@
       <div id="custOrders"><div style="text-align:center;padding:14px">${jlSpinnerHTML({label:"Loading orders…"})}</div></div>`;
     jlDialog(el, { title: name(u) });
     try {
-      const page = await jlApi(`/api/v1/admin/orders/user/${userId}?size=50`);
+      // The dialog shows its own inline spinner, so skip the full-screen overlay here.
+      const page = await jlApi(`/api/v1/admin/orders/user/${userId}?size=50`, { blocking:false });
       const orders = page.content || [];
       el.querySelector("#custOrders").innerHTML = orders.length ? `
         <div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-left text-slate-400 text-[12px] uppercase">
