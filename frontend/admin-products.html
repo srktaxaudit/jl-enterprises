@@ -128,7 +128,14 @@
     } catch(e){ body.innerHTML = `<tr><td colspan="6" class="py-4 text-red-600">Could not load (${esc(e.message)}).</td></tr>`; }
   }
 
-  function showForm(show){ $("formCard").classList.toggle("hidden", !show); if(show) window.scrollTo({top:0,behavior:"smooth"}); }
+  // Open/close the product form as a modal dialog (no layout shift; table stays put).
+  let productDlg = null;
+  function showForm(show){
+    if(show){
+      if(!productDlg) productDlg = jlDialog($("formCard"), { title: $("formTitle").textContent, dismissable:false, onClose:()=>{ productDlg=null; } });
+      else $("formCard").querySelector("input,select,textarea,button")?.focus();
+    } else if(productDlg){ productDlg.close(); productDlg=null; }
+  }
   function resetForm(){ $("form").reset(); $("pid").value=""; $("formTitle").textContent="New product"; jlClearErrors($("form")); reflectImagesSection(); }
 
   // ── Product images ──
@@ -158,7 +165,7 @@
   $("imageFile").addEventListener("change", async (ev)=>{
     const pid = $("pid").value; const f = ev.target.files[0];
     const status = $("imgStatus");
-    if(!pid){ flash("Save the product first.", false); ev.target.value=""; return; }
+    if(!pid){ jlToast("Save the product first.", {type:"warn"}); ev.target.value=""; return; }
     if(!f){ return; }
     if(f.size > 5*1024*1024){ status.textContent="Image must be under 5 MB."; ev.target.value=""; return; }
     status.textContent = "Uploading…";
@@ -167,7 +174,7 @@
       status.textContent = "✓ Uploaded"; jlToast("Image uploaded.",{type:"success"});
     } catch(e){
       status.textContent = "";
-      flash(e.message || "Upload failed", false);
+      jlToast(e.message || "Upload failed", {type:"error"});
     } finally { ev.target.value=""; }
   });
 
@@ -177,7 +184,7 @@
     try {
       if(b.dataset.primary){ renderImages(await jlApi(`/api/v1/products/${pid}/images/${b.dataset.primary}/primary`, {method:"PATCH"})); }
       if(b.dataset.delimg){ if(!(await jlConfirm("Remove this image?",{title:"Remove image",confirmText:"Remove",danger:true}))) return; renderImages(await jlApi(`/api/v1/products/${pid}/images/${b.dataset.delimg}`, {method:"DELETE"})); }
-    } catch(e){ flash(e.message||"Action failed", false); }
+    } catch(e){ jlToast(e.message||"Action failed", {type:"error"}); }
   });
 
   $("newBtn").addEventListener("click", ()=>{ resetForm(); showForm(true); });
@@ -220,9 +227,9 @@
         const created = await jlApi("/api/v1/products", {method:"POST", body});
         $("pid").value = created.id; $("formTitle").textContent = "Edit: " + created.name;
         reflectImagesSection(); renderImages(created.images||[]);
-        flash("Product created — now add images below."); load($("search").value.trim());
+        jlToast("Product created — now add images below.",{type:"success"}); load($("search").value.trim());
       }
-    } catch(e){ if(e.errors) jlShowServerErrors($("form"), e.errors); flash(e.message||"Save failed", false); }
+    } catch(e){ if(e.errors) jlShowServerErrors($("form"), e.errors); jlToast(e.message||"Save failed", {type:"error"}); }
   });
 
   $("rows").addEventListener("click", async (ev)=>{

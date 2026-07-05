@@ -32,8 +32,8 @@
   @keyframes jlui-toastin{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:none}}
   .jlui-ring{display:inline-block;border-radius:50%;border-style:solid;border-color:var(--jlui-brand);
     border-right-color:transparent;animation:jlui-spin .7s linear infinite;vertical-align:middle}
-  /* full-screen blocking overlay */
-  .jlui-overlay{position:fixed;inset:0;z-index:2147483000;display:flex;flex-direction:column;
+  /* full-screen blocking overlay — above dialogs/modals so in-modal saves stay covered */
+  .jlui-overlay{position:fixed;inset:0;z-index:2147483300;display:flex;flex-direction:column;
     align-items:center;justify-content:center;gap:14px;background:rgba(15,23,42,.35);
     backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);animation:jlui-fade .15s ease;
     font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
@@ -59,6 +59,14 @@
   .jlui-btn-primary{background:var(--jlui-navy);color:#fff}.jlui-btn-primary:hover{background:var(--jlui-navy6)}
   .jlui-btn-danger{background:var(--jlui-err);color:#fff}.jlui-btn-danger:hover{filter:brightness(.93)}
   .jlui-btn-ghost{background:#f1f5f9;color:#475569}.jlui-btn-ghost:hover{background:#e2e8f0}
+  /* content dialog (hosts an existing form/panel, or a built element) */
+  .jlui-dialog-bg{align-items:flex-start;overflow-y:auto;padding:24px 16px}
+  .jlui-dialog-shell{position:relative;width:100%;max-width:720px;margin:auto;animation:jlui-pop .18s ease}
+  .jlui-dialog-shell.lg{max-width:920px}
+  .jlui-dialog-shell>*{margin:0!important}
+  .jlui-dialog-x{position:absolute;top:12px;right:14px;z-index:3;background:#fff;border:1px solid #e2e8f0;border-radius:8px;
+    width:30px;height:30px;font-size:20px;line-height:26px;text-align:center;color:#64748b;cursor:pointer;padding:0}
+  .jlui-dialog-x:hover{color:var(--jlui-navy);background:#f8fafc}
   /* toasts */
   .jlui-toasts{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:2147483200;
     display:flex;flex-direction:column;gap:10px;width:min(92vw,380px);pointer-events:none;
@@ -84,7 +92,7 @@
   st.id = "jlui-styles"; st.textContent = CSS;
   (document.head || document.documentElement).appendChild(st);
 
-  var FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+  var FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]):not([type=hidden]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
   function trapFocus(container, e) {
     if (e.key !== "Tab") return;
     var f = container.querySelectorAll(FOCUSABLE);
@@ -420,6 +428,60 @@
     });
     if (first) first.focus();
     return shown;
+  };
+
+  // ── content dialog ─────────────────────────────────────────────────────────
+  /** Open any element as an accessible modal dialog (focus trap, Esc, backdrop,
+      focus restore). Pass an EXISTING element (e.g. a hidden form card) and it's
+      moved into the overlay and returned to its place on close, or a freshly-built
+      element (rendered then discarded). opts: {title, size:'lg', dismissable, onClose}.
+      Returns { close(), content, shell }. */
+  window.jlDialog = function (content, opts) {
+    opts = opts || {};
+    var prevFocus = document.activeElement;
+    var hasParent = !!content.parentNode;
+    var ph = null, wasHidden = false;
+    if (hasParent) {
+      ph = document.createComment("jl-dialog");
+      content.parentNode.insertBefore(ph, content);
+      wasHidden = content.classList.contains("hidden");
+      content.classList.remove("hidden");
+    }
+    var bg = document.createElement("div");
+    bg.className = "jlui-modal-bg jlui-dialog-bg";
+    var shell = document.createElement("div");
+    shell.className = "jlui-dialog-shell" + (opts.size === "lg" ? " lg" : "");
+    shell.setAttribute("role", "dialog");
+    shell.setAttribute("aria-modal", "true");
+    if (opts.title) shell.setAttribute("aria-label", opts.title);
+    var x = document.createElement("button");
+    x.type = "button"; x.className = "jlui-dialog-x"; x.setAttribute("aria-label", "Close"); x.innerHTML = "&times;";
+    shell.appendChild(x); shell.appendChild(content);
+    bg.appendChild(shell); document.body.appendChild(bg);
+    document.documentElement.style.overflow = "hidden";
+
+    var closed = false;
+    function close() {
+      if (closed) return; closed = true;
+      document.removeEventListener("keydown", onKey, true);
+      document.documentElement.style.overflow = "";
+      if (hasParent && ph && ph.parentNode) {
+        ph.parentNode.insertBefore(content, ph); ph.remove();
+        if (wasHidden) content.classList.add("hidden");
+      }
+      bg.remove();
+      if (prevFocus && prevFocus.focus) { try { prevFocus.focus(); } catch (_) {} }
+      if (opts.onClose) opts.onClose();
+    }
+    function onKey(e) { if (e.key === "Escape") { e.preventDefault(); close(); } else trapFocus(shell, e); }
+    document.addEventListener("keydown", onKey, true);
+    bg.addEventListener("mousedown", function (e) { if (e.target === bg && opts.dismissable !== false) close(); });
+    x.addEventListener("click", close);
+    setTimeout(function () {
+      var f = content.querySelector(FOCUSABLE);
+      if (f) f.focus(); else { shell.setAttribute("tabindex", "-1"); shell.focus(); }
+    }, 30);
+    return { close: close, content: content, shell: shell };
   };
 
   // ── typed input restriction (block invalid characters at the source) ───────

@@ -107,7 +107,12 @@
     } catch(e){ body.innerHTML = `<tr><td colspan="6" class="py-4 text-red-600">Could not load (${esc(e.message)}).</td></tr>`; }
   }
 
-  function showForm(s){ $("formCard").classList.toggle("hidden", !s); if(s) window.scrollTo({top:0,behavior:"smooth"}); }
+  // Open/close the coupon form as a modal dialog (no layout shift; table stays put).
+  let couponDlg = null;
+  function showForm(s){
+    if(s){ if(!couponDlg) couponDlg = jlDialog($("formCard"), { title: $("formTitle").textContent, size:"lg", dismissable:false, onClose:()=>{ couponDlg=null; } }); }
+    else if(couponDlg){ couponDlg.close(); couponDlg=null; }
+  }
   function resetForm(){ $("form").reset(); $("cid").value=""; $("active").checked=true; $("formTitle").textContent="New coupon"; jlClearErrors($("form")); }
 
   $("newBtn").addEventListener("click", ()=>{ resetForm(); showForm(true); });
@@ -163,7 +168,7 @@
       if(id) await jlApi(`/api/v1/coupons/${id}`, {method:"PUT", body});
       else await jlApi("/api/v1/coupons", {method:"POST", body});
       jlToast(id?"Coupon updated.":"Coupon created.",{type:"success"}); showForm(false); load();
-    } catch(e){ if(e.errors) jlShowServerErrors($("form"), e.errors); flash(e.message||"Save failed", false); }
+    } catch(e){ if(e.errors) jlShowServerErrors($("form"), e.errors); jlToast(e.message||"Save failed", {type:"error"}); }
   });
 
   $("rows").addEventListener("click", async (ev)=>{
@@ -171,7 +176,7 @@
     if(b.dataset.edit) return edit(b.dataset.edit);
     if(b.dataset.del){ if(!(await jlConfirm("Delete this coupon?",{title:"Delete coupon",confirmText:"Delete",danger:true}))) return;
       try { await jlApi(`/api/v1/coupons/${b.dataset.del}`, {method:"DELETE"}); jlToast("Coupon deleted.",{type:"success"}); load(); }
-      catch(e){ flash(e.message||"Delete failed", false); } }
+      catch(e){ jlToast(e.message||"Delete failed", {type:"error"}); } }
   });
 
   jlWireLogout("#logoutBtn");

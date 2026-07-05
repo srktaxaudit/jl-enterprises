@@ -58,6 +58,7 @@
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c)=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
   const $ = (id) => document.getElementById(id);
   const state = { page: 0, size: 20, totalPages: 1 };
+  let USERS = [];
   const name = (u) => [u.firstName,u.lastName].filter(Boolean).join(" ").trim() || u.email;
 
   async function load(){
@@ -69,6 +70,7 @@
       const page = await jlApi("/api/v1/admin/users" + q);
       state.totalPages = page.totalPages || 1;
       const rows = page.content || [];
+      USERS = rows;
       body.innerHTML = rows.length ? rows.map(u=>`
         <tr class="border-t border-slate-100">
           <td class="py-2.5 font-semibold text-navy">${esc(name(u))}</td>
@@ -77,8 +79,7 @@
           <td>${u.emailVerified?'<span class="text-green-600">✓ email</span>':'<span class="text-slate-400">—</span>'}</td>
           <td class="text-slate-500 text-[12px]">${(u.roles||[]).map(r=>esc(r.replace("ROLE_",""))).join(", ")}</td>
           <td class="text-right"><button data-orders="${u.id}" class="text-[12px] text-brand">View →</button></td>
-        </tr>
-        <tr id="orders-${u.id}" class="hidden bg-slate-50"><td colspan="6" class="px-4 py-3 text-[13px]"></td></tr>`).join("")
+        </tr>`).join("")
         : `<tr><td colspan="6" class="py-4 text-slate-400">No users found.</td></tr>`;
       $("pageInfo").textContent = `Page ${state.page+1} of ${state.totalPages}`;
       $("prev").disabled = page.first; $("next").disabled = page.last;
@@ -88,26 +89,38 @@
   const inr = (n) => "₹" + Math.round(Number(n||0)).toLocaleString("en-IN");
   const fmt = (iso) => { try { return new Date(iso).toLocaleDateString("en-IN",{dateStyle:"medium"}); } catch(_){ return "—"; } };
 
-  async function toggleOrders(userId){
-    const row = $("orders-"+userId);
-    const cell = row.querySelector("td");
-    if(!row.classList.contains("hidden")){ row.classList.add("hidden"); return; }
-    row.classList.remove("hidden");
-    cell.innerHTML = `<div style="text-align:center;padding:12px">${jlSpinnerHTML({label:"Loading orders…"})}</div>`;
+  // Open a customer's full profile + order history in a modal dialog.
+  async function openCustomer(userId){
+    const u = USERS.find(x=>x.id===userId); if(!u) return;
+    const el = document.createElement("div");
+    el.className = "bg-white rounded-2xl p-5 md:p-6";
+    el.innerHTML = `
+      <h2 class="text-navy font-bold text-lg mb-1 pr-8">${esc(name(u))}</h2>
+      <div class="text-slate-500 text-sm mb-4">${esc(u.email)}</div>
+      <div class="grid sm:grid-cols-2 gap-3 text-sm mb-5">
+        <div><div class="text-[11px] uppercase tracking-wide text-slate-400">Phone</div>${esc(u.phone||"—")}</div>
+        <div><div class="text-[11px] uppercase tracking-wide text-slate-400">Email verified</div>${u.emailVerified?'<span class="text-green-600">✓ Yes</span>':"No"}</div>
+        <div class="sm:col-span-2"><div class="text-[11px] uppercase tracking-wide text-slate-400">Roles</div>${(u.roles||[]).map(r=>esc(r.replace("ROLE_",""))).join(", ")||"—"}</div>
+      </div>
+      <h3 class="text-navy font-semibold text-sm mb-2 border-t border-slate-100 pt-4">Order history</h3>
+      <div id="custOrders"><div style="text-align:center;padding:14px">${jlSpinnerHTML({label:"Loading orders…"})}</div></div>`;
+    jlDialog(el, { title: name(u) });
     try {
-      const page = await jlApi(`/api/v1/admin/orders/user/${userId}?size=20`);
+      const page = await jlApi(`/api/v1/admin/orders/user/${userId}?size=50`);
       const orders = page.content || [];
-      cell.innerHTML = orders.length ? `
-        <table class="w-full"><tbody>${orders.map(o=>`
-          <tr><td class="py-1 font-semibold text-navy">#${esc(o.orderNumber)}</td>
-          <td class="text-slate-500">${fmt(o.placedAt)}</td>
-          <td class="text-slate-500">${esc(o.status)}</td>
-          <td class="text-right font-semibold">${inr(o.grandTotal)}</td></tr>`).join("")}</tbody></table>`
-        : '<span class="text-slate-400">No orders for this customer.</span>';
-    } catch(e){ cell.innerHTML = `<span class="text-red-600">${esc(e.message)}</span>`; }
+      el.querySelector("#custOrders").innerHTML = orders.length ? `
+        <div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-left text-slate-400 text-[12px] uppercase">
+          <th class="py-1.5">Order</th><th>Date</th><th>Status</th><th class="text-right">Total</th></tr></thead>
+          <tbody>${orders.map(o=>`<tr class="border-t border-slate-100">
+            <td class="py-1.5 font-semibold text-navy">#${esc(o.orderNumber)}</td>
+            <td class="text-slate-500">${fmt(o.placedAt)}</td>
+            <td class="text-slate-500">${esc(o.status)}</td>
+            <td class="text-right font-semibold">${inr(o.grandTotal)}</td></tr>`).join("")}</tbody></table></div>`
+        : '<span class="text-slate-400 text-sm">No orders for this customer.</span>';
+    } catch(e){ el.querySelector("#custOrders").innerHTML = `<span class="text-red-600 text-sm">${esc(e.message)}</span>`; }
   }
 
-  $("rows").addEventListener("click", (ev)=>{ const b=ev.target.closest("button[data-orders]"); if(b) toggleOrders(b.dataset.orders); });
+  $("rows").addEventListener("click", (ev)=>{ const b=ev.target.closest("button[data-orders]"); if(b) openCustomer(b.dataset.orders); });
 
   let timer; $("search").addEventListener("input", ()=>{ clearTimeout(timer); state.page=0; timer=setTimeout(load,300); });
   $("prev").addEventListener("click", ()=>{ if(state.page>0){state.page--; load();} });
