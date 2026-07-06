@@ -79,8 +79,7 @@
             ${p.shortDescription ? `<p class="text-slate-600 text-sm mb-3">${escAttr(p.shortDescription)}</p>` : ""}
             ${(p.availableStock != null && p.availableStock <= 0)
               ? `<button disabled class="bg-slate-300 text-white font-bold px-6 py-3 rounded-lg text-sm cursor-not-allowed">❌ Out of Stock</button>`
-              : `<button data-id="${escAttr(p.id)}" data-name="${escAttr(p.name)}" data-brand="${escAttr(p.brandName || "")}" data-emoji="${emoji}" data-price="${price}"
-                  class="addbtn bg-navy hover:bg-orange text-white font-bold px-6 py-3 rounded-lg text-sm transition">🛒 Add to Cart</button>
+              : `${jlCartControl({ id: p.id, name: p.name, brand: p.brandName || "", emoji, price, stock: (p.availableStock == null ? "" : p.availableStock) }, { variant: "detail" })}
                  ${p.availableStock != null && p.availableStock <= 5 ? `<div class="text-[12px] text-orange-600 font-semibold mt-2">Only ${p.availableStock} left in stock!</div>` : ""}`}
           </div>
         </div>

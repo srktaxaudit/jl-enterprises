@@ -228,8 +228,7 @@ function jlProductCard(p) {
           ${mrp > price ? `<span class="text-[13px] text-slate-400 line-through">${jlInr(mrp)}</span>` : ""}
         </div>
         <div class="text-[12px] text-brand mb-2.5">EMI from ${jlInr(emi)}/mo</div>
-        <button data-id="${jlEsc(p.id)}" data-name="${jlEsc(p.name)}" data-brand="${jlEsc(p.brandName || "")}" data-emoji="${emoji}" data-price="${price}"
-          class="addbtn w-full bg-navy hover:bg-orange text-white font-bold py-2.5 rounded-lg text-sm transition">🛒 Add to Cart</button>
+        ${jlCartControl({ id: p.id, name: p.name, brand: p.brandName || "", emoji, price, stock: (p.availableStock == null ? "" : p.availableStock) }, { variant: "card" })}
       </div>
     </div>`;
 }

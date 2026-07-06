@@ -65,34 +65,113 @@ function updateCartWidgets() {
   }
 }
 
-/* ── 2. Add to Cart buttons ──────────────────────────────────────── */
-// Any button with class="addbtn" and data-id / data-name / data-brand /
-// data-emoji / data-price attributes adds that product to the cart.
+/* ── 2. Add to Cart → persistent quantity stepper ─────────────────── */
+// Every place a product can be added renders a `.jlcart` control (via
+// jlCartControl below). When the product is NOT in the cart it shows an
+// "Add to Cart" button; once added it becomes a −/qty/+ stepper that reflects
+// the live cart quantity. Because the cart lives in localStorage, the stepper
+// stays correct across refresh, navigation and returning to a listing. Reaching
+// quantity 0 removes the product and reverts to the "Add to Cart" button.
+//
+// The whole thing is event-delegated + driven off localStorage, so it is
+// synchronous and instant — there are no per-change network calls to de-dupe
+// (the cart is mirrored to the backend once, at checkout, as before).
 
-document.addEventListener("click", (e) => {
-  const btn = e.target.closest(".addbtn");
-  if (!btn) return;
+// Current quantity of a product in the cart (0 if absent).
+function jlCartQtyOf(id) {
+  const item = getCart().find((x) => String(x.id) === String(id));
+  return item ? item.qty : 0;
+}
+
+// Inner markup for a control given the current quantity. `variant` is "card"
+// (full-width, on product cards) or "detail" (inline, on the product page).
+function jlCartControlInner(qty, stock, variant) {
+  const detail = variant === "detail";
+  if (qty <= 0) {
+    const cls = detail
+      ? "jlcart-add bg-navy hover:bg-orange text-white font-bold px-6 py-3 rounded-lg text-sm transition"
+      : "jlcart-add w-full bg-navy hover:bg-orange text-white font-bold py-2.5 rounded-lg text-sm transition";
+    return `<button type="button" class="${cls}">🛒 Add to Cart</button>`;
+  }
+  const atMax = stock !== "" && stock != null && qty >= Number(stock);
+  const wrapCls = detail
+    ? "jlcart-stepper inline-flex items-center bg-navy text-white rounded-lg overflow-hidden select-none"
+    : "jlcart-stepper w-full flex items-center justify-between bg-navy text-white rounded-lg overflow-hidden select-none";
+  const pad = detail ? "px-5 py-3" : "px-4 py-2.5";
+  return `<div class="${wrapCls}">
+      <button type="button" class="jlcart-dec ${pad} text-lg leading-none hover:bg-orange transition" aria-label="Decrease quantity">−</button>
+      <span class="jlcart-count font-bold text-sm px-3" aria-live="polite">${qty}</span>
+      <button type="button" class="jlcart-inc ${pad} text-lg leading-none hover:bg-orange transition${atMax ? " opacity-50 cursor-not-allowed" : ""}" aria-label="Increase quantity"${atMax ? " disabled" : ""}>+</button>
+    </div>`;
+}
+
+// Build a full cart control for a product. `p` = {id, name, brand, emoji, price, stock}.
+// `opts.variant` = "card" (default) | "detail". Renders the correct state on first
+// paint by reading the live cart, so no flash and no separate sync pass is needed.
+function jlCartControl(p, opts) {
+  opts = opts || {};
+  const variant = opts.variant || "card";
+  const id = String(p.id);
+  const stock = (p.stock == null || p.stock === "") ? "" : Number(p.stock);
+  const data =
+    `data-id="${escHtml(id)}" data-name="${escHtml(p.name)}" data-brand="${escHtml(p.brand || "")}" ` +
+    `data-emoji="${escHtml(p.emoji || "📦")}" data-price="${Number(p.price) || 0}" ` +
+    `data-stock="${stock}" data-variant="${variant}"`;
+  return `<div class="jlcart" ${data}>${jlCartControlInner(jlCartQtyOf(id), stock, variant)}</div>`;
+}
+
+// Re-render every on-page control (optionally just those for one product) so all
+// placements of the same product stay in sync after a change.
+function jlSyncCartControls(onlyId) {
+  document.querySelectorAll(".jlcart").forEach((wrap) => {
+    if (onlyId != null && String(wrap.dataset.id) !== String(onlyId)) return;
+    const stockRaw = wrap.dataset.stock;
+    const stock = (stockRaw === "" || stockRaw == null) ? "" : Number(stockRaw);
+    wrap.innerHTML = jlCartControlInner(jlCartQtyOf(wrap.dataset.id), stock, wrap.dataset.variant || "card");
+  });
+}
+
+// Apply a +1 / −1 change from a control, enforcing stock and removing at 0.
+function jlCartBump(wrap, delta) {
+  const id = wrap.dataset.id;
+  const stockRaw = wrap.dataset.stock;
+  const stock = (stockRaw === "" || stockRaw == null) ? null : Number(stockRaw);
+  const cur = jlCartQtyOf(id);
+  let next = cur + delta;
+  if (delta > 0 && stock != null && next > stock) {
+    if (typeof jlToast === "function") jlToast(`Only ${stock} in stock.`, { type: "warn" });
+    return;
+  }
+  if (next < 0) next = 0;
 
   const cart = getCart();
-  const existing = cart.find((item) => item.id === btn.dataset.id);
-  if (existing) {
-    existing.qty += 1; // already in cart → just bump the quantity
+  const idx = cart.findIndex((x) => String(x.id) === String(id));
+  if (next <= 0) {
+    if (idx >= 0) cart.splice(idx, 1);
+  } else if (idx >= 0) {
+    cart[idx].qty = next;
   } else {
     cart.push({
-      id: btn.dataset.id,
-      name: btn.dataset.name,
-      brand: btn.dataset.brand || "",
-      emoji: btn.dataset.emoji || "📦",
-      price: Number(btn.dataset.price),
-      qty: 1,
+      id,
+      name: wrap.dataset.name,
+      brand: wrap.dataset.brand || "",
+      emoji: wrap.dataset.emoji || "📦",
+      price: Number(wrap.dataset.price) || 0,
+      qty: next,
     });
   }
-  saveCart(cart);
+  saveCart(cart);            // refreshes header badge + floating cart
+  jlSyncCartControls(id);    // update every placement of this product
+  renderCartPage();          // refresh the cart page if we're on it
+}
 
-  // quick visual feedback on the button
-  const oldText = btn.textContent;
-  btn.textContent = "✔ Added!";
-  setTimeout(() => (btn.textContent = oldText), 900);
+// One delegated handler covers every control on every page (including cards
+// rendered later by the API). Disabled +/− buttons don't emit clicks.
+document.addEventListener("click", (e) => {
+  const wrap = e.target.closest(".jlcart");
+  if (!wrap) return;
+  if (e.target.closest(".jlcart-add") || e.target.closest(".jlcart-inc")) jlCartBump(wrap, +1);
+  else if (e.target.closest(".jlcart-dec")) jlCartBump(wrap, -1);
 });
 
 /* ── 4. Cart page (cart.html) ────────────────────────────────────── */
@@ -161,6 +240,7 @@ function changeQty(index, delta) {
   if (cart[index].qty <= 0) cart.splice(index, 1);
   saveCart(cart);
   renderCartPage();
+  jlSyncCartControls(); // keep any product-card steppers on this page in sync
 }
 
 // ✕ Remove button
@@ -169,6 +249,7 @@ function removeItem(index) {
   cart.splice(index, 1);
   saveCart(cart);
   renderCartPage();
+  jlSyncCartControls();
 }
 
 /* ── 5. Search filter on index.html ──────────────────────────────── */
@@ -383,6 +464,7 @@ function initEmiCalculator() {
 /* ── Boot: run once the page is ready ────────────────────────────── */
 document.addEventListener("DOMContentLoaded", () => {
   updateCartWidgets();  // badge reflects the stored cart on every page
+  jlSyncCartControls(); // any add/qty controls already in the DOM reflect the cart
   renderCartPage();     // only does something on cart.html
   initSearch();         // only does something where a search box exists
   initForms();          // only does something where a form exists
