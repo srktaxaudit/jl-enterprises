@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Import / Export — JL Admin</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = { theme: { extend: { colors: {
+    navy: { DEFAULT: "#0b2447", 600: "#19376d" }, brand: { DEFAULT: "#576cbc", sky: "#a5d7e8" },
+    orange: { DEFAULT: "#f97316" } }, boxShadow: { card: "0 12px 30px rgba(15,23,42,.12)" } } } };
+</script>
+<style> body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .inp{border:1px solid #cbd5e1;border-radius:8px;padding:8px 10px;font-size:13px;outline:none} .inp:focus{border-color:#576cbc}
+  .card{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:18px}
+  .btn{background:#0b2447;color:#fff;font-weight:600;border-radius:9px;padding:9px 14px;font-size:13px}
+  .btn:hover{background:#19376d} .btn-soft{background:#f1f5f9;color:#334155} .btn-soft:hover{background:#e2e8f0} </style>
+</head>
+<body class="bg-[#eef1f6] min-h-screen text-slate-800">
+
+  <div class="bg-white border-b border-slate-200 px-4 md:px-7 py-3 flex items-center gap-3 sticky top-0 z-10">
+    <a href="admin.html" class="flex items-center gap-2 text-navy">
+      <div class="w-9 h-7 rounded bg-navy text-white text-[11px] font-extrabold flex items-center justify-center">JL</div>
+      <span class="font-bold text-sm">← Dashboard</span>
+    </a>
+    <div class="ml-auto flex items-center gap-3">
+      <span id="adminBadge" class="w-9 h-9 rounded-full bg-gradient-to-br from-navy-600 to-brand text-white flex items-center justify-center font-bold text-[13px]">··</span>
+      <a href="#" id="logoutBtn" class="text-[13px] text-slate-500 hover:text-navy">⎋ Logout</a>
+    </div>
+  </div>
+
+  <div class="max-w-[900px] mx-auto p-4 md:p-7">
+    <h1 class="text-2xl text-navy font-bold mb-1">Import / Export</h1>
+    <p class="text-slate-400 text-sm mb-6">Export the books for your CA / Tally, take a backup, or bulk-import ledgers.</p>
+
+    <!-- EXPORT -->
+    <div class="card mb-6">
+      <h2 class="text-navy font-semibold mb-3">Export</h2>
+      <div class="flex flex-wrap items-end gap-3 mb-4">
+        <label class="text-[12px] text-slate-500">From<br><input id="from" type="date" class="inp" /></label>
+        <label class="text-[12px] text-slate-500">To<br><input id="to" type="date" class="inp" /></label>
+        <label class="text-[12px] text-slate-500">As on<br><input id="asOf" type="date" class="inp" /></label>
+        <label class="text-[12px] text-slate-500">Doc type<br>
+          <select id="docType" class="inp"><option value="">All</option><option value="SALES_INVOICE">Sales Invoice</option><option value="PURCHASE_BILL">Purchase Bill</option><option value="ESTIMATE">Estimate</option><option value="CREDIT_NOTE">Credit Note</option><option value="DEBIT_NOTE">Debit Note</option></select>
+        </label>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <button id="expAccounts" class="btn">📒 Chart of Accounts (CSV)</button>
+        <button id="expJournals" class="btn">📓 Day Book (CSV)</button>
+        <button id="expDocs" class="btn">🧾 Documents (CSV)</button>
+        <button id="expTb" class="btn">⚖️ Trial Balance (CSV)</button>
+        <button id="expTally" class="btn btn-soft">🧮 Tally XML</button>
+        <button id="expBackup" class="btn btn-soft">💾 Full Backup (JSON)</button>
+      </div>
+      <p class="text-[12px] text-slate-400 mt-3">CSV/Tally use the From–To range (Documents also the type); Trial Balance uses “As on”. Backup exports everything.</p>
+    </div>
+
+    <!-- IMPORT -->
+    <div class="card">
+      <h2 class="text-navy font-semibold mb-1">Import ledgers (Chart of Accounts)</h2>
+      <p class="text-[12px] text-slate-400 mb-3">CSV columns: <code>code, name, type, group, openingBalance, openingSide, gstRate, gstin, hsnCode</code>. Type = ASSET / LIABILITY / EQUITY / INCOME / EXPENSE; side = DR / CR. A header row is optional. Existing codes are skipped.</p>
+      <div class="flex items-center gap-3 mb-3">
+        <input id="file" type="file" accept=".csv,text/csv" class="text-sm" />
+        <button id="importBtn" class="btn">⬆ Import</button>
+      </div>
+      <textarea id="csv" rows="6" class="inp w-full font-mono text-[12px]" placeholder="code,name,type,group,openingBalance,openingSide,gstRate,gstin,hsnCode
+2101,Rajesh Traders,LIABILITY,Sundry Creditors,0,CR,,,
+1101,Kumar Stores,ASSET,Sundry Debtors,0,DR,,,"></textarea>
+      <div id="result" class="mt-3 text-[13px]"></div>
+    </div>
+  </div>
+
+<script src="jl-ui.js"></script>
+<script src="admin.js"></script>
+<script>
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c)=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+
+  const BASE = "/api/v1/admin/data";
+  const range = () => { const f=$("from").value, t=$("to").value; return (f?`from=${f}`:"") + (f&&t?"&":"") + (t?`to=${t}`:""); };
+
+  function download(name, content, mime){
+    const blob = new Blob([content], { type: mime || "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+  }
+  async function exportFile(btn, path, filename, mime, transform){
+    try {
+      const data = await jlSubmit(btn, () => jlApi(path));
+      download(filename, transform ? transform(data) : data, mime);
+      jlToast("Downloaded " + filename, { type: "success" });
+    } catch(e){ jlToast(e.message || "Export failed", { type: "error" }); }
+  }
+
+  const today = new Date().toISOString().slice(0,10);
+  const yearStart = today.slice(0,4) + "-01-01";
+  $("from").value = yearStart; $("to").value = today; $("asOf").value = today;
+
+  $("expAccounts").addEventListener("click", (e)=> exportFile(e.target, `${BASE}/export/accounts`, "chart-of-accounts.csv", "text/csv"));
+  $("expJournals").addEventListener("click", (e)=> exportFile(e.target, `${BASE}/export/journals?${range()}`, "day-book.csv", "text/csv"));
+  $("expDocs").addEventListener("click", (e)=> exportFile(e.target, `${BASE}/export/documents?${range()}${$("docType").value?`&type=${$("docType").value}`:""}`, "documents.csv", "text/csv"));
+  $("expTb").addEventListener("click", (e)=> exportFile(e.target, `${BASE}/export/trial-balance?asOf=${$("asOf").value||today}`, "trial-balance.csv", "text/csv"));
+  $("expTally").addEventListener("click", (e)=> exportFile(e.target, `${BASE}/export/tally?${range()}`, "tally-export.xml", "application/xml"));
+  $("expBackup").addEventListener("click", (e)=> exportFile(e.target, `${BASE}/backup`, "books-backup.json", "application/json", (d)=>JSON.stringify(d, null, 2)));
+
+  // Import
+  $("file").addEventListener("change", (ev)=>{
+    const f = ev.target.files[0]; if(!f) return;
+    const r = new FileReader(); r.onload = () => { $("csv").value = String(r.result||""); }; r.readAsText(f);
+  });
+  $("importBtn").addEventListener("click", async (e)=>{
+    const csv = $("csv").value.trim();
+    if(!csv){ jlToast("Paste or choose a CSV first.", { type: "warn" }); return; }
+    if(!(await jlConfirm("Import these ledger accounts? Existing codes will be skipped.", { title: "Import ledgers", confirmText: "Import" }))) return;
+    try {
+      const res = await jlSubmit(e.target, () => jlApi(`${BASE}/import/accounts`, { method:"POST", body:{ csv } }));
+      const errs = (res.errors||[]);
+      $("result").innerHTML = `<div class="rounded-lg border border-green-200 bg-green-50 text-green-800 px-3 py-2">
+        Imported <b>${res.created}</b> · skipped <b>${res.skipped}</b>.</div>`
+        + (errs.length ? `<ul class="mt-2 text-[12px] text-red-600 list-disc pl-5">${errs.slice(0,50).map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "");
+      jlToast(`Imported ${res.created}, skipped ${res.skipped}.`, { type: "success" });
+    } catch(err){ jlToast(err.message || "Import failed", { type: "error" }); }
+  });
+
+  jlWireLogout("#logoutBtn");
+  jlRequireAdmin(["ACCOUNTANT"]).then((a)=>{
+    $("adminBadge").textContent = jlDisplayName(a).split(/[\s@.]+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join("")||"JL";
+  });
+</script>
+</body>
+</html>
