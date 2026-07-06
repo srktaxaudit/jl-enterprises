@@ -328,6 +328,34 @@ public class AccountingServiceImpl implements AccountingService {
         }
     }
 
+    // ── Post a journal from a document's postings ──────────────────────────
+    @Override
+    @Transactional
+    public UUID postingJournal(VoucherType type, LocalDate date, String reference, UUID referenceId,
+                               String narration, List<AccountingService.Posting> postings) {
+        JournalEntry e = new JournalEntry();
+        e.setVoucherType(type == null ? VoucherType.JOURNAL : type);
+        e.setEntryDate(date);
+        e.setReference(reference);
+        e.setReferenceId(referenceId);
+        e.setNarration(narration);
+        e.setVoucherNumber(nextVoucherNumber(e.getVoucherType()));
+        BigDecimal totalDr = BigDecimal.ZERO, totalCr = BigDecimal.ZERO;
+        for (AccountingService.Posting p : postings) {
+            BigDecimal dr = nz(p.debit()).setScale(2, RoundingMode.HALF_UP);
+            BigDecimal cr = nz(p.credit()).setScale(2, RoundingMode.HALF_UP);
+            if (dr.signum() == 0 && cr.signum() == 0) continue;
+            e.addLine(line(account(p.accountId()), dr, cr));
+            totalDr = totalDr.add(dr);
+            totalCr = totalCr.add(cr);
+        }
+        if (totalDr.compareTo(totalCr) != 0) {
+            throw new BusinessException("Document journal is not balanced: Dr " + totalDr + " vs Cr " + totalCr);
+        }
+        if (totalDr.signum() == 0) throw new BusinessException("Nothing to post.");
+        return entryRepo.save(e).getId();
+    }
+
     // ── Default chart of accounts (called by the seeder on empty DB) ───────
     @Transactional
     public void ensureDefaultAccounts() {

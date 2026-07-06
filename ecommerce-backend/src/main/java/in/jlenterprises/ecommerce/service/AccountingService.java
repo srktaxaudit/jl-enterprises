@@ -11,6 +11,7 @@ import in.jlenterprises.ecommerce.request.accounting.LedgerAccountRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -44,4 +45,14 @@ public interface AccountingService {
 
     /** Seed the default chart of accounts if none exist (called on startup). */
     void ensureDefaultAccounts();
+
+    /** A single posting instruction used when building a journal from a document. */
+    record Posting(UUID accountId, BigDecimal debit, BigDecimal credit) {}
+
+    /**
+     * Post a balanced journal built from the given postings (used by the documents module).
+     * Returns the created journal entry id. Throws if the postings are unbalanced.
+     */
+    UUID postingJournal(VoucherType type, LocalDate date, String reference, UUID referenceId,
+                        String narration, List<Posting> postings);
 }
