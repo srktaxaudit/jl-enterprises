@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Invoices & Bills — JL Admin</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = { theme: { extend: { colors: {
+    navy: { DEFAULT: "#0b2447", 600: "#19376d" }, brand: { DEFAULT: "#576cbc", sky: "#a5d7e8" },
+    orange: { DEFAULT: "#f97316" } }, boxShadow: { card: "0 12px 30px rgba(15,23,42,.12)" } } } };
+</script>
+<style> body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .chip{display:inline-block;font-size:11px;font-weight:600;border-radius:6px;padding:2px 8px}
+  .lbl{display:block;font-size:13px;font-weight:600;color:#475569;margin-bottom:4px}
+  .inp{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:9px 12px;font-size:14px;outline:none} .inp:focus{border-color:#576cbc}
+  .inps{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:7px 9px;font-size:13px;outline:none} .inps:focus{border-color:#576cbc}
+  .tab{font-size:13px;font-weight:600;border-radius:9px;padding:7px 14px;border:1px solid #cbd5e1;color:#475569;background:#fff;white-space:nowrap}
+  .tab.active{background:#0b2447;border-color:#0b2447;color:#fff} </style>
+</head>
+<body class="bg-[#eef1f6] min-h-screen text-slate-800">
+
+  <div class="bg-white border-b border-slate-200 px-4 md:px-7 py-3 flex items-center gap-3 sticky top-0 z-10">
+    <a href="admin.html" class="flex items-center gap-2 text-navy">
+      <div class="w-9 h-7 rounded bg-navy text-white text-[11px] font-extrabold flex items-center justify-center">JL</div>
+      <span class="font-bold text-sm">← Dashboard</span>
+    </a>
+    <div class="ml-auto flex items-center gap-3">
+      <span id="adminBadge" class="w-9 h-9 rounded-full bg-gradient-to-br from-navy-600 to-brand text-white flex items-center justify-center font-bold text-[13px]">··</span>
+      <a href="#" id="logoutBtn" class="text-[13px] text-slate-500 hover:text-navy">⎋ Logout</a>
+    </div>
+  </div>
+
+  <div class="max-w-[1150px] mx-auto p-4 md:p-7">
+    <div class="flex items-center gap-3 mb-4 flex-wrap">
+      <div><h1 class="text-2xl text-navy font-bold mb-1">Invoices &amp; Bills</h1>
+        <p class="text-slate-400 text-sm">Sales invoices, purchase bills, estimates and credit/debit notes.</p></div>
+      <div class="ml-auto">
+        <button id="newBtn" class="bg-navy hover:bg-navy-600 text-white font-semibold rounded-lg px-4 py-2.5 text-sm">+ New</button>
+      </div>
+    </div>
+
+    <!-- DOCUMENT TYPE TABS -->
+    <div id="typeTabs" class="flex items-center gap-2 mb-4 overflow-x-auto pb-1"></div>
+
+    <!-- REGISTER -->
+    <div class="bg-white border border-slate-200 rounded-2xl p-5">
+      <div class="flex items-center gap-2 mb-4 flex-wrap">
+        <h2 id="registerTitle" class="text-navy font-semibold">Documents</h2>
+        <div class="ml-auto flex items-end gap-2 flex-wrap">
+          <select id="fStatus" class="inp"><option value="">All statuses</option>
+            <option value="DRAFT">Draft</option><option value="POSTED">Posted</option>
+            <option value="CANCELLED">Cancelled</option><option value="CONVERTED">Converted</option></select>
+          <label class="text-[12px] text-slate-500">From<br><input id="from" type="date" class="inp" /></label>
+          <label class="text-[12px] text-slate-500">To<br><input id="to" type="date" class="inp" /></label>
+          <input id="search" placeholder="Number or party…" class="inp w-48" />
+          <button id="applyRange" class="bg-navy hover:bg-navy-600 text-white font-semibold rounded-lg px-4 py-2 text-sm">Apply</button>
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead><tr class="text-left text-slate-400 text-[12px] uppercase">
+            <th class="py-2">Number</th><th>Date</th><th>Party</th>
+            <th class="text-right">Taxable</th><th class="text-right">GST</th><th class="text-right">Grand Total</th>
+            <th>Status</th><th class="text-right">Actions</th>
+          </tr></thead>
+          <tbody id="rows"><tr><td colspan="8" class="py-4 text-slate-400 text-center">Loading…</td></tr></tbody>
+        </table>
+      </div>
+      <div class="flex items-center gap-2 mt-4 text-sm">
+        <button id="prevBtn" class="border border-slate-300 rounded-lg px-3 py-1.5 disabled:opacity-40">← Prev</button>
+        <span id="pageInfo" class="text-slate-500"></span>
+        <button id="nextBtn" class="border border-slate-300 rounded-lg px-3 py-1.5 disabled:opacity-40">Next →</button>
+      </div>
+    </div>
+  </div>
+
+<script src="jl-ui.js"></script>
+<script src="admin.js"></script>
+<script>
+  const API = "/api/v1/admin";
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c)=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+  const $ = (id) => document.getElementById(id);
+  const inr = (n) => "₹" + Number(n||0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmtDate = (iso) => { if(!iso) return "—"; const d = new Date(iso); return isNaN(d) ? esc(iso) : d.toLocaleDateString("en-IN",{dateStyle:"medium"}); };
+
+  const SELLER = { name: "JL Enterprises", address: "185G/1B, Palai Road, Chidambaramnagar, Thoothukudi, Tamil Nadu 628008" };
+  const DOC_TYPES = [
+    { key:"SALES_INVOICE", label:"Sales Invoice", side:"SALES" },
+    { key:"PURCHASE_BILL", label:"Purchase Bill", side:"PURCHASE" },
+    { key:"ESTIMATE",      label:"Estimate",      side:"SALES" },
+    { key:"CREDIT_NOTE",   label:"Credit Note",   side:"SALES" },
+    { key:"DEBIT_NOTE",    label:"Debit Note",    side:"PURCHASE" },
+  ];
+  const TYPE_LABEL = Object.fromEntries(DOC_TYPES.map(t=>[t.key,t.label]));
+  const GST_RATES = [0,5,12,18,28];
+
+  const STATUS_STYLE = { DRAFT:"bg-slate-100 text-slate-600", POSTED:"bg-green-50 text-green-700",
+    CANCELLED:"bg-red-50 text-red-700", CONVERTED:"bg-blue-50 text-blue-700" };
+  const STATUS_LABEL = { DRAFT:"Draft", POSTED:"Posted", CANCELLED:"Cancelled", CONVERTED:"Converted" };
+
+  let PAGE = 0; const SIZE = 20; let TOTAL_PAGES = 1;
+  let CURRENT_TYPE = "SALES_INVOICE";
+  let ACCOUNTS = [];
+
+  function typeMeta(key){ return DOC_TYPES.find(t=>t.key===key) || DOC_TYPES[0]; }
+  function isEstimate(key){ return key === "ESTIMATE"; }
+  function needsTds(key){ return key === "PURCHASE_BILL" || key === "DEBIT_NOTE"; }
+
+  // ── Type tabs ──
+  function renderTabs(){
+    $("typeTabs").innerHTML = DOC_TYPES.map(t=>
+      `<button type="button" class="tab ${t.key===CURRENT_TYPE?"active":""}" data-type="${t.key}">${esc(t.label)}</button>`).join("");
+  }
+  $("typeTabs").addEventListener("click", (ev)=>{
+    const b = ev.target.closest("[data-type]"); if(!b) return;
+    CURRENT_TYPE = b.dataset.type; PAGE = 0; renderTabs();
+    $("registerTitle").textContent = TYPE_LABEL[CURRENT_TYPE] + "s";
+    loadRows();
+  });
+
+  // ── Register list ──
+  function rangeQuery(){
+    const f=$("from").value, t=$("to").value;
+    return (f?`&from=${f}`:"") + (t?`&to=${t}`:"");
+  }
+  async function loadRows(){
+    const body = $("rows");
+    body.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:20px">${jlSpinnerHTML()}</td></tr>`;
+    const q = `?type=${CURRENT_TYPE}&page=${PAGE}&size=${SIZE}` + rangeQuery()
+      + ($("fStatus").value?`&status=${$("fStatus").value}`:"")
+      + ($("search").value.trim()?`&q=${encodeURIComponent($("search").value.trim())}`:"");
+    try {
+      const page = await jlApi(`${API}/documents${q}`);
+      TOTAL_PAGES = Math.max(1, page.totalPages || 1);
+      const rows = page.content || [];
+      body.innerHTML = rows.length ? rows.map(rowHTML).join("")
+        : `<tr><td colspan="8" class="py-4 text-slate-400 text-center">No ${esc(TYPE_LABEL[CURRENT_TYPE].toLowerCase())}s found.</td></tr>`;
+      $("pageInfo").textContent = `Page ${PAGE+1} of ${TOTAL_PAGES}`;
+      $("prevBtn").disabled = PAGE<=0; $("nextBtn").disabled = PAGE>=TOTAL_PAGES-1;
+    } catch(e){ body.innerHTML = `<tr><td colspan="8" class="py-4 text-red-600 text-center">Could not load (${esc(e.message)}).</td></tr>`; }
+  }
+  function rowHTML(r){
+    const st = r.status || "DRAFT";
+    const acts = [];
+    acts.push(`<button data-view="${r.id}" class="text-[12px] text-brand mr-2">View</button>`);
+    if(st === "DRAFT"){
+      acts.push(`<button data-edit="${r.id}" class="text-[12px] text-navy mr-2">Edit</button>`);
+      if(!isEstimate(r.documentType))
+        acts.push(`<button data-post="${r.id}" class="text-[12px] text-green-600 mr-2">Post</button>`);
+      acts.push(`<button data-del="${r.id}" class="text-[12px] text-red-600 mr-2">Delete</button>`);
+    }
+    if(isEstimate(r.documentType) && st === "DRAFT")
+      acts.push(`<button data-convert="${r.id}" class="text-[12px] text-blue-600 mr-2">Convert</button>`);
+    if(st === "POSTED")
+      acts.push(`<button data-cancel="${r.id}" class="text-[12px] text-red-600 mr-2">Cancel</button>`);
+    return `<tr class="border-t border-slate-100 align-top">
+      <td class="py-2.5 font-semibold text-navy whitespace-nowrap">${esc(r.documentNumber||"—")}</td>
+      <td class="text-slate-500 whitespace-nowrap">${fmtDate(r.documentDate)}</td>
+      <td class="text-slate-600">${esc(r.partyName||"—")}</td>
+      <td class="text-right text-slate-500">${inr(r.taxableTotal)}</td>
+      <td class="text-right text-slate-500">${inr(r.gstTotal)}</td>
+      <td class="text-right font-bold text-navy">${inr(r.grandTotal)}</td>
+      <td><span class="chip ${STATUS_STYLE[st]||"bg-slate-100"}">${esc(STATUS_LABEL[st]||st)}</span></td>
+      <td class="text-right whitespace-nowrap">${acts.join("")}</td></tr>`;
+  }
+
+  // ── Client-side line + totals math (server is source of truth) ──
+  function computeLine(l){
+    const qty = Number(l.quantity)||0, rate = Number(l.rate)||0, disc = Number(l.discountPercent)||0, gstRate = Number(l.gstRate)||0;
+    const gross = qty*rate;
+    const taxable = gross*(1 - disc/100);
+    const gst = taxable*gstRate/100;
+    return { taxable, gst, lineTotal: taxable+gst };
+  }
+  function computeTotals(lines, interState, tdsRate){
+    let subTotal=0, taxableTotal=0, gstTotal=0;
+    for(const l of lines){
+      const c = computeLine(l);
+      const qty = Number(l.quantity)||0, rate = Number(l.rate)||0;
+      subTotal += qty*rate;
+      taxableTotal += c.taxable;
+      gstTotal += c.gst;
+    }
+    const discountTotal = subTotal - taxableTotal;
+    let cgst=0, sgst=0, igst=0;
+    if(interState) igst = gstTotal; else { cgst = gstTotal/2; sgst = gstTotal/2; }
+    const rawGrand = taxableTotal + gstTotal;
+    const grandRounded = Math.round(rawGrand);
+    const roundOff = grandRounded - rawGrand;
+    const tds = taxableTotal * (Number(tdsRate)||0)/100;
+    return { subTotal, discountTotal, taxableTotal, gstTotal, cgst, sgst, igst, roundOff, grandTotal: grandRounded, tds };
+  }
+
+  // ── Editor modal ──
+  function accountOptions(selectedId){
+    return `<option value="">— free text / none —</option>` + ACCOUNTS.map(a=>
+      `<option value="${a.id}"${String(a.id)===String(selectedId)?" selected":""}>${esc(a.code)} — ${esc(a.name)}</option>`).join("");
+  }
+  function lineRowHTML(l){
+    l = l || {};
+    return `<tr class="border-t border-slate-100 align-top jl-line">
+      <td class="py-2 pr-2"><input type="text" maxlength="200" class="inps jl-desc" placeholder="Description" value="${esc(l.description||"")}" /></td>
+      <td class="pr-2"><input type="text" maxlength="20" class="inps jl-hsn" placeholder="HSN" value="${esc(l.hsnCode||"")}" /></td>
+      <td class="pr-2"><input type="number" step="0.001" min="0" class="inps text-right jl-qty" placeholder="0" value="${l.quantity!=null?esc(l.quantity):""}" /></td>
+      <td class="pr-2"><input type="number" step="0.01" min="0" class="inps text-right jl-rate" placeholder="0.00" value="${l.rate!=null?esc(l.rate):""}" /></td>
+      <td class="pr-2"><input type="number" step="0.01" min="0" max="100" class="inps text-right jl-disc" placeholder="0" value="${l.discountPercent!=null?esc(l.discountPercent):""}" /></td>
+      <td class="pr-2"><select class="inps jl-gst">${GST_RATES.map(r=>`<option value="${r}"${Number(l.gstRate||0)===r?" selected":""}>${r}%</option>`).join("")}</select></td>
+      <td class="text-right text-slate-500 jl-preview whitespace-nowrap">—</td>
+      <td class="text-right"><button type="button" class="jl-rm text-red-500 text-lg leading-none px-1" aria-label="Remove line">×</button></td></tr>`;
+  }
+
+  function editorHTML(doc){
+    const t = typeMeta(CURRENT_TYPE);
+    const tds = needsTds(CURRENT_TYPE);
+    return `<div class="bg-white rounded-2xl p-5 md:p-6" style="min-width:min(92vw,900px)">
+      <form id="docForm" novalidate>
+        <div class="grid md:grid-cols-3 gap-4 mb-4">
+          <div><label class="lbl">Date *</label><input id="documentDate" type="date" class="inp" value="${esc((doc&&doc.documentDate)||new Date().toISOString().slice(0,10))}" /></div>
+          <div><label class="lbl">Party account</label><select id="partyAccountId" class="inp">${accountOptions(doc&&doc.partyAccountId)}</select></div>
+          <div><label class="lbl">Reference</label><input id="reference" maxlength="120" class="inp" value="${esc((doc&&doc.reference)||"")}" /></div>
+          <div><label class="lbl">Party name ${isEstimate(CURRENT_TYPE)?"":"*"}</label><input id="partyName" maxlength="150" class="inp" value="${esc((doc&&doc.partyName)||"")}" /></div>
+          <div><label class="lbl">Party GSTIN</label><input id="partyGstin" maxlength="15" class="inp" value="${esc((doc&&doc.partyGstin)||"")}" /></div>
+          <div><label class="lbl">Place of supply</label><input id="placeOfSupply" maxlength="60" class="inp" value="${esc((doc&&doc.placeOfSupply)||"")}" /></div>
+          <div class="md:col-span-3 grid md:grid-cols-2 gap-4">
+            <div><label class="lbl">Billing address</label><textarea id="billingAddress" rows="2" class="inp">${esc((doc&&doc.billingAddress)||"")}</textarea></div>
+            <div><label class="lbl">Shipping address</label><textarea id="shippingAddress" rows="2" class="inp">${esc((doc&&doc.shippingAddress)||"")}</textarea></div>
+          </div>
+          <div class="flex items-center gap-2"><input id="interState" type="checkbox" class="w-4 h-4" ${doc&&doc.interState?"checked":""} />
+            <label for="interState" class="text-sm font-semibold text-slate-600">Inter-state (IGST)</label></div>
+          ${tds?`<div><label class="lbl">TDS section</label><input id="tdsSection" maxlength="20" class="inp" value="${esc((doc&&doc.tdsSection)||"")}" /></div>
+          <div><label class="lbl">TDS rate %</label><input id="tdsRate" type="number" step="0.01" min="0" class="inp" value="${doc&&doc.tdsRate!=null?esc(doc.tdsRate):""}" /></div>`:""}
+          <div class="${tds?"md:col-span-3":"md:col-span-2"}"><label class="lbl">Narration</label><input id="narration" maxlength="250" class="inp" value="${esc((doc&&doc.narration)||"")}" /></div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead><tr class="text-left text-slate-400 text-[12px] uppercase">
+              <th class="py-2 w-[28%]">Description</th><th>HSN</th><th class="text-right">Qty</th>
+              <th class="text-right">Rate</th><th class="text-right">Disc %</th><th>GST</th>
+              <th class="text-right">Line total</th><th></th>
+            </tr></thead>
+            <tbody id="lines"></tbody>
+          </table>
+        </div>
+        <div class="flex items-center gap-2 mt-3 flex-wrap">
+          <button type="button" id="addLine" class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm text-navy">+ Add line</button>
+          <span id="lineMsg" class="text-[12px] text-red-600"></span>
+        </div>
+
+        <div class="mt-4 ml-auto md:w-[340px] text-sm" id="totals"></div>
+
+        <div class="flex items-center gap-2 mt-5 justify-end">
+          <button type="button" id="cancelBtn" class="text-slate-500 rounded-lg px-4 py-2.5 text-sm border border-slate-300">Cancel</button>
+          <button type="submit" class="bg-navy hover:bg-navy-600 text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Save draft</button>
+        </div>
+      </form>
+    </div>`;
+  }
+
+  function readLines(){
+    return Array.from(document.querySelectorAll("#lines .jl-line")).map(tr=>({
+      description: tr.querySelector(".jl-desc").value.trim(),
+      hsnCode: tr.querySelector(".jl-hsn").value.trim(),
+      quantity: Number(tr.querySelector(".jl-qty").value)||0,
+      rate: Number(tr.querySelector(".jl-rate").value)||0,
+      discountPercent: Number(tr.querySelector(".jl-disc").value)||0,
+      gstRate: Number(tr.querySelector(".jl-gst").value)||0,
+    }));
+  }
+  function recalcEditor(){
+    const rows = Array.from(document.querySelectorAll("#lines .jl-line"));
+    rows.forEach(tr=>{
+      const l = {
+        quantity: tr.querySelector(".jl-qty").value, rate: tr.querySelector(".jl-rate").value,
+        discountPercent: tr.querySelector(".jl-disc").value, gstRate: tr.querySelector(".jl-gst").value,
+      };
+      tr.querySelector(".jl-preview").textContent = inr(computeLine(l).lineTotal);
+    });
+    const lines = readLines();
+    const inter = $("interState").checked;
+    const tdsRate = $("tdsRate") ? $("tdsRate").value : 0;
+    const t = computeTotals(lines, inter, tdsRate);
+    const line = (l,v,cls)=>`<div style="display:flex;justify-content:space-between;padding:2px 0" class="${cls||""}"><span class="text-slate-500">${l}</span><span>${v}</span></div>`;
+    $("totals").innerHTML =
+      line("Sub-total", inr(t.subTotal))
+      + (t.discountTotal>0 ? line("Discount", "− "+inr(t.discountTotal)) : "")
+      + line("Taxable", inr(t.taxableTotal))
+      + (inter ? line("IGST", inr(t.igst)) : line("CGST", inr(t.cgst)) + line("SGST", inr(t.sgst)))
+      + (Math.abs(t.roundOff)>=0.005 ? line("Round-off", (t.roundOff>=0?"+ ":"− ")+inr(Math.abs(t.roundOff))) : "")
+      + (t.tds>0 ? line("TDS", "− "+inr(t.tds)) : "")
+      + `<div style="border-top:2px solid #0b2447;margin:6px 0"></div>`
+      + line("<b class='text-navy'>Grand Total</b>", "<b class='text-navy'>"+inr(t.grandTotal)+"</b>");
+  }
+
+  function validateEditor(){
+    const name = $("partyName").value.trim();
+    if(!isEstimate(CURRENT_TYPE) && !name) return { ok:false, msg:"Party name is required." };
+    const lines = readLines();
+    const valid = lines.filter(l=> l.description && l.quantity>0 && l.rate>=0);
+    if(!valid.length) return { ok:false, msg:"Add at least one line with a description, qty > 0 and rate ≥ 0." };
+    for(const l of lines){
+      if(l.description || l.quantity>0){
+        if(!l.description) return { ok:false, msg:"Every line needs a description." };
+        if(!(l.quantity>0)) return { ok:false, msg:"Every line needs quantity > 0." };
+        if(!(l.rate>=0)) return { ok:false, msg:"Rate cannot be negative." };
+      }
+    }
+    return { ok:true, lines: valid };
+  }
+
+  function openEditor(doc){
+    // when editing, ensure the doc's type is the active type
+    if(doc && doc.documentType) CURRENT_TYPE = doc.documentType;
+    const el = document.createElement("div");
+    el.innerHTML = editorHTML(doc);
+    const dlg = jlDialog(el.firstElementChild, { title: (doc?"Edit ":"New ") + TYPE_LABEL[CURRENT_TYPE], size:"lg" });
+
+    const linesTb = $("lines");
+    const initLines = (doc && doc.lines && doc.lines.length) ? doc.lines : [null];
+    linesTb.innerHTML = initLines.map(lineRowHTML).join("");
+
+    $("addLine").addEventListener("click", ()=>{ linesTb.insertAdjacentHTML("beforeend", lineRowHTML(null)); recalcEditor(); });
+    linesTb.addEventListener("input", recalcEditor);
+    linesTb.addEventListener("change", recalcEditor);
+    linesTb.addEventListener("click", (ev)=>{
+      const rm = ev.target.closest(".jl-rm"); if(!rm) return;
+      if(linesTb.querySelectorAll(".jl-line").length <= 1){ jlToast("A document needs at least one line.",{type:"warn"}); return; }
+      rm.closest("tr").remove(); recalcEditor();
+    });
+    $("interState").addEventListener("change", recalcEditor);
+    if($("tdsRate")) $("tdsRate").addEventListener("input", recalcEditor);
+    $("cancelBtn").addEventListener("click", ()=>dlg.close());
+    recalcEditor();
+
+    $("docForm").addEventListener("submit", async (ev)=>{
+      ev.preventDefault();
+      const chk = validateEditor();
+      if(!chk.ok){ $("lineMsg").textContent = chk.msg; jlToast(chk.msg,{type:"warn"}); return; }
+      const body = {
+        documentType: CURRENT_TYPE,
+        documentDate: $("documentDate").value,
+        partyAccountId: $("partyAccountId").value || null,
+        partyName: $("partyName").value.trim() || null,
+        partyGstin: $("partyGstin").value.trim() || null,
+        billingAddress: $("billingAddress").value.trim() || null,
+        shippingAddress: $("shippingAddress").value.trim() || null,
+        placeOfSupply: $("placeOfSupply").value.trim() || null,
+        interState: $("interState").checked,
+        narration: $("narration").value.trim() || null,
+        reference: $("reference").value.trim() || null,
+        tdsSection: $("tdsSection") ? ($("tdsSection").value.trim() || null) : null,
+        tdsRate: $("tdsRate") && $("tdsRate").value ? Number($("tdsRate").value) : null,
+        lines: chk.lines.map(l=>({
+          description: l.description, hsnCode: l.hsnCode || null,
+          quantity: l.quantity, rate: l.rate, discountPercent: l.discountPercent, gstRate: l.gstRate,
+        })),
+      };
+      const btn = $("docForm").querySelector('button[type=submit]');
+      try {
+        jlBtn(btn, true);
+        if(doc && doc.id) await jlApi(`${API}/documents/${doc.id}`, {method:"PUT", body});
+        else await jlApi(`${API}/documents`, {method:"POST", body});
+        jlToast(doc?"Document updated.":"Document saved as draft.",{type:"success"});
+        dlg.close(); renderTabs(); $("registerTitle").textContent = TYPE_LABEL[CURRENT_TYPE] + "s"; PAGE=0; loadRows();
+      } catch(e){ if(e.errors) jlShowServerErrors($("docForm"), e.errors); jlToast(e.message||"Could not save document",{type:"error"}); }
+      finally { jlBtn(btn, false); }
+    });
+  }
+
+  async function editDoc(id){
+    let doc;
+    try { doc = await jlApi(`${API}/documents/${id}`); }
+    catch(e){ jlToast(e.message||"Could not load document",{type:"error"}); return; }
+    openEditor(doc);
+  }
+
+  // ── Printable Tax Invoice ──
+  function invoiceHTML(doc){
+    const lineRows = (doc.lines||[]).map((l,i)=>`<tr>
+      <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:center">${i+1}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #eee">${esc(l.description||"")}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:center">${esc(l.hsnCode||"")}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right">${Number(l.quantity||0)}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right">${inr(l.rate)}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right">${inr(l.taxableValue)}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right">${Number(l.gstRate||0)}%</td>
+      ${doc.interState
+        ? `<td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right">${inr(l.igst)}</td>`
+        : `<td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right">${inr(l.cgst)}</td>
+           <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right">${inr(l.sgst)}</td>`}
+      <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right">${inr(l.lineTotal)}</td></tr>`).join("");
+    const gstCols = doc.interState ? 1 : 2;
+    const gstHead = doc.interState
+      ? `<th style="padding:6px 8px;text-align:right">IGST</th>`
+      : `<th style="padding:6px 8px;text-align:right">CGST</th><th style="padding:6px 8px;text-align:right">SGST</th>`;
+    const r = (l,v)=>`<div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:#475569">${l}</span><span>${v}</span></div>`;
+    const title = TYPE_LABEL[doc.documentType] || "Document";
+    const heading = (doc.documentType==="ESTIMATE") ? "ESTIMATE"
+      : (doc.documentType==="CREDIT_NOTE") ? "CREDIT NOTE"
+      : (doc.documentType==="DEBIT_NOTE") ? "DEBIT NOTE"
+      : "TAX INVOICE";
+    return `<div style="font-family:system-ui,sans-serif;color:#0f172a;max-width:760px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+        <div><div style="font-size:20px;font-weight:800;color:#0b2447">${esc(SELLER.name)}</div>
+          ${SELLER.address?`<div style="font-size:12px;color:#64748b;max-width:340px">${esc(SELLER.address)}</div>`:""}</div>
+        <div style="text-align:right"><div style="font-size:16px;font-weight:800">${esc(heading)}</div>
+          <div style="font-size:12px;color:#64748b">${esc(doc.documentNumber||"")}</div>
+          <div style="font-size:12px;color:#64748b">${fmtDate(doc.documentDate)}</div>
+          <div style="font-size:12px;color:#64748b">${esc(STATUS_LABEL[doc.status]||doc.status||"")}</div></div>
+      </div>
+      <div style="margin:14px 0;padding:10px 12px;background:#f8fafc;border-radius:10px;font-size:13px">
+        <div style="font-size:11px;text-transform:uppercase;color:#94a3b8">Party</div>
+        <b>${esc(doc.partyName||"—")}</b>${doc.partyGstin?` · GSTIN: ${esc(doc.partyGstin)}`:""}
+        ${doc.billingAddress?`<div style="color:#475569;white-space:pre-line">${esc(doc.billingAddress)}</div>`:""}
+        ${doc.shippingAddress?`<div style="color:#64748b;font-size:12px;margin-top:4px">Ship to: <span style="white-space:pre-line">${esc(doc.shippingAddress)}</span></div>`:""}
+        ${doc.placeOfSupply?`<div style="color:#64748b;font-size:12px">Place of supply: ${esc(doc.placeOfSupply)}</div>`:""}
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="text-align:left;color:#94a3b8;font-size:11px;text-transform:uppercase">
+          <th style="padding:6px 8px;text-align:center">#</th><th style="padding:6px 8px">Description</th>
+          <th style="padding:6px 8px;text-align:center">HSN</th><th style="padding:6px 8px;text-align:right">Qty</th>
+          <th style="padding:6px 8px;text-align:right">Rate</th><th style="padding:6px 8px;text-align:right">Taxable</th>
+          <th style="padding:6px 8px;text-align:right">GST%</th>${gstHead}
+          <th style="padding:6px 8px;text-align:right">Total</th></tr></thead>
+        <tbody>${lineRows}</tbody>
+      </table>
+      <div style="margin-top:12px;margin-left:auto;width:300px;font-size:13px">
+        ${r("Sub-total", inr(doc.subTotal))}
+        ${Number(doc.discountTotal)>0?r("Discount", "− "+inr(doc.discountTotal)):""}
+        <div style="border-top:1px solid #e2e8f0;margin:6px 0"></div>
+        ${r("Taxable value", inr(doc.taxableTotal))}
+        ${doc.interState
+          ? r("IGST", inr(doc.igstTotal))
+          : r("CGST", inr(doc.cgstTotal)) + r("SGST", inr(doc.sgstTotal))}
+        ${Number(doc.roundOff)?r("Round-off", (Number(doc.roundOff)>=0?"+ ":"− ")+inr(Math.abs(Number(doc.roundOff)))):""}
+        ${Number(doc.tdsAmount)>0?r(`TDS${doc.tdsSection?" ("+esc(doc.tdsSection)+")":""}`, "− "+inr(doc.tdsAmount)):""}
+        <div style="border-top:2px solid #0b2447;margin:6px 0"></div>
+        ${r("<b>Grand Total</b>", "<b>"+inr(doc.grandTotal)+"</b>")}
+      </div>
+      ${doc.narration?`<p style="font-size:12px;color:#475569;margin-top:14px">${esc(doc.narration)}</p>`:""}
+      <p style="font-size:11px;color:#94a3b8;margin-top:16px">This is a computer-generated ${esc(title.toLowerCase())}.</p>
+    </div>`;
+  }
+  async function viewDoc(id){
+    let doc;
+    try { doc = await jlApi(`${API}/documents/${id}`); }
+    catch(e){ jlToast(e.message||"Could not load document",{type:"error"}); return; }
+    const w = window.open("", "_blank", "width=860,height=980");
+    if(!w){ jlToast("Allow pop-ups to view the document.",{type:"warn"}); return; }
+    const heading = TYPE_LABEL[doc.documentType] || "Document";
+    w.document.write(`<html><head><title>${esc(doc.documentNumber||heading)}</title></head><body style="margin:24px">${invoiceHTML(doc)}</body></html>`);
+    w.document.close(); w.focus(); setTimeout(()=>{ w.print(); }, 300);
+  }
+
+  // ── Row actions ──
+  $("rows").addEventListener("click", async (ev)=>{
+    const b = ev.target.closest("button"); if(!b) return;
+    if(b.dataset.view) return viewDoc(b.dataset.view);
+    if(b.dataset.edit) return editDoc(b.dataset.edit);
+    if(b.dataset.post){
+      if(!(await jlConfirm("Post this document? A journal entry will be created and it can no longer be edited.",{title:"Post document",confirmText:"Post"}))) return;
+      try { await jlSubmit(b, ()=>jlApi(`${API}/documents/${b.dataset.post}/post`, {method:"POST"})); jlToast("Document posted.",{type:"success"}); loadRows(); }
+      catch(e){ jlToast(e.message||"Could not post",{type:"error"}); }
+    }
+    if(b.dataset.convert){
+      if(!(await jlConfirm("Convert this estimate into a new sales invoice?",{title:"Convert estimate",confirmText:"Convert"}))) return;
+      try { await jlSubmit(b, ()=>jlApi(`${API}/documents/${b.dataset.convert}/convert`, {method:"POST"})); jlToast("Estimate converted to invoice.",{type:"success"}); loadRows(); }
+      catch(e){ jlToast(e.message||"Could not convert",{type:"error"}); }
+    }
+    if(b.dataset.cancel){
+      if(!(await jlConfirm("Cancel this posted document? This reverses its journal entry.",{title:"Cancel document",confirmText:"Cancel document",danger:true}))) return;
+      try { await jlSubmit(b, ()=>jlApi(`${API}/documents/${b.dataset.cancel}/cancel`, {method:"POST"})); jlToast("Document cancelled.",{type:"success"}); loadRows(); }
+      catch(e){ jlToast(e.message||"Could not cancel",{type:"error"}); }
+    }
+    if(b.dataset.del){
+      if(!(await jlConfirm("Delete this draft document? This cannot be undone.",{title:"Delete draft",confirmText:"Delete",danger:true}))) return;
+      try { await jlSubmit(b, ()=>jlApi(`${API}/documents/${b.dataset.del}`, {method:"DELETE"})); jlToast("Draft deleted.",{type:"success"}); loadRows(); }
+      catch(e){ jlToast(e.message||"Could not delete",{type:"error"}); }
+    }
+  });
+
+  // ── Filters / paging ──
+  $("newBtn").addEventListener("click", ()=>openEditor(null));
+  $("applyRange").addEventListener("click", ()=>{ PAGE=0; loadRows(); });
+  $("fStatus").addEventListener("change", ()=>{ PAGE=0; loadRows(); });
+  let st; $("search").addEventListener("input", ()=>{ clearTimeout(st); st=setTimeout(()=>{ PAGE=0; loadRows(); }, 300); });
+  $("prevBtn").addEventListener("click", ()=>{ if(PAGE>0){ PAGE--; loadRows(); } });
+  $("nextBtn").addEventListener("click", ()=>{ if(PAGE<TOTAL_PAGES-1){ PAGE++; loadRows(); } });
+
+  // default range: last 90 days
+  (function initRange(){ const to=new Date(), from=new Date(); from.setDate(from.getDate()-90);
+    const iso=(d)=>d.toISOString().slice(0,10); $("from").value=iso(from); $("to").value=iso(to); })();
+
+  async function loadAccounts(){
+    ACCOUNTS = (await jlApi(`${API}/accounting/accounts?includeInactive=false`)).filter(a=>!a.blocked);
+  }
+
+  renderTabs();
+  $("registerTitle").textContent = TYPE_LABEL[CURRENT_TYPE] + "s";
+
+  jlWireLogout("#logoutBtn");
+  jlRequireAdmin(["ACCOUNTANT"]).then((a)=>{
+    $("adminBadge").textContent = jlDisplayName(a).split(/[\s@.]+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join("")||"JL";
+    jlWithBusy(()=>Promise.all([loadAccounts(), loadRows()]));
+  });
+</script>
+</body>
+</html>
