@@ -74,8 +74,9 @@
 
   function nextPage() {
     const next = new URLSearchParams(location.search).get("next");
-    // Only allow same-folder .html targets (avoid open-redirects).
-    return next && /^[\w.-]+\.html$/.test(next) ? next : "admin.html";
+    // Only allow a same-folder admin document and its optional query/hash. This
+    // supports deep links into the persistent shell without permitting an open redirect.
+    return next && /^admin(?:-[\w-]+)?\.html(?:\?[^#]*)?(?:#.*)?$/.test(next) ? next : "admin.html";
   }
 
   // If already logged in, skip the form.

@@ -7,6 +7,17 @@
    XSS-exposed; for higher security move to httpOnly cookies + a token endpoint.
    ══════════════════════════════════════════════════════════════════════ */
 
+// Admin pages are rendered inside one persistent dashboard shell.  Keep direct
+// bookmarks working by promoting standalone pages into that shell; pages loaded
+// by the shell's iframe are left alone.
+(function jlEnterAdminShell() {
+  const page = location.pathname.split("/").pop() || "admin.html";
+  if (window.top === window.self && page !== "admin-login.html" && page !== "admin-shell.html") {
+    const target = page + location.search + location.hash;
+    location.replace("admin-shell.html?page=" + encodeURIComponent(target));
+  }
+})();
+
 // Where the Spring Boot API lives. Localhost during dev; set the prod URL below.
 const JL_API_BASE = (() => {
   // The backend runs only on Render, so always call it (even from a local server).
@@ -209,7 +220,12 @@ async function jlRequireAdmin(allowedRoles) {
   try {
     user = await JLAuth.me();
   } catch (_) {
-    const back = encodeURIComponent(location.pathname.split("/").pop() || "admin.html");
+    const file = location.pathname.split("/").pop() || "admin.html";
+    // The persistent shell keeps its selected section in the query string.
+    // Preserve it across login so a bookmarked Orders/Product/etc. view returns
+    // to the same section after authentication.
+    const returnTo = file === "admin-shell.html" ? file + location.search : file;
+    const back = encodeURIComponent(returnTo);
     location.replace(JL_LOGIN_PAGE + "?next=" + back);
     return new Promise(() => {});
   }

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow" />
+<title>JL Enterprises — Admin</title>
+<link rel="stylesheet" href="admin-shell.css" />
+</head>
+<body>
+  <div class="admin-shell" id="adminShell">
+    <div class="admin-scrim" id="adminScrim" aria-hidden="true"></div>
+    <aside class="admin-sidebar" id="adminSidebar" aria-label="Admin navigation">
+      <div class="admin-brand">
+        <div class="admin-logo">JL</div>
+        <div class="admin-brand-copy"><strong>JL ENTERPRISES</strong><span>CEO CONTROL CENTRE</span></div>
+        <button class="admin-collapse" id="collapseBtn" type="button" aria-label="Collapse sidebar" title="Collapse sidebar">‹</button>
+      </div>
+      <nav class="admin-nav" id="adminNav"></nav>
+      <div class="admin-sidebar-footer">
+        <a href="index.html" target="_top"><span>↗</span><b>View store</b></a>
+        <button id="shellLogout" type="button"><span>⎋</span><b>Logout</b></button>
+      </div>
+    </aside>
+
+    <section class="admin-workspace">
+      <header class="admin-topbar">
+        <button class="admin-menu" id="menuBtn" type="button" aria-label="Open navigation" aria-controls="adminSidebar" aria-expanded="false">☰</button>
+        <div class="admin-page-title" id="pageTitle">Dashboard</div>
+        <div class="admin-topbar-spacer"></div>
+        <span class="admin-status"><i></i> Admin panel</span>
+        <span class="admin-avatar" id="shellBadge" title="">··</span>
+      </header>
+      <main class="admin-content" id="adminContent">
+        <iframe id="adminFrame" name="adminFrame" title="Admin dashboard content"></iframe>
+      </main>
+    </section>
+  </div>
+  <script src="jl-ui.js"></script>
+  <script src="admin.js"></script>
+  <script src="admin-shell.js"></script>
+</body>
+</html>
