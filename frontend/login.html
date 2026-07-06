@@ -146,13 +146,15 @@
     // Real-time inline validation: the identifier may be an email OR a 10-digit mobile.
     const liUser = document.getElementById("liUser");
     const liPassword = document.getElementById("liPassword");
-    // Accept either an email or a mobile number; validate whichever was typed.
+    // Accept either an email or a mobile number. Keep this LENIENT — the backend
+    // matches a phone by its last 10 digits regardless of format, so at login we
+    // only require a valid-looking email OR something with at least 10 digits
+    // (don't reject +91 / spaces / leading 0). Strict phone rules belong on signup.
     const idRule = (v) => {
       const s = String(v || "").trim();
       if (!s) return "Enter your email or mobile number.";
-      return s.indexOf("@") > -1
-        ? jlV.email("Enter a valid email address.")(s)
-        : jlV.phoneIN("Enter a valid email or 10-digit mobile number.")(s);
+      if (s.indexOf("@") > -1) return jlV.email("Enter a valid email address.")(s);
+      return s.replace(/\D/g, "").length >= 10 ? null : "Enter a valid email or mobile number.";
     };
     jlField(liUser, [jlV.required("Enter your email or mobile number."), idRule]);
     jlField(liPassword, [jlV.required("Enter your password.")]);
