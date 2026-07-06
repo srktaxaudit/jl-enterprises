@@ -5,6 +5,7 @@ import in.jlenterprises.ecommerce.constant.CouponType;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
+import java.util.List;
 
 public record CouponDto(
         UUID id,
@@ -21,5 +22,7 @@ public record CouponDto(
         boolean firstOrderOnly,
         Instant startsAt,
         Instant expiresAt,
-        boolean active
+        boolean active,
+        boolean allCategories,
+        List<CategoryTargetDto> categories
 ) {}

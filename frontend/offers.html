@@ -65,6 +65,7 @@
     if(c.maxDiscount) terms.push("Max discount " + jlInr(c.maxDiscount));
     if(c.firstOrderOnly) terms.push("First order only");
     if(c.perUserLimit) terms.push("Limit " + c.perUserLimit + " per customer");
+    terms.push(c.allCategories ? "All categories" : "For " + (c.categories || []).map(x => x.name).join(", "));
     return `
       <div class="border-2 border-dashed border-brand/40 rounded-2xl p-5 bg-gradient-to-br from-white to-brand/5 flex flex-col">
         <div class="flex items-start justify-between gap-2">

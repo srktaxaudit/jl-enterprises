@@ -117,7 +117,9 @@ public class OrderServiceImpl implements OrderService {
         CouponService.AppliedCoupon applied = null;
         BigDecimal discount = BigDecimal.ZERO;
         if (request.couponCode() != null && !request.couponCode().isBlank()) {
-            applied = couponService.apply(request.couponCode(), subtotal, userId);
+            // Revalidate from persisted cart lines and server-side prices. The
+            // discount is computed only over category-eligible items.
+            applied = couponService.apply(request.couponCode(), cart.getItems(), userId);
             discount = applied.discount();
         }
 

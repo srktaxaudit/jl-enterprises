@@ -156,6 +156,7 @@
             <button id="coApply" type="button" class="bg-brand hover:bg-navy text-white font-semibold rounded-lg px-4 py-2 text-sm">Apply</button>
           </div>
           <p id="coCouponMsg" class="text-[12px] mt-1"></p>
+          <div id="coCouponDetails" class="hidden mt-2 rounded-lg bg-slate-50 border border-slate-200 p-2 text-[11px] space-y-1"></div>
           <div id="coOffers" class="mt-1 space-y-1"></div>
         </div>
 
@@ -269,20 +270,28 @@
       $("coTotal").textContent = jlInr(Math.max(0, subtotal - disc));
     }
     function couponMsg(t, ok) { const m = $("coCouponMsg"); m.textContent = t || ""; m.style.color = ok ? "#16a34a" : "#dc2626"; }
+    function renderCouponDetails(items) {
+      const box = $("coCouponDetails");
+      if (!items || !items.length) { box.classList.add("hidden"); box.innerHTML = ""; return; }
+      box.classList.remove("hidden");
+      box.innerHTML = items.map(it => `<div class="flex items-start gap-1.5 ${it.eligible ? "text-green-700" : "text-slate-500"}">
+        <span>${it.eligible ? "✓" : "—"}</span><span><b>${jlEsc(it.productName)}</b>: ${jlEsc(it.reason)}</span></div>`).join("");
+    }
 
     async function applyCoupon(code) {
       code = (code || "").trim().toUpperCase();
       if (!code) { couponMsg("Enter a coupon code.", false); return; }
       const btn = $("coApply"); btn.disabled = true; const old = btn.textContent; btn.textContent = "…";
       try {
-        const r = await JLCheckout.validateCoupon(code, subtotal);
-        appliedCoupon = { code: r.code, discount: r.discount };
+        const r = await JLCheckout.validateCoupon(code);
+        appliedCoupon = { code: r.code, discount: r.discount, items: r.items };
         $("coCoupon").value = r.code;
-        couponMsg("✓ Coupon applied — you save " + jlInr(r.discount), true);
+        couponMsg("✓ Applied to " + jlInr(r.eligibleSubtotal) + " of eligible items — you save " + jlInr(r.discount), true);
+        renderCouponDetails(r.items);
         jlToast("Coupon applied — you save " + jlInr(r.discount), { type: "success", title: "Coupon applied" });
         renderTotals();
       } catch (e) {
-        appliedCoupon = null; renderTotals();
+        appliedCoupon = null; renderTotals(); renderCouponDetails([]);
         couponMsg(e.message || "Invalid coupon code.", false);
       } finally { btn.disabled = false; btn.textContent = old; }
     }
@@ -292,14 +301,15 @@
     // or first-order-consumed coupons are excluded by the backend).
     (async function loadOffers() {
       try {
-        const offers = await JLCheckout.eligibleCoupons(subtotal);
+        const offers = await JLCheckout.eligibleCoupons();
         if (!offers || !offers.length) { $("coOffers").innerHTML = ""; return; }
         $("coOffers").innerHTML = '<div class="text-[11px] text-slate-400 mb-1">Available offers — tap to apply:</div>' +
           offers.map((c) => {
             const val = c.type === "PERCENTAGE" ? (Number(c.value) + "% off") : (jlInr(c.value) + " off");
             const min = c.minOrderAmount ? (" · min " + jlInr(c.minOrderAmount)) : "";
+            const scope = c.allCategories ? "All categories" : (c.categories || []).map(x => x.name).join(", ");
             return `<button type="button" data-code="${jlEsc(c.code)}" class="block text-left w-full text-[12px] border border-dashed border-brand/50 rounded-lg px-2 py-1 hover:bg-brand/5">
-              🎟️ <b class="text-brand">${jlEsc(c.code)}</b> — ${val}${min}</button>`;
+              🎟️ <b class="text-brand">${jlEsc(c.code)}</b> — ${val}${min}<span class="block text-[10px] text-slate-400">${jlEsc(scope)}</span></button>`;
           }).join("");
         $("coOffers").addEventListener("click", (e) => {
           const b = e.target.closest("button[data-code]"); if (b) applyCoupon(b.dataset.code);

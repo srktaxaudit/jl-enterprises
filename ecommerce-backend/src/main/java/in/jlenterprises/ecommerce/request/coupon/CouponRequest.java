@@ -11,6 +11,8 @@ import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Set;
+import java.util.UUID;
 
 public record CouponRequest(
         @NotBlank @Size(max = 40) @Pattern(regexp = ValidationPatterns.CODE, message = ValidationPatterns.MSG_CODE) String code,
@@ -25,5 +27,7 @@ public record CouponRequest(
         Boolean firstOrderOnly,
         Instant startsAt,
         Instant expiresAt,
-        Boolean active
+        Boolean active,
+        /** Null/empty means All Categories (also preserves legacy clients). */
+        Set<UUID> categoryIds
 ) {}

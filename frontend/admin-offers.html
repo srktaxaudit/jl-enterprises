@@ -52,6 +52,11 @@
         <label class="flex items-center gap-2 text-sm mt-6"><input id="active" type="checkbox" checked /> Active</label>
         <label class="flex items-center gap-2 text-sm mt-6"><input id="firstOrderOnly" type="checkbox" /> First order only</label>
         <div class="md:col-span-3"><label class="lbl">Description</label><input id="description" maxlength="200" class="inp" /></div>
+        <div class="md:col-span-3 rounded-xl border border-slate-200 p-3">
+          <label class="flex items-center gap-2 text-sm font-semibold text-navy"><input id="allCategories" type="checkbox" checked /> All Categories</label>
+          <p class="text-[12px] text-slate-400 mt-1 mb-2">Or select one or more categories. Parent categories include their subcategories.</p>
+          <select id="categoryIds" multiple class="inp min-h-[130px]" aria-label="Applicable categories"></select>
+        </div>
         <div class="md:col-span-3 flex gap-2">
           <button type="submit" class="bg-navy hover:bg-navy-600 text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Save</button>
           <button type="button" id="cancelBtn" class="text-slate-500 rounded-lg px-4 py-2.5 text-sm border border-slate-300">Cancel</button>
@@ -64,9 +69,9 @@
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead><tr class="text-left text-slate-400 text-[12px] uppercase">
-            <th class="py-2">Code</th><th>Discount</th><th>Min order</th><th>Used</th><th>Active</th><th class="text-right">Actions</th>
+            <th class="py-2">Code</th><th>Discount</th><th>Categories</th><th>Min eligible spend</th><th>Used</th><th>Active</th><th class="text-right">Actions</th>
           </tr></thead>
-          <tbody id="rows"><tr><td colspan="6" class="py-4 text-slate-400">Loading…</td></tr></tbody>
+          <tbody id="rows"><tr><td colspan="7" class="py-4 text-slate-400">Loading…</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -78,7 +83,7 @@
   const inr = (n) => "₹" + Math.round(Number(n||0)).toLocaleString("en-IN");
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c)=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
   const $ = (id) => document.getElementById(id);
-  let COUPONS = [];
+  let COUPONS = [], CATEGORIES = [];
 
   function flash(t, ok=true){ const el=$("msg"); el.textContent=t;
     el.className="mb-4 text-[13px] rounded-lg px-3 py-2 "+(ok?"bg-green-50 text-green-700 border border-green-200":"bg-red-50 text-red-700 border border-red-200");
@@ -89,13 +94,15 @@
 
   async function load(){
     const body = $("rows");
-    body.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:20px">${jlSpinnerHTML()}</td></tr>`;
+    body.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:20px">${jlSpinnerHTML()}</td></tr>`;
     try {
-      COUPONS = await jlApi("/api/v1/coupons");
+      [COUPONS, CATEGORIES] = await Promise.all([jlApi("/api/v1/coupons"), jlApi("/api/v1/categories")]);
+      $("categoryIds").innerHTML = CATEGORIES.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join("");
       body.innerHTML = COUPONS.length ? COUPONS.map(c=>`
         <tr class="border-t border-slate-100">
           <td class="py-2.5 font-bold text-navy">${esc(c.code)}</td>
           <td>${discountText(c)}</td>
+          <td class="text-slate-500 max-w-[220px]">${c.allCategories ? '<span class="text-green-700">All Categories</span>' : esc((c.categories||[]).map(x=>x.name).join(", "))}</td>
           <td class="text-slate-500">${c.minOrderAmount?inr(c.minOrderAmount):"—"}</td>
           <td class="text-slate-500">${c.usedCount}${c.usageLimit?" / "+c.usageLimit:""}</td>
           <td>${c.active?'<span class="text-green-600">Active</span>':'<span class="text-slate-400">Off</span>'}</td>
@@ -103,8 +110,8 @@
             <button data-edit="${c.id}" class="text-[12px] text-brand mr-2">Edit</button>
             <button data-del="${c.id}" class="text-[12px] text-red-600">Delete</button>
           </td>
-        </tr>`).join("") : `<tr><td colspan="6" class="py-4 text-slate-400">No coupons yet.</td></tr>`;
-    } catch(e){ body.innerHTML = `<tr><td colspan="6" class="py-4 text-red-600">Could not load (${esc(e.message)}).</td></tr>`; }
+        </tr>`).join("") : `<tr><td colspan="7" class="py-4 text-slate-400">No coupons yet.</td></tr>`;
+    } catch(e){ body.innerHTML = `<tr><td colspan="7" class="py-4 text-red-600">Could not load (${esc(e.message)}).</td></tr>`; }
   }
 
   // Open/close the coupon form as a modal dialog (no layout shift; table stays put).
@@ -113,7 +120,8 @@
     if(s){ if(!couponDlg) couponDlg = jlDialog($("formCard"), { title: $("formTitle").textContent, size:"lg", dismissable:false, onClose:()=>{ couponDlg=null; } }); }
     else if(couponDlg){ couponDlg.close(); couponDlg=null; }
   }
-  function resetForm(){ $("form").reset(); $("cid").value=""; $("active").checked=true; $("formTitle").textContent="New coupon"; jlClearErrors($("form")); }
+  function syncCategoryMode(){ $("categoryIds").disabled = $("allCategories").checked; }
+  function resetForm(){ $("form").reset(); $("cid").value=""; $("active").checked=true; $("allCategories").checked=true; syncCategoryMode(); $("formTitle").textContent="New coupon"; jlClearErrors($("form")); }
 
   $("newBtn").addEventListener("click", ()=>{ resetForm(); showForm(true); });
   $("cancelBtn").addEventListener("click", ()=> showForm(false));
@@ -124,6 +132,10 @@
     $("minOrderAmount").value=c.minOrderAmount??""; $("maxDiscount").value=c.maxDiscount??"";
     $("usageLimit").value=c.usageLimit??""; $("perUserLimit").value=c.perUserLimit??"";
     $("firstOrderOnly").checked=!!c.firstOrderOnly;
+    $("allCategories").checked=!!c.allCategories;
+    const selected = new Set((c.categories||[]).map(x=>x.id));
+    Array.from($("categoryIds").options).forEach(o => o.selected = selected.has(o.value));
+    syncCategoryMode();
     $("expiresAt").value=toLocalInput(c.expiresAt); $("active").checked=!!c.active; $("description").value=c.description||"";
     $("formTitle").textContent="Edit: "+c.code; showForm(true);
   }
@@ -150,10 +162,15 @@
   jlField($("perUserLimit"), [jlV.integer({min:1})]);
   // Re-check value against the percentage cap when the type changes.
   $("type").addEventListener("change", ()=>{ if($("value").value!=="") jlValidate($("form"), { value: couponRules().value }); });
+  $("allCategories").addEventListener("change", syncCategoryMode);
 
   $("form").addEventListener("submit", async (ev)=>{
     ev.preventDefault();
     if(!jlValidate($("form"), couponRules()).valid) return;
+    const categoryIds = $("allCategories").checked ? [] : Array.from($("categoryIds").selectedOptions).map(o=>o.value);
+    if (!$("allCategories").checked && !categoryIds.length) {
+      jlToast("Select at least one category or choose All Categories.", {type:"warn"}); return;
+    }
     const body = {
       code:$("code").value.trim().toUpperCase(), name:$("name").value.trim()||null, type:$("type").value, value:$("value").value,
       minOrderAmount:$("minOrderAmount").value||null, maxDiscount:$("maxDiscount").value||null,
@@ -161,7 +178,7 @@
       perUserLimit:$("perUserLimit").value?Number($("perUserLimit").value):null,
       firstOrderOnly:$("firstOrderOnly").checked,
       expiresAt:$("expiresAt").value?new Date($("expiresAt").value).toISOString():null,
-      active:$("active").checked, description:$("description").value.trim()||null,
+      active:$("active").checked, description:$("description").value.trim()||null, categoryIds,
     };
     const id = $("cid").value;
     const saveBtn = $("form").querySelector('button[type=submit]');

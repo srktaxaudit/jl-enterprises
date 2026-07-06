@@ -54,8 +54,8 @@ public class CouponController {
 
     @GetMapping("/eligible")
     @Operation(summary = "Coupons the current customer can apply to this subtotal (authenticated)")
-    public ApiResponse<List<CouponDto>> eligible(@RequestParam(required = false) BigDecimal subtotal) {
-        return ApiResponse.success(couponService.eligibleFor(subtotal, SecurityUtils.currentUserId()));
+    public ApiResponse<List<CouponDto>> eligible() {
+        return ApiResponse.success(couponService.eligibleFor(SecurityUtils.currentUserId()));
     }
 
     @PostMapping
@@ -82,8 +82,8 @@ public class CouponController {
     }
 
     @GetMapping("/validate")
-    @Operation(summary = "Validate a coupon against a subtotal for the current user")
-    public ApiResponse<CouponValidationResult> validate(@RequestParam String code, @RequestParam BigDecimal subtotal) {
-        return ApiResponse.success(couponService.validate(code, subtotal, SecurityUtils.currentUserId()));
+    @Operation(summary = "Validate a coupon against the current user's server-side cart")
+    public ApiResponse<CouponValidationResult> validate(@RequestParam String code) {
+        return ApiResponse.success(couponService.validate(code, SecurityUtils.currentUserId()));
     }
 }

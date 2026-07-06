@@ -5,6 +5,10 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.Getter;
@@ -14,6 +18,8 @@ import org.hibernate.annotations.SQLRestriction;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 /** A discount coupon with validity window and usage limits. */
 @Entity
@@ -70,4 +76,12 @@ public class Coupon extends BaseEntity {
 
     @Column(name = "active", nullable = false)
     private boolean active = true;
+
+    /** Empty means "All Categories". This makes pre-existing coupons global and
+        lets Hibernate add the join table without invalidating legacy rows. */
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(name = "coupon_categories",
+            joinColumns = @JoinColumn(name = "coupon_id"),
+            inverseJoinColumns = @JoinColumn(name = "category_id"))
+    private Set<Category> applicableCategories = new LinkedHashSet<>();
 }
