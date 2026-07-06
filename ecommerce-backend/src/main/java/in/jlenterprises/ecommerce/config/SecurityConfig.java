@@ -85,7 +85,7 @@ public class SecurityConfig {
                 // via method security; everything else requires authentication.
                 .requestMatchers(org.springframework.http.HttpMethod.GET,
                         "/api/v1/products/**", "/api/v1/categories/**", "/api/v1/brands/**", "/api/v1/banners/**",
-                        "/api/v1/orders/track", "/api/v1/coupons/active")
+                        "/api/v1/orders/track", "/api/v1/coupons/active", "/api/v1/branding")
                     .permitAll()
                 // Public service-request submission (staff GET/PATCH still require auth)
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/v1/service-bookings").permitAll()

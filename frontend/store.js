@@ -298,4 +298,38 @@ function jlMobileNav() {
   });
 }
 
-document.addEventListener("DOMContentLoaded", () => { jlRenderAuthNav(); jlMobileNav(); });
+/** Fetch the admin-managed site logo (public endpoint) and apply it everywhere:
+    the "JL" logo boxes in the header, and the browser favicon. Best-effort — if no
+    logo is configured or the call fails, the default "JL" branding stays. */
+async function jlApplyBranding() {
+  try {
+    const res = await fetch(JL_API_BASE + "/api/v1/branding");
+    if (!res.ok) return;
+    const json = await res.json();
+    const url = json && json.data && json.data.logoUrl;
+    if (url) jlSetLogo(url);
+  } catch (_) { /* branding is optional */ }
+}
+
+/** Replace every leaf "JL" logo box with the logo image, and point the favicon
+    at it. Matches only elements whose text is exactly "JL" (the wordmark/footer
+    read "JL Enterprises"), so it works across all pages without per-page markup. */
+function jlSetLogo(url) {
+  document.querySelectorAll("body *").forEach((el) => {
+    if (el.children.length === 0 && el.textContent.trim() === "JL") {
+      el.textContent = "";
+      el.style.background = "none";
+      el.style.padding = "0";
+      const img = document.createElement("img");
+      img.src = url; img.alt = "JL Enterprises";
+      img.style.height = "100%"; img.style.width = "auto";
+      img.style.maxWidth = "130px"; img.style.objectFit = "contain";
+      el.appendChild(img);
+    }
+  });
+  let link = document.querySelector('link[rel="icon"]');
+  if (!link) { link = document.createElement("link"); link.rel = "icon"; document.head.appendChild(link); }
+  link.href = url;
+}
+
+document.addEventListener("DOMContentLoaded", () => { jlRenderAuthNav(); jlMobileNav(); jlApplyBranding(); });

@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Logo & Branding — JL Admin</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = { theme: { extend: { colors: {
+    navy: { DEFAULT: "#0b2447", 600: "#19376d" }, brand: { DEFAULT: "#576cbc", sky: "#a5d7e8" },
+    orange: { DEFAULT: "#f97316" } }, boxShadow: { card: "0 12px 30px rgba(15,23,42,.12)" } } } };
+</script>
+<style> body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .preview-box{background-image:linear-gradient(45deg,#eef1f6 25%,transparent 25%),linear-gradient(-45deg,#eef1f6 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#eef1f6 75%),linear-gradient(-45deg,transparent 75%,#eef1f6 75%);background-size:16px 16px;background-position:0 0,0 8px,8px -8px,-8px 0} </style>
+</head>
+<body class="bg-[#eef1f6] min-h-screen text-slate-800">
+
+  <div class="bg-white border-b border-slate-200 px-4 md:px-7 py-3 flex items-center gap-3 sticky top-0 z-10">
+    <a href="admin.html" class="flex items-center gap-2 text-navy">
+      <div class="w-9 h-7 rounded bg-navy text-white text-[11px] font-extrabold flex items-center justify-center">JL</div>
+      <span class="font-bold text-sm">← Dashboard</span>
+    </a>
+    <div class="ml-auto flex items-center gap-3">
+      <span id="adminBadge" class="w-9 h-9 rounded-full bg-gradient-to-br from-navy-600 to-brand text-white flex items-center justify-center font-bold text-[13px]">··</span>
+      <a href="#" id="logoutBtn" class="text-[13px] text-slate-500 hover:text-navy">⎋ Logout</a>
+    </div>
+  </div>
+
+  <div class="max-w-[820px] mx-auto p-4 md:p-7">
+    <h1 class="text-2xl text-navy font-bold mb-1">Logo &amp; Branding</h1>
+    <p class="text-slate-400 text-sm mb-5">Upload the JL Enterprises logo shown across the website — header, login &amp; sign-up pages, and the browser tab icon. Changes apply everywhere instantly, no code change needed.</p>
+
+    <div class="grid md:grid-cols-2 gap-5">
+      <!-- Current logo -->
+      <div class="bg-white border border-slate-200 rounded-2xl p-5">
+        <h2 class="text-navy font-semibold mb-3">Current logo</h2>
+        <div class="preview-box border border-slate-200 rounded-xl h-40 flex items-center justify-center overflow-hidden">
+          <img id="currentLogo" alt="Current logo" class="max-h-32 max-w-full object-contain hidden" />
+          <div id="noLogo" class="text-center text-slate-400 text-sm">
+            <div class="w-16 h-12 mx-auto rounded bg-navy text-white text-lg font-extrabold flex items-center justify-center mb-2">JL</div>
+            Using the default “JL” text logo.
+          </div>
+        </div>
+        <button id="deleteBtn" class="hidden mt-4 w-full border border-red-200 text-red-600 hover:bg-red-50 font-semibold rounded-lg px-4 py-2.5 text-sm">Remove logo (revert to default)</button>
+      </div>
+
+      <!-- Upload -->
+      <div class="bg-white border border-slate-200 rounded-2xl p-5">
+        <h2 class="text-navy font-semibold mb-3">Upload a new logo</h2>
+        <label for="file" class="block cursor-pointer border-2 border-dashed border-slate-300 hover:border-brand rounded-xl p-5 text-center transition">
+          <div class="preview-box border border-slate-200 rounded-lg h-28 flex items-center justify-center overflow-hidden mb-3">
+            <img id="preview" alt="Preview" class="max-h-24 max-w-full object-contain hidden" />
+            <span id="previewHint" class="text-slate-400 text-sm">Click to choose an image</span>
+          </div>
+          <span class="text-brand font-semibold text-sm">Choose file</span>
+          <span id="fileName" class="block text-slate-400 text-[12px] mt-1">PNG, JPG, SVG or WebP · up to 2 MB</span>
+        </label>
+        <input id="file" type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" class="hidden" />
+        <button id="uploadBtn" disabled class="mt-4 w-full bg-navy hover:bg-navy-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-lg px-4 py-2.5 text-sm">Save logo</button>
+      </div>
+    </div>
+  </div>
+
+<script src="jl-ui.js"></script>
+<script src="admin.js"></script>
+<script>
+  const $ = (id) => document.getElementById(id);
+  const ALLOWED = ["image/png","image/jpeg","image/jpg","image/svg+xml","image/webp"];
+  const MAX_BYTES = 2 * 1024 * 1024;
+  let chosen = null;
+
+  function showCurrent(url){
+    if (url){
+      $("currentLogo").src = url; $("currentLogo").classList.remove("hidden");
+      $("noLogo").classList.add("hidden"); $("deleteBtn").classList.remove("hidden");
+    } else {
+      $("currentLogo").classList.add("hidden"); $("noLogo").classList.remove("hidden");
+      $("deleteBtn").classList.add("hidden");
+    }
+  }
+
+  async function loadCurrent(){
+    try {
+      const b = await jlApi("/api/v1/branding", { auth:false });
+      showCurrent(b && b.logoUrl);
+    } catch(_){ showCurrent(null); }
+  }
+
+  $("file").addEventListener("change", (ev)=>{
+    const f = ev.target.files && ev.target.files[0];
+    chosen = null; $("uploadBtn").disabled = true;
+    $("preview").classList.add("hidden"); $("previewHint").classList.remove("hidden");
+    $("fileName").textContent = "PNG, JPG, SVG or WebP · up to 2 MB";
+    if (!f) return;
+    if (!ALLOWED.includes((f.type||"").toLowerCase())){
+      jlToast("Unsupported format. Use PNG, JPG, SVG or WebP.", {type:"error"}); ev.target.value=""; return;
+    }
+    if (f.size > MAX_BYTES){
+      jlToast("That image is over 2 MB. Please choose a smaller file.", {type:"error"}); ev.target.value=""; return;
+    }
+    chosen = f; $("uploadBtn").disabled = false; $("fileName").textContent = f.name;
+    const reader = new FileReader();
+    reader.onload = (e)=>{ $("preview").src = e.target.result; $("preview").classList.remove("hidden"); $("previewHint").classList.add("hidden"); };
+    reader.readAsDataURL(f);
+  });
+
+  $("uploadBtn").addEventListener("click", async ()=>{
+    if (!chosen) return;
+    jlBtn($("uploadBtn"), true);
+    try {
+      const b = await jlUpload("/api/v1/admin/branding/logo", chosen);
+      jlToast("Logo updated — it now appears across the site.", {type:"success"});
+      showCurrent(b && b.logoUrl);
+      $("file").value = ""; chosen = null; $("uploadBtn").disabled = true;
+      $("preview").classList.add("hidden"); $("previewHint").classList.remove("hidden");
+      $("fileName").textContent = "PNG, JPG, SVG or WebP · up to 2 MB";
+    } catch(e){ jlToast(e.message || "Upload failed.", {type:"error"}); }
+    finally { jlBtn($("uploadBtn"), false); }
+  });
+
+  $("deleteBtn").addEventListener("click", async ()=>{
+    if (!(await jlConfirm("Remove the current logo and revert to the default “JL” text?", {danger:true, confirmText:"Remove"}))) return;
+    jlBtn($("deleteBtn"), true);
+    try { await jlApi("/api/v1/admin/branding/logo", {method:"DELETE"}); jlToast("Logo removed.", {type:"success"}); showCurrent(null); }
+    catch(e){ jlToast(e.message || "Could not remove the logo.", {type:"error"}); }
+    finally { jlBtn($("deleteBtn"), false); }
+  });
+
+  jlWireLogout("#logoutBtn");
+  jlRequireSuper().then((a)=>{
+    $("adminBadge").textContent = jlDisplayName(a).split(/[\s@.]+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join("")||"JL";
+    jlWithBusy(loadCurrent);
+  });
+</script>
+</body>
+</html>

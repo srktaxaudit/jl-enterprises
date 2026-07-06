@@ -154,7 +154,8 @@
     const addr = [b.line1,b.line2,b.city,b.state,b.postalCode].filter(Boolean).map(esc).join(", ");
     return `<div style="font-family:system-ui,sans-serif;color:#0f172a;max-width:720px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
-        <div><div style="font-size:20px;font-weight:800;color:#0b2447">${esc(inv.sellerName||"JL Enterprises")}</div>
+        <div>${INVOICE_LOGO?`<img src="${esc(INVOICE_LOGO)}" alt="" style="max-height:48px;max-width:180px;object-fit:contain;margin-bottom:6px" />`:""}
+          <div style="font-size:20px;font-weight:800;color:#0b2447">${esc(inv.sellerName||"JL Enterprises")}</div>
           <div style="font-size:12px;color:#64748b;max-width:320px">${esc(inv.sellerAddress||"")}</div>
           ${inv.sellerGstin?`<div style="font-size:12px;color:#64748b">GSTIN: <b>${esc(inv.sellerGstin)}</b></div>`:""}</div>
         <div style="text-align:right"><div style="font-size:16px;font-weight:800">TAX INVOICE</div>
@@ -236,6 +237,10 @@
     const iso = (d)=> d.toISOString().slice(0,10);
     $("from").value = iso(from); $("to").value = iso(to);
   })();
+
+  // The managed site logo — printed on invoices when configured.
+  let INVOICE_LOGO = null;
+  jlApi("/api/v1/branding", { auth:false }).then(b=>{ INVOICE_LOGO = b && b.logoUrl; }).catch(()=>{});
 
   jlWireLogout("#logoutBtn");
   jlRequireSuper().then((a)=>{

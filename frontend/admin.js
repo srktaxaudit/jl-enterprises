@@ -248,3 +248,32 @@ function jlWireLogout(selector) {
     location.replace(JL_LOGIN_PAGE);
   });
 }
+
+/** Fetch the admin-managed logo and apply it to the admin shell (sidebar "JL"
+    box + favicon). Best-effort; the default branding stays if none is set. */
+async function jlApplyBranding() {
+  try {
+    const res = await fetch(JL_API_BASE + "/api/v1/branding");
+    if (!res.ok) return;
+    const json = await res.json();
+    const url = json && json.data && json.data.logoUrl;
+    if (!url) return;
+    document.querySelectorAll("body *").forEach((el) => {
+      if (el.children.length === 0 && el.textContent.trim() === "JL") {
+        el.textContent = "";
+        el.style.background = "none";
+        el.style.padding = "0";
+        const img = document.createElement("img");
+        img.src = url; img.alt = "JL Enterprises";
+        img.style.height = "100%"; img.style.width = "auto";
+        img.style.maxWidth = "130px"; img.style.objectFit = "contain";
+        el.appendChild(img);
+      }
+    });
+    let link = document.querySelector('link[rel="icon"]');
+    if (!link) { link = document.createElement("link"); link.rel = "icon"; document.head.appendChild(link); }
+    link.href = url;
+  } catch (_) { /* branding is optional */ }
+}
+
+document.addEventListener("DOMContentLoaded", jlApplyBranding);
