@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Outstanding &amp; Cash Flow — JL Admin</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = { theme: { extend: { colors: {
+    navy: { DEFAULT: "#0b2447", 600: "#19376d" }, brand: { DEFAULT: "#576cbc", sky: "#a5d7e8" },
+    orange: { DEFAULT: "#f97316" } }, boxShadow: { card: "0 12px 30px rgba(15,23,42,.12)" } } } };
+</script>
+<style> body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .chip{display:inline-block;font-size:11px;font-weight:600;border-radius:6px;padding:2px 8px}
+  .inp{border:1px solid #cbd5e1;border-radius:8px;padding:8px 10px;font-size:13px;outline:none} .inp:focus{border-color:#576cbc}
+  .card{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:16px}
+  .tab{padding:8px 14px;border-radius:9px;font-size:13px;font-weight:600;color:#64748b;cursor:pointer;white-space:nowrap}
+  .tab.active{background:#0b2447;color:#fff}
+  .btn-o{border:1px solid #cbd5e1;border-radius:8px;padding:8px 12px;font-size:13px;font-weight:600;color:#334155;background:#fff}
+  .btn-o:hover{border-color:#576cbc;color:#0b2447} </style>
+</head>
+<body class="bg-[#eef1f6] min-h-screen text-slate-800">
+
+  <div class="bg-white border-b border-slate-200 px-4 md:px-7 py-3 flex items-center gap-3 sticky top-0 z-10">
+    <a href="admin.html" class="flex items-center gap-2 text-navy">
+      <div class="w-9 h-7 rounded bg-navy text-white text-[11px] font-extrabold flex items-center justify-center">JL</div>
+      <span class="font-bold text-sm">← Dashboard</span>
+    </a>
+    <div class="ml-auto flex items-center gap-3">
+      <span id="adminBadge" class="w-9 h-9 rounded-full bg-gradient-to-br from-navy-600 to-brand text-white flex items-center justify-center font-bold text-[13px]">··</span>
+      <a href="#" id="logoutBtn" class="text-[13px] text-slate-500 hover:text-navy">⎋ Logout</a>
+    </div>
+  </div>
+
+  <div class="max-w-[1150px] mx-auto p-4 md:p-7">
+    <div class="mb-4">
+      <h1 class="text-2xl text-navy font-bold mb-1">Outstanding &amp; Cash Flow</h1>
+      <p class="text-slate-400 text-sm">Receivables &amp; payables aging, cash flow, and the day book.</p>
+    </div>
+
+    <!-- TABS -->
+    <div class="flex items-center gap-1 mb-4 flex-wrap bg-white border border-slate-200 rounded-xl p-1.5 w-max max-w-full overflow-x-auto">
+      <button class="tab active" data-tab="receivables">Receivables</button>
+      <button class="tab" data-tab="payables">Payables</button>
+      <button class="tab" data-tab="cashflow">Cash Flow</button>
+      <button class="tab" data-tab="daybook">Day Book</button>
+    </div>
+
+    <!-- ===== AGING (Receivables / Payables share markup) ===== -->
+    <section id="pane-receivables" class="tabpane">
+      <div class="bg-white border border-slate-200 rounded-2xl p-5">
+        <div class="flex items-end gap-2 mb-4 flex-wrap">
+          <h2 class="text-navy font-semibold mr-auto">Receivables aging</h2>
+          <label class="text-[12px] text-slate-500">As of<br><input id="recAsOf" type="date" class="inp" /></label>
+          <button id="recApply" class="bg-navy hover:bg-navy-600 text-white font-semibold rounded-lg px-4 py-2 text-sm">Apply</button>
+          <button id="recCsv" class="btn-o">Export CSV</button>
+          <button id="recPrint" class="btn-o">🖨 Print</button>
+        </div>
+        <div id="recWrap" class="overflow-x-auto"></div>
+      </div>
+    </section>
+
+    <section id="pane-payables" class="tabpane hidden">
+      <div class="bg-white border border-slate-200 rounded-2xl p-5">
+        <div class="flex items-end gap-2 mb-4 flex-wrap">
+          <h2 class="text-navy font-semibold mr-auto">Payables aging</h2>
+          <label class="text-[12px] text-slate-500">As of<br><input id="payAsOf" type="date" class="inp" /></label>
+          <button id="payApply" class="bg-navy hover:bg-navy-600 text-white font-semibold rounded-lg px-4 py-2 text-sm">Apply</button>
+          <button id="payCsv" class="btn-o">Export CSV</button>
+          <button id="payPrint" class="btn-o">🖨 Print</button>
+        </div>
+        <div id="payWrap" class="overflow-x-auto"></div>
+      </div>
+    </section>
+
+    <!-- ===== CASH FLOW ===== -->
+    <section id="pane-cashflow" class="tabpane hidden">
+      <div class="bg-white border border-slate-200 rounded-2xl p-5">
+        <div class="flex items-end gap-2 mb-4 flex-wrap">
+          <h2 class="text-navy font-semibold mr-auto">Cash flow</h2>
+          <label class="text-[12px] text-slate-500">From<br><input id="cfFrom" type="date" class="inp" /></label>
+          <label class="text-[12px] text-slate-500">To<br><input id="cfTo" type="date" class="inp" /></label>
+          <button id="cfApply" class="bg-navy hover:bg-navy-600 text-white font-semibold rounded-lg px-4 py-2 text-sm">Apply</button>
+          <button id="cfPrint" class="btn-o">🖨 Print</button>
+        </div>
+        <div id="cfWrap"></div>
+      </div>
+    </section>
+
+    <!-- ===== DAY BOOK ===== -->
+    <section id="pane-daybook" class="tabpane hidden">
+      <div class="bg-white border border-slate-200 rounded-2xl p-5">
+        <div class="flex items-end gap-2 mb-4 flex-wrap">
+          <h2 class="text-navy font-semibold mr-auto">Day book</h2>
+          <label class="text-[12px] text-slate-500">From<br><input id="dbFrom" type="date" class="inp" /></label>
+          <label class="text-[12px] text-slate-500">To<br><input id="dbTo" type="date" class="inp" /></label>
+          <button id="dbApply" class="bg-navy hover:bg-navy-600 text-white font-semibold rounded-lg px-4 py-2 text-sm">Apply</button>
+          <button id="dbPrint" class="btn-o">🖨 Print</button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead><tr class="text-left text-slate-400 text-[12px] uppercase">
+              <th class="py-2">Date</th><th>Voucher #</th><th>Type</th><th>Narration</th>
+              <th class="text-right">Dr total</th><th class="text-right">Cr total</th>
+            </tr></thead>
+            <tbody id="dbRows"><tr><td colspan="6" class="py-4 text-slate-400 text-center">Loading…</td></tr></tbody>
+          </table>
+        </div>
+        <div class="flex items-center gap-2 mt-4 text-sm">
+          <button id="dbPrev" class="border border-slate-300 rounded-lg px-3 py-1.5 disabled:opacity-40">← Prev</button>
+          <span id="dbPageInfo" class="text-slate-500"></span>
+          <button id="dbNext" class="border border-slate-300 rounded-lg px-3 py-1.5 disabled:opacity-40">Next →</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+<script src="jl-ui.js"></script>
+<script src="admin.js"></script>
+<script>
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c)=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+  const $ = (id) => document.getElementById(id);
+  const inr = (n) => "₹" + Number(n||0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmtDate = (iso) => { if(!iso) return "—"; const d = new Date(iso); return isNaN(d) ? esc(iso) : d.toLocaleDateString("en-IN",{dateStyle:"medium"}); };
+  const today = () => new Date().toISOString().slice(0,10);
+  const CFG_BASE = "/api/v1/admin/compliance";
+
+  // Open a clean print window with a report's HTML.
+  function printReport(title, innerHTML){
+    const w = window.open("", "_blank", "width=900,height=1000");
+    if(!w){ jlToast("Allow pop-ups to print the report.",{type:"warn"}); return; }
+    w.document.write(`<html><head><title>${esc(title)}</title>
+      <style>body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;margin:24px;color:#0f172a}
+        h1{font-size:18px;color:#0b2447;margin:0 0 2px} .sub{font-size:12px;color:#64748b;margin-bottom:14px}
+        table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:14px}
+        th{text-align:left;color:#94a3b8;font-size:11px;text-transform:uppercase;padding:6px 8px;border-bottom:1px solid #cbd5e1}
+        td{padding:6px 8px;border-bottom:1px solid #eee} .r{text-align:right} .tot{font-weight:700;background:#f8fafc}
+        .red{color:#dc2626} h2{font-size:13px;color:#0b2447;margin:16px 0 6px}</style></head>
+      <body>${innerHTML}</body></html>`);
+    w.document.close(); w.focus(); setTimeout(()=>{ w.print(); }, 350);
+  }
+
+  function download(filename, text){
+    const blob = new Blob([text], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = filename; document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
+  }
+  const csvCell = (v) => { const s = String(v ?? ""); return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; };
+
+  // ═══════════════ TABS ═══════════════
+  const loaded = { receivables:false, payables:false, cashflow:false, daybook:false };
+  function showTab(name){
+    document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active", t.dataset.tab===name));
+    document.querySelectorAll(".tabpane").forEach(p=>p.classList.add("hidden"));
+    $("pane-"+name).classList.remove("hidden");
+    if(!loaded[name]){
+      loaded[name] = true;
+      if(name==="receivables") loadAging("RECEIVABLE");
+      else if(name==="payables") loadAging("PAYABLE");
+      else if(name==="cashflow") loadCashFlow();
+      else if(name==="daybook") loadDayBook();
+    }
+  }
+  document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click", ()=>showTab(t.dataset.tab)));
+
+  // ═══════════════ AGING (Receivables / Payables) ═══════════════
+  const AGING = {
+    RECEIVABLE: { wrap:"recWrap", asOf:"recAsOf", label:"Receivables aging", file:"receivables-aging" },
+    PAYABLE:    { wrap:"payWrap", asOf:"payAsOf", label:"Payables aging",    file:"payables-aging" }
+  };
+  const agingData = { RECEIVABLE:null, PAYABLE:null };
+
+  function agingTableHTML(d, forPrint){
+    const parties = d.parties || [];
+    const redCls = forPrint ? "r red" : "text-right text-red-600 font-semibold";
+    const rCls = forPrint ? "r" : "text-right";
+    const rows = parties.length ? parties.map(p=>`<tr${forPrint?"":' class="border-t border-slate-100"'}>
+      <td${forPrint?"":' class="py-2.5 text-navy font-medium"'}>${esc(p.partyName)}</td>
+      <td class="${rCls}">${inr(p.current)}</td>
+      <td class="${rCls}">${inr(p.days31to60)}</td>
+      <td class="${rCls}">${inr(p.days61to90)}</td>
+      <td class="${redCls}">${inr(p.days90plus)}</td>
+      <td class="${rCls}${forPrint?"":' font-bold text-navy'}">${inr(p.total)}</td>
+      <td class="${rCls}">${p.oldestDays != null ? esc(p.oldestDays) : "—"}</td>
+    </tr>`).join("") : `<tr><td colspan="7" class="${forPrint?"":'py-4 text-slate-400 text-center'}">No outstanding balances.</td></tr>`;
+    const totCls = forPrint ? "tot" : "border-t-2 border-navy font-bold text-navy";
+    const footer = `<tr class="${totCls}">
+      <td${forPrint?"":' class="py-2.5"'}>Total</td>
+      <td class="${rCls}">${inr(d.current)}</td>
+      <td class="${rCls}">${inr(d.days31to60)}</td>
+      <td class="${rCls}">${inr(d.days61to90)}</td>
+      <td class="${forPrint?'r red':'text-right text-red-600'}">${inr(d.days90plus)}</td>
+      <td class="${rCls}">${inr(d.total)}</td>
+      <td class="${rCls}">—</td></tr>`;
+    return `<table class="w-full text-sm">
+      <thead><tr class="text-left text-slate-400 text-[12px] uppercase">
+        <th class="py-2">Party</th><th class="${rCls}">0-30</th><th class="${rCls}">31-60</th>
+        <th class="${rCls}">61-90</th><th class="${rCls}">90+</th><th class="${rCls}">Total</th><th class="${rCls}">Oldest (days)</th>
+      </tr></thead><tbody>${rows}</tbody><tfoot>${footer}</tfoot></table>`;
+  }
+
+  async function loadAging(kind){
+    const cfg = AGING[kind];
+    const wrap = $(cfg.wrap);
+    const asOf = $(cfg.asOf).value || today();
+    wrap.innerHTML = `<div class="py-6 text-center text-slate-400">${jlSpinnerHTML({label:"Loading "+cfg.label.toLowerCase()})}</div>`;
+    try {
+      const d = await jlApi(`${CFG_BASE}/aging?kind=${kind}&asOf=${encodeURIComponent(asOf)}`);
+      agingData[kind] = d;
+      wrap.innerHTML = agingTableHTML(d, false);
+    } catch(e){
+      agingData[kind] = null;
+      wrap.innerHTML = `<div class="py-4 text-red-600 text-sm">Could not load aging (${esc(e.message)}).</div>`;
+    }
+  }
+
+  function agingCsv(kind){
+    const d = agingData[kind]; if(!d){ jlToast("Nothing to export yet.",{type:"warn"}); return; }
+    const rows = [["Party","0-30","31-60","61-90","90+","Total","Oldest (days)"]];
+    (d.parties||[]).forEach(p=>rows.push([p.partyName, p.current, p.days31to60, p.days61to90, p.days90plus, p.total, p.oldestDays ?? ""]));
+    rows.push(["Total", d.current, d.days31to60, d.days61to90, d.days90plus, d.total, ""]);
+    const csv = rows.map(r=>r.map(csvCell).join(",")).join("\n");
+    download(`${AGING[kind].file}-${d.asOf||today()}.csv`, csv);
+  }
+  function agingPrint(kind){
+    const d = agingData[kind]; if(!d){ jlToast("Nothing to print yet.",{type:"warn"}); return; }
+    printReport(AGING[kind].label,
+      `<h1>${esc(AGING[kind].label)}</h1><div class="sub">As of ${fmtDate(d.asOf)}</div>${agingTableHTML(d, true)}`);
+  }
+
+  $("recApply").addEventListener("click", ()=>loadAging("RECEIVABLE"));
+  $("payApply").addEventListener("click", ()=>loadAging("PAYABLE"));
+  $("recCsv").addEventListener("click", ()=>agingCsv("RECEIVABLE"));
+  $("payCsv").addEventListener("click", ()=>agingCsv("PAYABLE"));
+  $("recPrint").addEventListener("click", ()=>agingPrint("RECEIVABLE"));
+  $("payPrint").addEventListener("click", ()=>agingPrint("PAYABLE"));
+
+  // ═══════════════ CASH FLOW ═══════════════
+  let cashFlowData = null;
+
+  function flowTableHTML(title, list, total, forPrint){
+    const rCls = forPrint ? "r" : "text-right";
+    const rows = (list && list.length) ? list.map(x=>`<tr${forPrint?"":' class="border-t border-slate-100"'}>
+      <td${forPrint?"":' class="py-2 text-slate-500 whitespace-nowrap"'}>${fmtDate(x.date)}</td>
+      <td${forPrint?"":' class="text-navy"'}>${esc(x.voucherNumber||"—")}</td>
+      <td${forPrint?"":' class="text-slate-600"'}>${esc(x.particulars||"—")}</td>
+      <td class="${rCls}">${inr(x.amount)}</td></tr>`).join("")
+      : `<tr><td colspan="4" class="${forPrint?"":'py-3 text-slate-400 text-center'}">No entries.</td></tr>`;
+    const totCls = forPrint ? "tot" : "border-t-2 border-navy font-bold text-navy";
+    return `<h2 class="text-navy font-semibold text-sm mb-2">${esc(title)}</h2>
+      <table class="w-full text-sm"><thead><tr class="text-left text-slate-400 text-[12px] uppercase">
+        <th class="py-2">Date</th><th>Voucher</th><th>Particulars</th><th class="${rCls}">Amount</th></tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot><tr class="${totCls}"><td colspan="3"${forPrint?"":' class="py-2"'}>Total</td><td class="${rCls}">${inr(total)}</td></tr></tfoot>
+      </table>`;
+  }
+
+  function cashFlowHTML(d, forPrint){
+    const box = (label, value, tone) => forPrint
+      ? `<div style="margin:6px 0;font-size:13px"><b>${esc(label)}:</b> ${value}</div>`
+      : `<div class="card"><div class="text-[11px] uppercase tracking-wide text-slate-400">${esc(label)}</div>
+          <div class="text-xl font-extrabold ${tone||"text-navy"} mt-0.5">${value}</div></div>`;
+    const opening = box("Opening balance", inr(d.openingBalance));
+    const closing = forPrint
+      ? `<div style="margin-top:10px;padding:10px 12px;background:#0b2447;color:#fff;border-radius:10px;font-size:15px;font-weight:700">Closing balance: ${inr(d.closingBalance)}</div>`
+      : `<div class="rounded-2xl bg-navy text-white p-5 mt-4"><div class="text-[11px] uppercase tracking-wide text-brand-sky">Closing balance</div>
+          <div class="text-2xl font-extrabold mt-1">${inr(d.closingBalance)}</div></div>`;
+    if(forPrint){
+      return `${opening}
+        ${box("Total inflows", inr(d.totalInflows))}${box("Total outflows", inr(d.totalOutflows))}
+        ${flowTableHTML("Inflows", d.inflows, d.totalInflows, true)}
+        ${flowTableHTML("Outflows", d.outflows, d.totalOutflows, true)}
+        ${closing}`;
+    }
+    return `<div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+        ${opening}${box("Total inflows", inr(d.totalInflows), "text-green-600")}${box("Total outflows", inr(d.totalOutflows), "text-red-600")}
+      </div>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div class="overflow-x-auto">${flowTableHTML("Inflows", d.inflows, d.totalInflows, false)}</div>
+        <div class="overflow-x-auto">${flowTableHTML("Outflows", d.outflows, d.totalOutflows, false)}</div>
+      </div>
+      ${closing}`;
+  }
+
+  async function loadCashFlow(){
+    const wrap = $("cfWrap");
+    const from = $("cfFrom").value, to = $("cfTo").value;
+    wrap.innerHTML = `<div class="py-6 text-center text-slate-400">${jlSpinnerHTML({label:"Loading cash flow"})}</div>`;
+    try {
+      const d = await jlApi(`${CFG_BASE}/cash-flow?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+      cashFlowData = d;
+      wrap.innerHTML = cashFlowHTML(d, false);
+    } catch(e){
+      cashFlowData = null;
+      wrap.innerHTML = `<div class="py-4 text-red-600 text-sm">Could not load cash flow (${esc(e.message)}).</div>`;
+    }
+  }
+  $("cfApply").addEventListener("click", loadCashFlow);
+  $("cfPrint").addEventListener("click", ()=>{
+    const d = cashFlowData; if(!d){ jlToast("Nothing to print yet.",{type:"warn"}); return; }
+    printReport("Cash flow", `<h1>Cash flow</h1><div class="sub">${fmtDate(d.from)} — ${fmtDate(d.to)}</div>${cashFlowHTML(d, true)}`);
+  });
+
+  // ═══════════════ DAY BOOK ═══════════════
+  let DB_PAGE = 0; const DB_SIZE = 25; let DB_TOTAL_PAGES = 1; let dbEntries = [];
+
+  function dbTypeChip(t){
+    t = String(t||"");
+    let cls = "bg-slate-100 text-slate-600";
+    if(/RECEIPT|SALE/i.test(t)) cls = "bg-green-50 text-green-700";
+    else if(/PAYMENT|PURCHASE/i.test(t)) cls = "bg-amber-50 text-amber-700";
+    else if(/JOURNAL|CONTRA/i.test(t)) cls = "bg-blue-50 text-blue-700";
+    return `<span class="chip ${cls}">${esc(t||"—")}</span>`;
+  }
+
+  async function loadDayBook(){
+    const body = $("dbRows");
+    const from = $("dbFrom").value, to = $("dbTo").value;
+    body.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-slate-400">${jlSpinnerHTML({label:"Loading day book"})}</td></tr>`;
+    try {
+      const page = await jlApi(`${CFG_BASE}/day-book?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&page=${DB_PAGE}&size=${DB_SIZE}`);
+      dbEntries = page.content || [];
+      DB_TOTAL_PAGES = Math.max(1, page.totalPages || 1);
+      body.innerHTML = dbEntries.length ? dbEntries.map((r,i)=>`
+        <tr class="border-t border-slate-100 align-top hover:bg-slate-50 cursor-pointer" data-idx="${i}">
+          <td class="py-2.5 text-slate-500 whitespace-nowrap">${fmtDate(r.entryDate)}</td>
+          <td class="text-navy font-semibold">${esc(r.voucherNumber||"—")}</td>
+          <td>${dbTypeChip(r.voucherType)}</td>
+          <td class="text-slate-600 max-w-[320px]">${esc(r.narration||"—")}</td>
+          <td class="text-right text-slate-600">${inr(r.totalDebit)}</td>
+          <td class="text-right text-slate-600">${inr(r.totalCredit)}</td>
+        </tr>`).join("") : `<tr><td colspan="6" class="py-4 text-slate-400 text-center">No vouchers in this range.</td></tr>`;
+      $("dbPageInfo").textContent = `Page ${DB_PAGE+1} of ${DB_TOTAL_PAGES}`;
+      $("dbPrev").disabled = DB_PAGE<=0; $("dbNext").disabled = DB_PAGE>=DB_TOTAL_PAGES-1;
+    } catch(e){ body.innerHTML = `<tr><td colspan="6" class="py-4 text-red-600 text-center">Could not load day book (${esc(e.message)}).</td></tr>`; }
+  }
+
+  function entryLinesHTML(entry, forPrint){
+    const rCls = forPrint ? "r" : "text-right";
+    const rows = (entry.lines||[]).map(l=>`<tr${forPrint?"":' class="border-t border-slate-100"'}>
+      <td${forPrint?"":' class="py-2 text-slate-500"'}>${esc(l.accountCode||"")}</td>
+      <td${forPrint?"":' class="text-navy"'}>${esc(l.accountName||"—")}</td>
+      <td class="${rCls}">${Number(l.debit)?inr(l.debit):""}</td>
+      <td class="${rCls}">${Number(l.credit)?inr(l.credit):""}</td></tr>`).join("");
+    const totCls = forPrint ? "tot" : "border-t-2 border-navy font-bold text-navy";
+    return `<table class="w-full text-sm"><thead><tr class="text-left text-slate-400 text-[12px] uppercase">
+        <th class="py-2">Code</th><th>Account</th><th class="${rCls}">Debit</th><th class="${rCls}">Credit</th></tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr class="${totCls}"><td colspan="2"${forPrint?"":' class="py-2"'}>Totals</td>
+        <td class="${rCls}">${inr(entry.totalDebit)}</td><td class="${rCls}">${inr(entry.totalCredit)}</td></tr></tfoot></table>`;
+  }
+
+  function viewEntry(entry){
+    const el = document.createElement("div");
+    el.className = "bg-white rounded-2xl p-5 md:p-6";
+    el.innerHTML = `
+      <div class="flex items-start gap-3 flex-wrap mb-3">
+        <div><div class="text-lg font-bold text-navy">${esc(entry.voucherNumber||"Voucher")}</div>
+          <div class="text-[12px] text-slate-400">${fmtDate(entry.entryDate)} · ${esc(entry.voucherType||"")}</div></div>
+        <div class="ml-auto">${dbTypeChip(entry.voucherType)}</div>
+      </div>
+      ${entry.narration?`<div class="text-[13px] text-slate-600 mb-2"><span class="text-slate-400">Narration:</span> ${esc(entry.narration)}</div>`:""}
+      ${entry.reference?`<div class="text-[13px] text-slate-600 mb-3"><span class="text-slate-400">Reference:</span> ${esc(entry.reference)}</div>`:""}
+      <div class="overflow-x-auto">${entryLinesHTML(entry, false)}</div>
+      <div class="flex gap-2 justify-end mt-4">
+        <button id="printEntry" class="bg-navy hover:bg-navy-600 text-white font-semibold rounded-lg px-4 py-2 text-sm">🖨 Print / Save PDF</button>
+      </div>`;
+    jlDialog(el, { title: "Voucher " + (entry.voucherNumber||"") });
+    el.querySelector("#printEntry").addEventListener("click", ()=>{
+      printReport(entry.voucherNumber||"Voucher",
+        `<h1>${esc(entry.voucherNumber||"Voucher")}</h1>
+         <div class="sub">${fmtDate(entry.entryDate)} · ${esc(entry.voucherType||"")}</div>
+         ${entry.narration?`<div style="font-size:12px;margin-bottom:4px">Narration: ${esc(entry.narration)}</div>`:""}
+         ${entry.reference?`<div style="font-size:12px;margin-bottom:10px">Reference: ${esc(entry.reference)}</div>`:""}
+         ${entryLinesHTML(entry, true)}`);
+    });
+  }
+
+  $("dbRows").addEventListener("click", (ev)=>{
+    const tr = ev.target.closest("tr[data-idx]"); if(!tr) return;
+    const entry = dbEntries[Number(tr.dataset.idx)]; if(entry) viewEntry(entry);
+  });
+  $("dbApply").addEventListener("click", ()=>{ DB_PAGE=0; loadDayBook(); });
+  $("dbPrev").addEventListener("click", ()=>{ if(DB_PAGE>0){ DB_PAGE--; loadDayBook(); } });
+  $("dbNext").addEventListener("click", ()=>{ if(DB_PAGE<DB_TOTAL_PAGES-1){ DB_PAGE++; loadDayBook(); } });
+  $("dbPrint").addEventListener("click", ()=>{
+    if(!dbEntries.length){ jlToast("Nothing to print yet.",{type:"warn"}); return; }
+    const rows = dbEntries.map(r=>`<tr><td>${fmtDate(r.entryDate)}</td><td>${esc(r.voucherNumber||"—")}</td>
+      <td>${esc(r.voucherType||"")}</td><td>${esc(r.narration||"—")}</td>
+      <td class="r">${inr(r.totalDebit)}</td><td class="r">${inr(r.totalCredit)}</td></tr>`).join("");
+    printReport("Day book",
+      `<h1>Day book</h1><div class="sub">${fmtDate($("dbFrom").value)} — ${fmtDate($("dbTo").value)} · Page ${DB_PAGE+1} of ${DB_TOTAL_PAGES}</div>
+       <table><thead><tr><th>Date</th><th>Voucher #</th><th>Type</th><th>Narration</th><th class="r">Dr total</th><th class="r">Cr total</th></tr></thead>
+       <tbody>${rows}</tbody></table>`);
+  });
+
+  // ═══════════════ DEFAULT DATES ═══════════════
+  (function initDates(){
+    const t = today();
+    $("recAsOf").value = t; $("payAsOf").value = t;
+    // cash flow: first of current month → today
+    const now = new Date();
+    $("cfFrom").value = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10);
+    $("cfTo").value = t;
+    // day book: last 30 days
+    const from = new Date(); from.setDate(from.getDate()-30);
+    $("dbFrom").value = from.toISOString().slice(0,10);
+    $("dbTo").value = t;
+  })();
+
+  jlWireLogout("#logoutBtn");
+  jlRequireAdmin(["ACCOUNTANT"]).then((a)=>{
+    $("adminBadge").textContent = jlDisplayName(a).split(/[\s@.]+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join("")||"JL";
+    loaded.receivables = true;
+    jlWithBusy(()=>loadAging("RECEIVABLE"));
+  });
+</script>
+</body>
+</html>

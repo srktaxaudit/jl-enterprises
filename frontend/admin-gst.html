@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow" />
+<title>GST Returns — JL Admin</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = { theme: { extend: { colors: {
+    navy: { DEFAULT: "#0b2447", 600: "#19376d" }, brand: { DEFAULT: "#576cbc", sky: "#a5d7e8" },
+    orange: { DEFAULT: "#f97316" } }, boxShadow: { card: "0 12px 30px rgba(15,23,42,.12)" } } } };
+</script>
+<style> body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .chip{display:inline-block;font-size:11px;font-weight:600;border-radius:6px;padding:2px 8px}
+  .inp{border:1px solid #cbd5e1;border-radius:8px;padding:8px 10px;font-size:13px;outline:none} .inp:focus{border-color:#576cbc}
+  .card{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:16px}
+  .tab{padding:8px 16px;border-radius:9px;font-size:14px;font-weight:600;color:#576cbc;cursor:pointer}
+  .tab.active{background:#0b2447;color:#fff} </style>
+</head>
+<body class="bg-[#eef1f6] min-h-screen text-slate-800">
+
+  <div class="bg-white border-b border-slate-200 px-4 md:px-7 py-3 flex items-center gap-3 sticky top-0 z-10">
+    <a href="admin.html" class="flex items-center gap-2 text-navy">
+      <div class="w-9 h-7 rounded bg-navy text-white text-[11px] font-extrabold flex items-center justify-center">JL</div>
+      <span class="font-bold text-sm">← Dashboard</span>
+    </a>
+    <div class="ml-auto flex items-center gap-3">
+      <span id="adminBadge" class="w-9 h-9 rounded-full bg-gradient-to-br from-navy-600 to-brand text-white flex items-center justify-center font-bold text-[13px]">··</span>
+      <a href="#" id="logoutBtn" class="text-[13px] text-slate-500 hover:text-navy">⎋ Logout</a>
+    </div>
+  </div>
+
+  <div class="max-w-[1150px] mx-auto p-4 md:p-7">
+    <div class="mb-4">
+      <h1 class="text-2xl text-navy font-bold mb-1">GST Returns</h1>
+      <p class="text-slate-400 text-sm">GSTR-1, GSTR-2, GSTR-3B and e-way bills.</p>
+    </div>
+
+    <!-- TABS -->
+    <div class="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1 mb-4 w-fit flex-wrap">
+      <button class="tab active" data-tab="gstr1">GSTR-1</button>
+      <button class="tab" data-tab="gstr2">GSTR-2</button>
+      <button class="tab" data-tab="gstr3b">GSTR-3B</button>
+      <button class="tab" data-tab="eway">E-way Bill</button>
+    </div>
+
+    <!-- CONTROLS (period) -->
+    <div id="periodControls" class="card flex items-end gap-2 flex-wrap mb-4">
+      <label class="text-[12px] text-slate-500">From<br><input id="from" type="date" class="inp" /></label>
+      <label class="text-[12px] text-slate-500">To<br><input id="to" type="date" class="inp" /></label>
+      <button id="applyBtn" class="bg-navy hover:bg-navy-600 text-white font-semibold rounded-lg px-4 py-2 text-sm">Apply</button>
+      <button id="printBtn" class="border border-slate-300 rounded-lg px-4 py-2 text-sm font-semibold text-navy disabled:opacity-40 ml-auto" disabled>🖨 Print / Save PDF</button>
+    </div>
+
+    <!-- REPORT BODY -->
+    <div id="report" class="bg-white border border-slate-200 rounded-2xl p-5">
+      <div class="py-4 text-slate-400 text-center">Loading…</div>
+    </div>
+  </div>
+
+<script src="jl-ui.js"></script>
+<script src="admin.js"></script>
+<script>
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c)=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+  const $ = (id) => document.getElementById(id);
+  const inr = (n) => "₹" + Number(n||0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmtDate = (iso) => { if(!iso) return "—"; const d = new Date(iso); return isNaN(d) ? esc(iso) : d.toLocaleDateString("en-IN",{dateStyle:"medium"}); };
+  const isoLocal = (d)=> `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+
+  let TAB = "gstr1";
+  let LAST_PRINT = null;   // { title, html }
+
+  function setTab(tab){
+    TAB = tab;
+    document.querySelectorAll(".tab").forEach(t=> t.classList.toggle("active", t.dataset.tab===tab));
+    // period controls only apply to the return tabs; e-way uses its own picker
+    $("periodControls").classList.toggle("hidden", tab === "eway");
+    $("printBtn").disabled = true; LAST_PRINT = null;
+    if(tab === "eway"){ loadEway(); }
+    else { run(); }
+  }
+
+  // ── CSV helpers ──
+  function csvCell(v){
+    const s = String(v ?? "");
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+  }
+  function downloadCsv(filename, rows){
+    const csv = rows.map(r=> r.map(csvCell).join(",")).join("\r\n");
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a);
+    setTimeout(()=> URL.revokeObjectURL(url), 1000);
+  }
+  const num = (n)=> Number(n||0).toFixed(2);
+
+  // ── GSTR-1 / GSTR-2 rendering ──
+  function summaryStrip(d){
+    const cell = (label, val, tone)=> `<div class="card">
+      <div class="text-[11px] uppercase tracking-wide text-slate-400">${esc(label)}</div>
+      <div class="text-lg font-extrabold ${tone||"text-navy"} mt-0.5">${inr(val)}</div></div>`;
+    return `<div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-5">
+      ${cell("Taxable", d.taxableTotal)}
+      ${cell("CGST", d.cgstTotal)}
+      ${cell("SGST", d.sgstTotal)}
+      ${cell("IGST", d.igstTotal)}
+      ${cell("Total GST", d.gstTotal, "text-green-700")}
+    </div>`;
+  }
+
+  function renderGstReturn(d){
+    const sections = (d.sections||[]).map(sec=>{
+      const rows = (sec.rows||[]).map(r=>`<tr class="border-t border-slate-100">
+        <td class="py-2 text-navy font-medium whitespace-nowrap">${esc(r.documentNumber)}</td>
+        <td class="text-slate-500 whitespace-nowrap">${fmtDate(r.date)}</td>
+        <td class="text-slate-600">${esc(r.partyName)}</td>
+        <td class="text-slate-500 whitespace-nowrap">${esc(r.gstin||"—")}</td>
+        <td class="text-right text-slate-600">${inr(r.taxable)}</td>
+        <td class="text-right text-slate-600">${inr(r.cgst)}</td>
+        <td class="text-right text-slate-600">${inr(r.sgst)}</td>
+        <td class="text-right text-slate-600">${inr(r.igst)}</td>
+        <td class="text-right font-semibold text-navy">${inr(r.total)}</td></tr>`).join("");
+      return `<div class="mb-6">
+        <h3 class="text-navy font-semibold mb-2">${esc(sec.title)}</h3>
+        <div class="overflow-x-auto"><table class="w-full text-sm">
+          <thead><tr class="text-left text-slate-400 text-[12px] uppercase">
+            <th class="py-2">Doc No</th><th>Date</th><th>Party</th><th>GSTIN</th>
+            <th class="text-right">Taxable</th><th class="text-right">CGST</th><th class="text-right">SGST</th>
+            <th class="text-right">IGST</th><th class="text-right">Total</th></tr></thead>
+          <tbody>${rows || `<tr><td colspan="9" class="py-3 text-slate-400 text-center">No rows.</td></tr>`}</tbody>
+          <tfoot><tr class="border-t-2 border-navy font-bold text-navy">
+            <td class="py-2" colspan="4">Section total</td>
+            <td class="text-right">${inr(sec.taxable)}</td>
+            <td class="text-right">${inr(sec.cgst)}</td>
+            <td class="text-right">${inr(sec.sgst)}</td>
+            <td class="text-right">${inr(sec.igst)}</td>
+            <td class="text-right">${inr(Number(sec.taxable)+Number(sec.cgst)+Number(sec.sgst)+Number(sec.igst))}</td></tr></tfoot>
+        </table></div></div>`;
+    }).join("");
+
+    const hsn = (d.hsnSummary||[]).map(h=>`<tr class="border-t border-slate-100">
+      <td class="py-2 text-navy font-medium whitespace-nowrap">${esc(h.hsn)}</td>
+      <td class="text-slate-500">${Number(h.gstRate)}%</td>
+      <td class="text-right text-slate-600">${inr(h.taxable)}</td>
+      <td class="text-right text-slate-600">${inr(h.cgst)}</td>
+      <td class="text-right text-slate-600">${inr(h.sgst)}</td>
+      <td class="text-right text-slate-600">${inr(h.igst)}</td>
+      <td class="text-right font-semibold text-navy">${inr(h.total)}</td></tr>`).join("");
+
+    return `<div class="flex items-center gap-2 mb-1 flex-wrap">
+        <h2 class="text-navy font-semibold">${esc(d.returnType || (TAB==="gstr1"?"GSTR-1":"GSTR-2"))}</h2>
+        <div class="ml-auto flex items-center gap-2">
+          <button id="csvInvoices" class="border border-slate-300 rounded-lg px-3 py-1.5 text-[12px] font-semibold text-navy">⬇ Export invoices CSV</button>
+          <button id="csvHsn" class="border border-slate-300 rounded-lg px-3 py-1.5 text-[12px] font-semibold text-navy">⬇ Export HSN CSV</button>
+        </div>
+      </div>
+      <p class="text-slate-400 text-[12px] mb-4">${fmtDate(d.from)} → ${fmtDate(d.to)}</p>
+      ${summaryStrip(d)}
+      ${sections || `<div class="py-3 text-slate-400 text-center">No sections in this period.</div>`}
+      <div class="mt-2">
+        <h3 class="text-navy font-semibold mb-2">HSN summary</h3>
+        <div class="overflow-x-auto"><table class="w-full text-sm">
+          <thead><tr class="text-left text-slate-400 text-[12px] uppercase">
+            <th class="py-2">HSN</th><th>Rate</th><th class="text-right">Taxable</th><th class="text-right">CGST</th>
+            <th class="text-right">SGST</th><th class="text-right">IGST</th><th class="text-right">Total</th></tr></thead>
+          <tbody>${hsn || `<tr><td colspan="7" class="py-3 text-slate-400 text-center">No HSN data.</td></tr>`}</tbody>
+        </table></div>
+      </div>`;
+  }
+
+  // CSV builders (data captured in closures via LAST_DATA)
+  let LAST_DATA = null;
+  function exportInvoicesCsv(){
+    const d = LAST_DATA; if(!d) return;
+    const rows = [["Section","Doc No","Date","Party","GSTIN","Taxable","CGST","SGST","IGST","Total"]];
+    (d.sections||[]).forEach(sec=>{
+      (sec.rows||[]).forEach(r=>{
+        rows.push([sec.title, r.documentNumber, r.date, r.partyName, r.gstin||"",
+          num(r.taxable), num(r.cgst), num(r.sgst), num(r.igst), num(r.total)]);
+      });
+    });
+    downloadCsv(`${(d.returnType||TAB)}-invoices-${d.from}-to-${d.to}.csv`, rows);
+  }
+  function exportHsnCsv(){
+    const d = LAST_DATA; if(!d) return;
+    const rows = [["HSN","Rate %","Taxable","CGST","SGST","IGST","Total"]];
+    (d.hsnSummary||[]).forEach(h=>{
+      rows.push([h.hsn, Number(h.gstRate), num(h.taxable), num(h.cgst), num(h.sgst), num(h.igst), num(h.total)]);
+    });
+    downloadCsv(`${(d.returnType||TAB)}-hsn-${d.from}-to-${d.to}.csv`, rows);
+  }
+
+  // ── GSTR-3B rendering ──
+  function renderGstr3b(d){
+    const line = (l, v, tone)=> `<div class="flex items-center justify-between py-1.5 text-sm">
+      <span class="text-slate-600">${esc(l)}</span><span class="font-semibold ${tone||"text-navy"}">${inr(v)}</span></div>`;
+    return `<div class="flex items-center gap-2 mb-1 flex-wrap">
+        <h2 class="text-navy font-semibold">GSTR-3B summary</h2></div>
+      <p class="text-slate-400 text-[12px] mb-4">${fmtDate(d.from)} → ${fmtDate(d.to)}</p>
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="card">
+          <div class="text-[11px] uppercase tracking-wide text-slate-400 mb-1">Outward supplies</div>
+          ${line("Taxable value", d.outwardTaxable)}
+          ${line("CGST", d.outwardCgst)}
+          ${line("SGST", d.outwardSgst)}
+          ${line("IGST", d.outwardIgst)}
+        </div>
+        <div class="card">
+          <div class="text-[11px] uppercase tracking-wide text-slate-400 mb-1">Input Tax Credit (ITC)</div>
+          ${line("Inward taxable", d.inwardTaxable)}
+          ${line("CGST", d.itcCgst)}
+          ${line("SGST", d.itcSgst)}
+          ${line("IGST", d.itcIgst)}
+        </div>
+      </div>
+      <div class="card mt-4 border-navy">
+        <div class="text-[11px] uppercase tracking-wide text-slate-400 mb-1">Net tax payable</div>
+        ${line("Net CGST", d.netCgst)}
+        ${line("Net SGST", d.netSgst)}
+        ${line("Net IGST", d.netIgst)}
+        <div class="border-t-2 border-navy mt-2 pt-2 flex items-center justify-between">
+          <span class="font-bold text-navy">Net payable</span>
+          <span class="font-extrabold text-lg text-green-700">${inr(d.netPayable)}</span>
+        </div>
+      </div>`;
+  }
+
+  // ── Printable HTML (new window) ──
+  function printGstReturn(d){
+    const th = (t,r)=>`<th style="padding:6px 8px;text-align:${r?'right':'left'}">${t}</th>`;
+    const sections = (d.sections||[]).map(sec=>{
+      const rows = (sec.rows||[]).map(r=>`<tr>
+        <td style="padding:5px 8px;border-bottom:1px solid #eee;white-space:nowrap">${esc(r.documentNumber)}</td>
+        <td style="padding:5px 8px;border-bottom:1px solid #eee;white-space:nowrap">${fmtDate(r.date)}</td>
+        <td style="padding:5px 8px;border-bottom:1px solid #eee">${esc(r.partyName)}</td>
+        <td style="padding:5px 8px;border-bottom:1px solid #eee">${esc(r.gstin||"—")}</td>
+        <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right">${inr(r.taxable)}</td>
+        <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right">${inr(r.cgst)}</td>
+        <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right">${inr(r.sgst)}</td>
+        <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right">${inr(r.igst)}</td>
+        <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right">${inr(r.total)}</td></tr>`).join("");
+      return `<h3 style="font-size:14px;color:#0b2447;margin:14px 0 4px">${esc(sec.title)}</h3>
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead><tr style="color:#94a3b8;font-size:10px;text-transform:uppercase">
+            ${th("Doc No")}${th("Date")}${th("Party")}${th("GSTIN")}${th("Taxable",1)}${th("CGST",1)}${th("SGST",1)}${th("IGST",1)}${th("Total",1)}</tr></thead>
+          <tbody>${rows}</tbody>
+          <tfoot><tr style="border-top:2px solid #0b2447;font-weight:800;color:#0b2447">
+            <td colspan="4" style="padding:6px 8px">Section total</td>
+            <td style="padding:6px 8px;text-align:right">${inr(sec.taxable)}</td>
+            <td style="padding:6px 8px;text-align:right">${inr(sec.cgst)}</td>
+            <td style="padding:6px 8px;text-align:right">${inr(sec.sgst)}</td>
+            <td style="padding:6px 8px;text-align:right">${inr(sec.igst)}</td>
+            <td style="padding:6px 8px;text-align:right">${inr(Number(sec.taxable)+Number(sec.cgst)+Number(sec.sgst)+Number(sec.igst))}</td></tr></tfoot>
+        </table>`;
+    }).join("");
+    const hsn = (d.hsnSummary||[]).map(h=>`<tr>
+      <td style="padding:5px 8px;border-bottom:1px solid #eee;white-space:nowrap">${esc(h.hsn)}</td>
+      <td style="padding:5px 8px;border-bottom:1px solid #eee">${Number(h.gstRate)}%</td>
+      <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right">${inr(h.taxable)}</td>
+      <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right">${inr(h.cgst)}</td>
+      <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right">${inr(h.sgst)}</td>
+      <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right">${inr(h.igst)}</td>
+      <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right">${inr(h.total)}</td></tr>`).join("");
+    return `<div style="font-family:system-ui,sans-serif;color:#0f172a">
+      <div style="font-size:20px;font-weight:800;color:#0b2447">JL Enterprises</div>
+      <div style="font-size:16px;font-weight:700;margin-top:4px">${esc(d.returnType||"")}</div>
+      <div style="font-size:12px;color:#64748b">${fmtDate(d.from)} → ${fmtDate(d.to)}</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:10px">
+        <tbody><tr style="font-weight:700;color:#0b2447">
+          <td style="padding:6px 8px">Taxable ${inr(d.taxableTotal)}</td>
+          <td style="padding:6px 8px">CGST ${inr(d.cgstTotal)}</td>
+          <td style="padding:6px 8px">SGST ${inr(d.sgstTotal)}</td>
+          <td style="padding:6px 8px">IGST ${inr(d.igstTotal)}</td>
+          <td style="padding:6px 8px">Total ${inr(d.gstTotal)}</td></tr></tbody></table>
+      ${sections}
+      <h3 style="font-size:14px;color:#0b2447;margin:16px 0 4px">HSN summary</h3>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="color:#94a3b8;font-size:10px;text-transform:uppercase">
+          ${th("HSN")}${th("Rate")}${th("Taxable",1)}${th("CGST",1)}${th("SGST",1)}${th("IGST",1)}${th("Total",1)}</tr></thead>
+        <tbody>${hsn}</tbody></table>
+      <p style="font-size:11px;color:#94a3b8;margin-top:16px">Computer-generated report.</p></div>`;
+  }
+
+  function printGstr3b(d){
+    const row = (l,v)=>`<div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:#475569">${esc(l)}</span><span>${inr(v)}</span></div>`;
+    return `<div style="font-family:system-ui,sans-serif;color:#0f172a;max-width:640px">
+      <div style="font-size:20px;font-weight:800;color:#0b2447">JL Enterprises</div>
+      <div style="font-size:16px;font-weight:700;margin-top:4px">GSTR-3B summary</div>
+      <div style="font-size:12px;color:#64748b">${fmtDate(d.from)} → ${fmtDate(d.to)}</div>
+      <h3 style="font-size:14px;color:#0b2447;margin:14px 0 4px">Outward supplies</h3>
+      ${row("Taxable value", d.outwardTaxable)}${row("CGST", d.outwardCgst)}${row("SGST", d.outwardSgst)}${row("IGST", d.outwardIgst)}
+      <h3 style="font-size:14px;color:#0b2447;margin:14px 0 4px">Input Tax Credit (ITC)</h3>
+      ${row("Inward taxable", d.inwardTaxable)}${row("CGST", d.itcCgst)}${row("SGST", d.itcSgst)}${row("IGST", d.itcIgst)}
+      <h3 style="font-size:14px;color:#0b2447;margin:14px 0 4px">Net tax payable</h3>
+      ${row("Net CGST", d.netCgst)}${row("Net SGST", d.netSgst)}${row("Net IGST", d.netIgst)}
+      <div style="display:flex;justify-content:space-between;border-top:2px solid #0b2447;margin-top:8px;padding-top:8px;font-weight:800;font-size:15px;color:#0b2447">
+        <span>Net payable</span><span>${inr(d.netPayable)}</span></div>
+      <p style="font-size:11px;color:#94a3b8;margin-top:16px">Computer-generated report.</p></div>`;
+  }
+
+  function printEway(d){
+    const items = (d.items||[]).map(i=>`<tr>
+      <td style="padding:5px 8px;border-bottom:1px solid #eee">${esc(i.description)}</td>
+      <td style="padding:5px 8px;border-bottom:1px solid #eee">${esc(i.hsn)}</td>
+      <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right">${esc(i.quantity)}</td>
+      <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right">${inr(i.taxableValue)}</td>
+      <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right">${Number(i.gstRate)}%</td></tr>`).join("");
+    const party = (title, gstin, name, addr)=>`<div style="font-size:13px">
+      <div style="font-size:11px;text-transform:uppercase;color:#94a3b8">${title}</div>
+      <b>${esc(name||"—")}</b><div style="color:#475569">${esc(addr||"")}</div>
+      <div style="color:#64748b">GSTIN: <b>${esc(gstin||"—")}</b></div></div>`;
+    return `<div style="font-family:system-ui,sans-serif;color:#0f172a;max-width:720px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div><div style="font-size:20px;font-weight:800;color:#0b2447">JL Enterprises</div>
+          <div style="font-size:16px;font-weight:700;margin-top:4px">E-way Bill</div></div>
+        <div style="text-align:right;font-size:12px;color:#64748b">
+          <div>${esc(d.documentNumber)}</div><div>${fmtDate(d.documentDate)}</div>
+          <div>${esc(d.supplyType||"")}</div></div>
+      </div>
+      <div style="display:flex;gap:24px;margin:14px 0">
+        ${party("From", d.fromGstin, d.fromName, d.fromAddress)}
+        ${party("To", d.toGstin, d.toName, d.toAddress)}
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="color:#94a3b8;font-size:10px;text-transform:uppercase;text-align:left">
+          <th style="padding:6px 8px">Description</th><th style="padding:6px 8px">HSN</th>
+          <th style="padding:6px 8px;text-align:right">Qty</th><th style="padding:6px 8px;text-align:right">Taxable</th>
+          <th style="padding:6px 8px;text-align:right">Rate</th></tr></thead>
+        <tbody>${items}</tbody></table>
+      <div style="margin-top:12px;margin-left:auto;width:280px;font-size:13px">
+        <div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:#475569">Taxable value</span><span>${inr(d.taxableValue)}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:#475569">CGST</span><span>${inr(d.cgst)}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:#475569">SGST</span><span>${inr(d.sgst)}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:#475569">IGST</span><span>${inr(d.igst)}</span></div>
+        <div style="border-top:2px solid #0b2447;margin:6px 0"></div>
+        <div style="display:flex;justify-content:space-between;padding:3px 0;font-weight:800;color:#0b2447"><span>Total value</span><span>${inr(d.totalValue)}</span></div>
+      </div>
+      ${d.note?`<p style="font-size:12px;color:#64748b;margin-top:12px">${esc(d.note)}</p>`:""}
+      <p style="font-size:11px;color:#94a3b8;margin-top:16px">Computer-generated e-way bill.</p></div>`;
+  }
+
+  // ── Run report tabs ──
+  async function run(){
+    const rep = $("report");
+    rep.innerHTML = `<div class="py-5 text-center">${jlSpinnerHTML()}</div>`;
+    $("printBtn").disabled = true; LAST_PRINT = null; LAST_DATA = null;
+    const q = `?from=${encodeURIComponent($("from").value)}&to=${encodeURIComponent($("to").value)}`;
+    try {
+      if(TAB === "gstr1" || TAB === "gstr2"){
+        const d = await jlApi(`/api/v1/admin/compliance/${TAB}${q}`);
+        LAST_DATA = d;
+        rep.innerHTML = renderGstReturn(d);
+        LAST_PRINT = { title: d.returnType || TAB.toUpperCase(), html: printGstReturn(d) };
+        $("csvInvoices").addEventListener("click", exportInvoicesCsv);
+        $("csvHsn").addEventListener("click", exportHsnCsv);
+      } else if(TAB === "gstr3b"){
+        const d = await jlApi(`/api/v1/admin/compliance/gstr3b${q}`);
+        rep.innerHTML = renderGstr3b(d);
+        LAST_PRINT = { title: "GSTR-3B", html: printGstr3b(d) };
+      }
+      $("printBtn").disabled = false;
+    } catch(e){
+      rep.innerHTML = `<div class="py-4 text-red-600 text-center">Could not load report (${esc(e.message)}).</div>`;
+    }
+  }
+
+  // ── E-way Bill tab ──
+  async function loadEway(){
+    const rep = $("report");
+    rep.innerHTML = `<div class="py-5 text-center">${jlSpinnerHTML()}</div>`;
+    $("printBtn").disabled = true; LAST_PRINT = null;
+    let docs = [];
+    try {
+      const page = await jlApi(`/api/v1/admin/documents?type=SALES_INVOICE&status=POSTED&size=50`);
+      docs = page.content || [];
+    } catch(e){
+      rep.innerHTML = `<div class="py-4 text-red-600 text-center">Could not load invoices (${esc(e.message)}).</div>`;
+      return;
+    }
+    const opts = docs.map(r=>`<option value="${esc(r.id)}">${esc(r.documentNumber)} · ${esc(r.partyName||"—")} · ${inr(r.grandTotal)}</option>`).join("");
+    rep.innerHTML = `<div class="flex items-end gap-2 flex-wrap mb-4">
+        <label class="text-[12px] text-slate-500">Sales invoice<br>
+          <select id="ewaySelect" class="inp min-w-[280px]">
+            <option value="">Select an invoice…</option>${opts}
+          </select></label>
+        <button id="ewayLoad" class="bg-navy hover:bg-navy-600 text-white font-semibold rounded-lg px-4 py-2 text-sm">Load</button>
+      </div>
+      <div id="ewayBody"><div class="py-4 text-slate-400 text-center">Select a posted sales invoice to generate its e-way bill.</div></div>`;
+    $("ewayLoad").addEventListener("click", loadEwayBill);
+    $("ewaySelect").addEventListener("change", loadEwayBill);
+  }
+
+  function renderEway(d){
+    const badge = d.eligible
+      ? `<span class="chip bg-green-50 text-green-700">Eligible</span>`
+      : `<span class="chip bg-amber-50 text-amber-700">Not eligible</span>`;
+    const party = (title, gstin, name, addr)=>`<div class="card">
+        <div class="text-[11px] uppercase tracking-wide text-slate-400 mb-1">${esc(title)}</div>
+        <div class="font-semibold text-navy">${esc(name||"—")}</div>
+        <div class="text-[13px] text-slate-500">${esc(addr||"")}</div>
+        <div class="text-[12px] text-slate-400 mt-1">GSTIN: <span class="font-semibold text-slate-600">${esc(gstin||"—")}</span></div>
+      </div>`;
+    const items = (d.items||[]).map(i=>`<tr class="border-t border-slate-100">
+      <td class="py-2 text-slate-600">${esc(i.description)}</td>
+      <td class="text-slate-500 whitespace-nowrap">${esc(i.hsn)}</td>
+      <td class="text-right text-slate-600">${esc(i.quantity)}</td>
+      <td class="text-right text-slate-600">${inr(i.taxableValue)}</td>
+      <td class="text-right text-slate-500">${Number(i.gstRate)}%</td></tr>`).join("");
+    const line = (l,v,tone)=>`<div class="flex items-center justify-between py-1 text-sm">
+      <span class="text-slate-600">${esc(l)}</span><span class="font-semibold ${tone||"text-navy"}">${inr(v)}</span></div>`;
+    return `<div class="flex items-center gap-2 mb-1 flex-wrap">
+        <h2 class="text-navy font-semibold">E-way Bill · ${esc(d.documentNumber)}</h2>
+        ${badge}
+        <button id="ewayPrint" class="ml-auto border border-slate-300 rounded-lg px-3 py-1.5 text-[12px] font-semibold text-navy">🖨 Print</button>
+      </div>
+      <p class="text-slate-400 text-[12px] mb-4">${fmtDate(d.documentDate)} · ${esc(d.supplyType||"")}</p>
+      <div class="grid md:grid-cols-2 gap-3 mb-4">
+        ${party("From", d.fromGstin, d.fromName, d.fromAddress)}
+        ${party("To", d.toGstin, d.toName, d.toAddress)}
+      </div>
+      <div class="overflow-x-auto mb-4"><table class="w-full text-sm">
+        <thead><tr class="text-left text-slate-400 text-[12px] uppercase">
+          <th class="py-2">Description</th><th>HSN</th><th class="text-right">Qty</th>
+          <th class="text-right">Taxable</th><th class="text-right">Rate</th></tr></thead>
+        <tbody>${items || `<tr><td colspan="5" class="py-3 text-slate-400 text-center">No items.</td></tr>`}</tbody>
+      </table></div>
+      <div class="card md:w-80 md:ml-auto">
+        ${line("Taxable value", d.taxableValue)}
+        ${line("CGST", d.cgst)}
+        ${line("SGST", d.sgst)}
+        ${line("IGST", d.igst)}
+        <div class="border-t-2 border-navy mt-2 pt-2">${line("Total value", d.totalValue, "text-green-700")}</div>
+      </div>
+      ${d.note?`<p class="text-[13px] text-slate-500 mt-3">${esc(d.note)}</p>`:""}`;
+  }
+
+  async function loadEwayBill(){
+    const id = $("ewaySelect") && $("ewaySelect").value;
+    if(!id) return;
+    const body = $("ewayBody");
+    body.innerHTML = `<div class="py-5 text-center">${jlSpinnerHTML()}</div>`;
+    try {
+      const d = await jlApi(`/api/v1/admin/compliance/eway-bill/${encodeURIComponent(id)}`);
+      body.innerHTML = renderEway(d);
+      $("ewayPrint").addEventListener("click", ()=> openPrint("E-way Bill " + (d.documentNumber||""), printEway(d)));
+    } catch(e){
+      body.innerHTML = `<div class="py-4 text-red-600 text-center">Could not load e-way bill (${esc(e.message)}).</div>`;
+    }
+  }
+
+  // ── Print (new window) ──
+  function openPrint(title, html){
+    const w = window.open("", "_blank", "width=900,height=1000");
+    if(!w){ jlToast("Allow pop-ups to print.",{type:"warn"}); return; }
+    w.document.write(`<html><head><title>${esc(title)}</title></head><body style="margin:24px">${html}</body></html>`);
+    w.document.close(); w.focus(); setTimeout(()=>{ w.print(); }, 300);
+  }
+  function printReport(){
+    if(!LAST_PRINT){ jlToast("Run a report first.",{type:"warn"}); return; }
+    openPrint(LAST_PRINT.title, LAST_PRINT.html);
+  }
+
+  // ── Wiring ──
+  document.querySelectorAll(".tab").forEach(t=> t.addEventListener("click", ()=> setTab(t.dataset.tab)));
+  $("applyBtn").addEventListener("click", run);
+  $("printBtn").addEventListener("click", printReport);
+
+  // defaults: from = first day of current month, to = today
+  (function initDates(){
+    const today = new Date();
+    $("from").value = isoLocal(new Date(today.getFullYear(), today.getMonth(), 1));
+    $("to").value = isoLocal(today);
+  })();
+
+  jlWireLogout("#logoutBtn");
+  jlRequireAdmin(["ACCOUNTANT"]).then((a)=>{
+    $("adminBadge").textContent = jlDisplayName(a).split(/[\s@.]+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join("")||"JL";
+    jlWithBusy(()=> {
+      const q = `?from=${encodeURIComponent($("from").value)}&to=${encodeURIComponent($("to").value)}`;
+      return jlApi(`/api/v1/admin/compliance/gstr1${q}`).then((d)=>{
+        LAST_DATA = d;
+        $("report").innerHTML = renderGstReturn(d);
+        LAST_PRINT = { title: d.returnType || "GSTR-1", html: printGstReturn(d) };
+        $("csvInvoices").addEventListener("click", exportInvoicesCsv);
+        $("csvHsn").addEventListener("click", exportHsnCsv);
+        $("printBtn").disabled = false;
+      }).catch((e)=>{
+        $("report").innerHTML = `<div class="py-4 text-red-600 text-center">Could not load report (${esc(e.message)}).</div>`;
+      });
+    });
+  });
+</script>
+</body>
+</html>
