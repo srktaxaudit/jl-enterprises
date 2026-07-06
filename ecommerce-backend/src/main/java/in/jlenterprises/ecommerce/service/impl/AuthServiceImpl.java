@@ -29,6 +29,7 @@ import in.jlenterprises.ecommerce.service.OtpService;
 import in.jlenterprises.ecommerce.service.RefreshTokenService;
 import in.jlenterprises.ecommerce.service.VerificationTokenService;
 import in.jlenterprises.ecommerce.notification.EmailService;
+import in.jlenterprises.ecommerce.util.IdentifierUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -135,25 +136,28 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public AuthResponse login(LoginRequest request, String userAgent, String ip) {
-        String email = request.email().trim().toLowerCase();
-        String rateKey = ip + "|" + email;
+        // The identifier may be an email or a mobile number. Normalise it to the same
+        // canonical form used for storage/lookup so both paths authenticate uniformly.
+        String raw = request.email().trim();
+        String identifier = IdentifierUtil.isEmail(raw) ? raw.toLowerCase() : IdentifierUtil.normalizePhone(raw);
+        String rateKey = ip + "|" + identifier;
 
         if (loginAttemptService.isBlocked(rateKey)) {
             throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, "Too many attempts. Please try again later.");
         }
 
         try {
-            authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(email, request.password()));
+            authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(identifier, request.password()));
         } catch (LockedException e) {
             throw new ApiException(HttpStatus.LOCKED, "Account is temporarily locked. Please try again later.");
         } catch (BadCredentialsException e) {
             loginAttemptService.recordFailure(rateKey);
-            registerFailedAttempt(email);
-            throw new ApiException(HttpStatus.UNAUTHORIZED, "Invalid email or password");
+            registerFailedAttempt(identifier);
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "Invalid email/mobile or password");
         }
 
-        User user = userRepository.findByEmailIgnoreCase(email)
-                .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Invalid email or password"));
+        User user = findByIdentifier(identifier)
+                .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Invalid email/mobile or password"));
 
         // Success — clear counters, stamp login.
         loginAttemptService.reset(rateKey);
@@ -166,17 +170,24 @@ public class AuthServiceImpl implements AuthService {
         return buildAuthResponse(user, request.rememberMe(), userAgent, ip);
     }
 
-    private void registerFailedAttempt(String email) {
-        userRepository.findByEmailIgnoreCase(email).ifPresent(user -> {
+    private void registerFailedAttempt(String identifier) {
+        findByIdentifier(identifier).ifPresent(user -> {
             int attempts = user.getFailedLoginAttempts() + 1;
             user.setFailedLoginAttempts(attempts);
             if (attempts >= props.security().login().maxFailedAttempts()) {
                 user.setAccountLocked(true);
                 user.setLockedUntil(Instant.now().plus(props.security().login().lockDuration()));
-                log.warn("Account locked due to failed logins: {}", email);
+                log.warn("Account locked due to failed logins: {}", identifier);
             }
             userRepository.save(user);
         });
+    }
+
+    /** Resolve a normalised identifier (email or canonical phone) to its account. */
+    private java.util.Optional<User> findByIdentifier(String identifier) {
+        return IdentifierUtil.isEmail(identifier)
+                ? userRepository.findByEmailIgnoreCase(identifier)
+                : userRepository.findByPhone(identifier);
     }
 
     // ── Refresh / logout ────────────────────────────────────────────────

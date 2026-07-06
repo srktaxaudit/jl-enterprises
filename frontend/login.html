@@ -202,27 +202,30 @@
       box.textContent = msg;
     }
 
-    // Real-time inline validation. Keep the existing "email only" rule (mobile
-    // login isn't supported yet), surfaced as an email-format check.
+    // Real-time inline validation: the identifier may be an email OR a 10-digit mobile.
     const liUser = document.getElementById("liUser");
     const liPassword = document.getElementById("liPassword");
-    jlField(liUser, [jlV.required("Enter your email address."), jlV.email("Please log in with your email address (mobile login isn't supported yet).")]);
+    // Accept either an email or a mobile number; validate whichever was typed.
+    const idRule = (v) => {
+      const s = String(v || "").trim();
+      if (!s) return "Enter your email or mobile number.";
+      return s.indexOf("@") > -1
+        ? jlV.email("Enter a valid email address.")(s)
+        : jlV.phoneIN("Enter a valid email or 10-digit mobile number.")(s);
+    };
+    jlField(liUser, [jlV.required("Enter your email or mobile number."), idRule]);
     jlField(liPassword, [jlV.required("Enter your password.")]);
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       const v = jlValidate(form, {
-        liUser: [jlV.required("Enter your email address."), jlV.email("Please log in with your email address (mobile login isn't supported yet).")],
+        liUser: [jlV.required("Enter your email or mobile number."), idRule],
         liPassword: [jlV.required("Enter your password.")],
       });
       if (!v.valid) return;
       const user = document.getElementById("liUser").value.trim();
       const pass = document.getElementById("liPassword").value;
-      if (!user || !pass) { showError("Please enter your email and password."); return; }
-      if (user.indexOf("@") === -1) {
-        showError("Please log in with your email address (mobile login isn't supported yet).");
-        return;
-      }
+      if (!user || !pass) { showError("Please enter your email/mobile and password."); return; }
       btn.disabled = true; const old = btn.textContent; btn.textContent = "Logging in…";
       try {
         await JLCustomer.login(user, pass, true);
@@ -230,7 +233,7 @@
         setTimeout(() => location.replace(next || "index.html"), 700);
       } catch (err) {
         btn.disabled = false; btn.textContent = old;
-        showError(err.status === 401 ? "Invalid email or password." : (err.message || "Login failed. Please try again."));
+        showError(err.status === 401 ? "Invalid email/mobile or password." : (err.message || "Login failed. Please try again."));
       }
     });
   })();

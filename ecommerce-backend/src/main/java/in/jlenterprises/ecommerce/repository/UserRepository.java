@@ -19,6 +19,9 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
 
     Optional<User> findByEmailIgnoreCase(String email);
 
+    /** Look up an account by its (canonical) phone number — used for login by mobile. */
+    Optional<User> findByPhone(String phone);
+
     boolean existsByEmailIgnoreCase(String email);
 
     boolean existsByPhone(String phone);
