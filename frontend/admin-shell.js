@@ -14,6 +14,12 @@
   const title = document.getElementById("pageTitle");
   const allowedPages = new Set(NAV.flatMap(group => group[1].map(item => item[2])));
   const labels = Object.fromEntries(NAV.flatMap(group => group[1].map(item => [item[2], item[0]])));
+  // The "Accounting" group renders as a collapsible parent menu. Its expanded
+  // state persists in localStorage; the pages below tell us when it holds the
+  // active page (so we can highlight the parent + default-open on that page).
+  const ACCT_KEY = "jl_admin_nav_acct";
+  const ACCT_GROUP = NAV.find(g => g[0] === "Accounting");
+  const ACCOUNTING_PAGES = new Set((ACCT_GROUP ? ACCT_GROUP[1] : []).map(it => it[2]));
   let currentPage = "admin.html";
 
   function cleanPage(value) {
@@ -33,9 +39,22 @@
     nav.innerHTML = NAV.map(group => {
       const items = group[1].filter(item => visible(user, item[3]));
       if (!items.length) return "";
-      return `<div class="admin-nav-group">${group[0]}</div>` + items.map(item =>
+      const links = items.map(item =>
         `<a href="${item[2]}" data-page="${item[2]}" title="${item[0]}"><span class="icon">${item[1]}</span><span class="label">${item[0]}</span></a>`
       ).join("");
+      // Only the Accounting group is a collapsible parent; every other group
+      // stays a plain section header (unaffected).
+      if (group[0] === "Accounting") {
+        const saved = localStorage.getItem(ACCT_KEY);
+        const open = saved === null ? ACCOUNTING_PAGES.has(fileOf(currentPage)) : saved === "1";
+        return `<div class="admin-nav-group-wrap${open ? " open" : ""}" data-acct>
+          <button type="button" class="admin-nav-parent" aria-expanded="${open}" aria-controls="jlAcctSub">
+            <span class="icon">🧮</span><span class="label">Accounting</span><span class="chev" aria-hidden="true">▾</span>
+          </button>
+          <div class="admin-nav-sub" id="jlAcctSub" role="group" aria-label="Accounting"><div>${links}</div></div>
+        </div>`;
+      }
+      return `<div class="admin-nav-group">${group[0]}</div>` + links;
     }).join("");
     setActive(currentPage);
   }
@@ -46,6 +65,9 @@
       a.classList.toggle("active", active);
       if (active) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
     });
+    // Mark the collapsible Accounting parent when it holds the active page.
+    const acctWrap = nav.querySelector(".admin-nav-group-wrap[data-acct]");
+    if (acctWrap) acctWrap.classList.toggle("has-active", ACCOUNTING_PAGES.has(file));
     title.textContent = labels[file] || "Admin";
     document.title = `${labels[file] || "Admin"} — JL Admin`;
   }
@@ -104,6 +126,16 @@
     const a = e.target.closest("a[data-page]");
     if (!a) return;
     e.preventDefault(); navigate(a.dataset.page, true);
+  });
+  // Toggle the collapsible Accounting parent (mouse + keyboard via the button).
+  nav.addEventListener("click", e => {
+    const parent = e.target.closest(".admin-nav-parent");
+    if (!parent) return;
+    const wrap = parent.closest(".admin-nav-group-wrap");
+    const open = !wrap.classList.contains("open");
+    wrap.classList.toggle("open", open);
+    parent.setAttribute("aria-expanded", String(open));
+    try { localStorage.setItem(ACCT_KEY, open ? "1" : "0"); } catch (_) { /* private mode */ }
   });
   frame.addEventListener("load", prepareFrame);
   addEventListener("popstate", e => navigate((e.state && e.state.page) || new URLSearchParams(location.search).get("page"), false));

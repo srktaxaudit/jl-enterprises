@@ -31,3 +31,28 @@ button,a{font:inherit}
   .admin-collapse{display:none}.admin-menu{display:grid;place-items:center}.admin-topbar{height:58px;flex-basis:58px;padding:0 12px;gap:10px}.admin-status{display:none}.admin-page-title{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.admin-content{height:calc(100dvh - 58px)}
 }
 @media(prefers-reduced-motion:reduce){.admin-sidebar{transition:none}}
+
+/* ── Collapsible Accounting parent menu (only this group collapses) ── */
+.admin-nav-group-wrap{display:flex;flex-direction:column}
+.admin-nav-parent{display:flex;align-items:center;gap:12px;width:100%;min-height:40px;padding:8px 18px;border:0;background:none;color:#cbd5e1;font:inherit;font-size:13.5px;text-align:left;cursor:pointer;transition:background .14s,color .14s}
+.admin-nav-parent:hover{background:rgba(255,255,255,.06);color:#fff}
+.admin-nav-parent:focus-visible{outline:2px solid var(--brand);outline-offset:-2px}
+.admin-nav-parent .icon{width:20px;flex:0 0 20px;text-align:center;font-size:16px}
+.admin-nav-parent .label{flex:1;min-width:0;white-space:nowrap}
+.admin-nav-parent .chev{flex:0 0 auto;font-size:10px;opacity:.75;transition:transform .25s ease}
+.admin-nav-group-wrap.open .admin-nav-parent .chev{transform:rotate(180deg)}
+.admin-nav-group-wrap.has-active .admin-nav-parent{color:#fff}
+.admin-nav-group-wrap.has-active:not(.open) .admin-nav-parent{box-shadow:inset 3px 0 0 var(--orange)}
+.admin-nav-sub{display:grid;grid-template-rows:0fr;transition:grid-template-rows .26s ease}
+.admin-nav-group-wrap.open .admin-nav-sub{grid-template-rows:1fr}
+.admin-nav-sub>div{overflow:hidden;min-height:0}
+.admin-nav-sub a{padding-left:40px}
+.collapsed .admin-nav-parent{justify-content:center;padding-left:0;padding-right:0}
+.collapsed .admin-nav-parent .label,.collapsed .admin-nav-parent .chev{display:none}
+@media(max-width:767px){
+  .collapsed .admin-nav-parent{justify-content:flex-start;padding:8px 18px}
+  .collapsed .admin-nav-parent .label{display:block}
+  .collapsed .admin-nav-parent .chev{display:inline-block}
+  .collapsed .admin-nav-sub a{padding-left:40px}
+}
+@media(prefers-reduced-motion:reduce){.admin-nav-sub{transition:none}.admin-nav-parent .chev{transition:none}}
