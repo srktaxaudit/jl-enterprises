@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Chart of Accounts — JL Admin</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = { theme: { extend: { colors: {
+    navy: { DEFAULT: "#0b2447", 600: "#19376d" }, brand: { DEFAULT: "#576cbc", sky: "#a5d7e8" },
+    orange: { DEFAULT: "#f97316" } }, boxShadow: { card: "0 12px 30px rgba(15,23,42,.12)" } } } };
+</script>
+<style> body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .chip{display:inline-block;font-size:11px;font-weight:600;border-radius:6px;padding:2px 8px}
+  .lbl{display:block;font-size:13px;font-weight:600;color:#475569;margin-bottom:4px}
+  .inp{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:9px 12px;font-size:14px;outline:none} .inp:focus{border-color:#576cbc} </style>
+</head>
+<body class="bg-[#eef1f6] min-h-screen text-slate-800">
+
+  <div class="bg-white border-b border-slate-200 px-4 md:px-7 py-3 flex items-center gap-3 sticky top-0 z-10">
+    <a href="admin.html" class="flex items-center gap-2 text-navy">
+      <div class="w-9 h-7 rounded bg-navy text-white text-[11px] font-extrabold flex items-center justify-center">JL</div>
+      <span class="font-bold text-sm">← Dashboard</span>
+    </a>
+    <div class="ml-auto flex items-center gap-3">
+      <span id="adminBadge" class="w-9 h-9 rounded-full bg-gradient-to-br from-navy-600 to-brand text-white flex items-center justify-center font-bold text-[13px]">··</span>
+      <a href="#" id="logoutBtn" class="text-[13px] text-slate-500 hover:text-navy">⎋ Logout</a>
+    </div>
+  </div>
+
+  <div class="max-w-[1150px] mx-auto p-4 md:p-7">
+    <div class="flex items-center gap-3 mb-5 flex-wrap">
+      <div><h1 class="text-2xl text-navy font-bold mb-1">Chart of Accounts</h1>
+        <p class="text-slate-400 text-sm">Ledger accounts used across the accounting module.</p></div>
+      <div class="ml-auto flex items-center gap-2 flex-wrap">
+        <label class="flex items-center gap-2 text-[13px] text-slate-500"><input id="showInactive" type="checkbox" /> Show inactive</label>
+        <input id="search" placeholder="Search code or name…" class="inp w-52" />
+        <button id="newBtn" class="bg-navy hover:bg-navy-600 text-white font-semibold rounded-lg px-4 py-2 text-sm">+ New account</button>
+      </div>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-2xl p-5">
+      <h2 class="text-navy font-semibold mb-4">Ledger accounts</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead><tr class="text-left text-slate-400 text-[12px] uppercase">
+            <th class="py-2">Code</th><th>Name</th><th>Type</th><th>Group</th>
+            <th class="text-right">GST%</th><th class="text-right">Credit</th><th>Status</th><th class="text-right">Actions</th>
+          </tr></thead>
+          <tbody id="rows"><tr><td colspan="8" class="py-4 text-slate-400 text-center">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Account form (shown inside a jlDialog modal) -->
+  <div id="formCard" class="hidden bg-white rounded-2xl p-5 md:p-6">
+    <form id="form" class="grid md:grid-cols-3 gap-4" novalidate>
+      <input type="hidden" id="aid" />
+      <div><label class="lbl">Code *</label><input id="code" name="code" required class="inp uppercase" /></div>
+      <div class="md:col-span-2"><label class="lbl">Name *</label><input id="name" name="name" maxlength="150" required class="inp" /></div>
+      <div><label class="lbl">Type *</label><select id="accountType" name="accountType" class="inp">
+        <option value="">Select…</option><option value="ASSET">Asset</option><option value="LIABILITY">Liability</option>
+        <option value="EQUITY">Equity</option><option value="INCOME">Income</option><option value="EXPENSE">Expense</option></select></div>
+      <div><label class="lbl">Group</label><input id="accountGroup" name="accountGroup" maxlength="120" class="inp" placeholder="e.g. Sundry Debtors" /></div>
+      <div class="grid grid-cols-2 gap-2">
+        <div><label class="lbl">Opening balance</label><input id="openingBalance" name="openingBalance" type="number" step="0.01" class="inp" /></div>
+        <div><label class="lbl">Side</label><select id="openingSide" name="openingSide" class="inp"><option value="DR">DR</option><option value="CR">CR</option></select></div>
+      </div>
+      <div><label class="lbl">GST rate (%)</label><input id="gstRate" name="gstRate" type="number" step="0.01" class="inp" /></div>
+      <div><label class="lbl">GSTIN</label><input id="gstin" name="gstin" maxlength="15" class="inp uppercase" /></div>
+      <div><label class="lbl">HSN / SAC</label><input id="hsnCode" name="hsnCode" maxlength="10" class="inp" /></div>
+      <div><label class="lbl">Credit limit (₹)</label><input id="creditLimit" name="creditLimit" type="number" step="0.01" class="inp" /></div>
+      <div><label class="lbl">Credit days</label><input id="creditDays" name="creditDays" type="number" class="inp" /></div>
+      <div class="flex items-end gap-4">
+        <label class="flex items-center gap-2 text-sm"><input id="active" type="checkbox" checked /> Active</label>
+        <label class="flex items-center gap-2 text-sm"><input id="blocked" type="checkbox" /> Blocked</label>
+      </div>
+      <div class="md:col-span-3 flex gap-2 pt-1">
+        <button type="submit" class="bg-navy hover:bg-navy-600 text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Save</button>
+        <button type="button" id="cancelBtn" class="text-slate-500 rounded-lg px-4 py-2.5 text-sm border border-slate-300">Cancel</button>
+      </div>
+    </form>
+  </div>
+
+<script src="jl-ui.js"></script>
+<script src="admin.js"></script>
+<script>
+  const API = "/api/v1/admin/accounting";
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c)=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+  const $ = (id) => document.getElementById(id);
+  const inr = (n) => "₹" + Number(n||0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  let ACCOUNTS = [];
+
+  const TYPE_LABEL = { ASSET:"Asset", LIABILITY:"Liability", EQUITY:"Equity", INCOME:"Income", EXPENSE:"Expense" };
+
+  function statusChip(a){
+    if(!a.active) return '<span class="chip bg-slate-100 text-slate-500">Inactive</span>';
+    if(a.blocked) return '<span class="chip bg-red-50 text-red-700">Blocked</span>';
+    return '<span class="chip bg-green-50 text-green-700">Active</span>';
+  }
+  function creditText(a){
+    const lim = Number(a.creditLimit)>0 ? inr(a.creditLimit) : "—";
+    const days = Number(a.creditDays)>0 ? Number(a.creditDays)+"d" : "";
+    return lim + (days?` · ${days}`:"");
+  }
+
+  async function load(){
+    const body = $("rows");
+    body.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:20px">${jlSpinnerHTML()}</td></tr>`;
+    const inc = $("showInactive").checked;
+    try {
+      ACCOUNTS = await jlApi(`${API}/accounts?includeInactive=${inc?"true":"false"}`);
+      render();
+    } catch(e){ body.innerHTML = `<tr><td colspan="8" class="py-4 text-red-600 text-center">Could not load (${esc(e.message)}).</td></tr>`; }
+  }
+
+  function render(){
+    const body = $("rows");
+    const q = $("search").value.trim().toLowerCase();
+    const list = (ACCOUNTS||[]).filter(a=> !q || String(a.code||"").toLowerCase().includes(q) || String(a.name||"").toLowerCase().includes(q));
+    body.innerHTML = list.length ? list.map(a=>`
+      <tr class="border-t border-slate-100 align-top">
+        <td class="py-2.5 font-bold text-navy">${esc(a.code)}${a.systemAccount?'<span class="chip bg-brand/10 text-brand ml-1">SYS</span>':""}</td>
+        <td class="text-slate-700">${esc(a.name)}</td>
+        <td class="text-slate-500">${esc(TYPE_LABEL[a.accountType]||a.accountType||"—")}</td>
+        <td class="text-slate-500">${esc(a.accountGroup||"—")}</td>
+        <td class="text-right text-slate-500">${a.gstRate!=null&&a.gstRate!==""?Number(a.gstRate)+"%":"—"}</td>
+        <td class="text-right text-slate-500 whitespace-nowrap">${creditText(a)}</td>
+        <td>${statusChip(a)}</td>
+        <td class="text-right whitespace-nowrap">
+          <button data-edit="${a.id}" class="text-[12px] text-brand mr-2">Edit</button>
+          <button data-block="${a.id}" class="text-[12px] text-amber-600 mr-2">${a.blocked?"Unblock":"Block"}</button>
+          <button data-active="${a.id}" class="text-[12px] text-slate-600 mr-2">${a.active?"Deactivate":"Activate"}</button>
+          ${a.systemAccount?"":`<button data-del="${a.id}" class="text-[12px] text-red-600">Delete</button>`}
+        </td>
+      </tr>`).join("") : `<tr><td colspan="8" class="py-4 text-slate-400 text-center">No accounts found.</td></tr>`;
+  }
+
+  // ── Form modal ──
+  let dlg = null;
+  function showForm(open, title){
+    if(open){ if(!dlg) dlg = jlDialog($("formCard"), { title: title||"New account", size:"lg", dismissable:false, onClose:()=>{ dlg=null; } }); }
+    else if(dlg){ dlg.close(); dlg=null; }
+  }
+  function resetForm(){ $("form").reset(); $("aid").value=""; $("active").checked=true; $("blocked").checked=false; $("openingSide").value="DR"; jlClearErrors($("form")); }
+
+  // Real-time validation.
+  jlField($("code"), [jlV.required(), jlV.code()]);
+  jlField($("name"), [jlV.required()]);
+  jlField($("openingBalance"), [jlV.number({min:0})]);
+  jlField($("gstRate"), [jlV.number({min:0, max:100})]);
+  jlField($("creditLimit"), [jlV.number({min:0})]);
+  jlField($("creditDays"), [jlV.integer({min:0})]);
+
+  function rules(){
+    return {
+      code: [jlV.required(), jlV.code()],
+      name: [jlV.required()],
+      accountType: [jlV.required("Select an account type.")],
+      openingBalance: [jlV.number({min:0})],
+      gstRate: [jlV.number({min:0, max:100})],
+      creditLimit: [jlV.number({min:0})],
+      creditDays: [jlV.integer({min:0})],
+    };
+  }
+
+  $("newBtn").addEventListener("click", ()=>{ resetForm(); showForm(true, "New account"); });
+  $("cancelBtn").addEventListener("click", ()=> showForm(false));
+
+  function edit(id){
+    const a = ACCOUNTS.find(x=>String(x.id)===String(id)); if(!a) return;
+    resetForm();
+    $("aid").value=a.id; $("code").value=a.code||""; $("name").value=a.name||"";
+    $("accountType").value=a.accountType||""; $("accountGroup").value=a.accountGroup||"";
+    $("openingBalance").value=a.openingBalance??""; $("openingSide").value=a.openingSide||"DR";
+    $("gstRate").value=a.gstRate??""; $("gstin").value=a.gstin||""; $("hsnCode").value=a.hsnCode||"";
+    $("creditLimit").value=a.creditLimit??""; $("creditDays").value=a.creditDays??"";
+    $("active").checked=!!a.active; $("blocked").checked=!!a.blocked;
+    showForm(true, "Edit: "+(a.code||"account"));
+  }
+
+  $("form").addEventListener("submit", async (ev)=>{
+    ev.preventDefault();
+    if(!jlValidate($("form"), rules()).valid) return;
+    const num = (v)=> v===""||v==null ? null : Number(v);
+    const body = {
+      code: $("code").value.trim().toUpperCase(),
+      name: $("name").value.trim(),
+      accountType: $("accountType").value,
+      accountGroup: $("accountGroup").value.trim()||null,
+      openingBalance: num($("openingBalance").value) ?? 0,
+      openingSide: $("openingSide").value,
+      gstRate: num($("gstRate").value),
+      gstin: $("gstin").value.trim().toUpperCase()||null,
+      hsnCode: $("hsnCode").value.trim()||null,
+      creditLimit: num($("creditLimit").value),
+      creditDays: num($("creditDays").value),
+      blocked: $("blocked").checked,
+      active: $("active").checked,
+    };
+    const id = $("aid").value;
+    const saveBtn = $("form").querySelector('button[type=submit]');
+    try {
+      jlBtn(saveBtn, true);
+      if(id) await jlApi(`${API}/accounts/${id}`, {method:"PUT", body});
+      else await jlApi(`${API}/accounts`, {method:"POST", body});
+      jlToast(id?"Account updated.":"Account created.",{type:"success"}); showForm(false); load();
+    } catch(e){ if(e.errors) jlShowServerErrors($("form"), e.errors); jlToast(e.message||"Save failed",{type:"error"}); }
+    finally { jlBtn(saveBtn, false); }
+  });
+
+  $("rows").addEventListener("click", async (ev)=>{
+    const b = ev.target.closest("button"); if(!b) return;
+    if(b.dataset.edit) return edit(b.dataset.edit);
+    const a = ACCOUNTS.find(x=>String(x.id)===String(b.dataset.block||b.dataset.active||b.dataset.del));
+    if(b.dataset.block){
+      const blk = !(a&&a.blocked);
+      try { await jlSubmit(b, ()=>jlApi(`${API}/accounts/${b.dataset.block}/blocked?blocked=${blk}`, {method:"PATCH"})); jlToast(blk?"Account blocked.":"Account unblocked.",{type:"success"}); load(); }
+      catch(e){ jlToast(e.message||"Could not update",{type:"error"}); }
+      return;
+    }
+    if(b.dataset.active){
+      const act = !(a&&a.active);
+      try { await jlSubmit(b, ()=>jlApi(`${API}/accounts/${b.dataset.active}/active?active=${act}`, {method:"PATCH"})); jlToast(act?"Account activated.":"Account deactivated.",{type:"success"}); load(); }
+      catch(e){ jlToast(e.message||"Could not update",{type:"error"}); }
+      return;
+    }
+    if(b.dataset.del){
+      if(!(await jlConfirm("Delete this ledger account? This cannot be undone.",{title:"Delete account",confirmText:"Delete",danger:true}))) return;
+      try { await jlApi(`${API}/accounts/${b.dataset.del}`, {method:"DELETE"}); jlToast("Account deleted.",{type:"success"}); load(); }
+      catch(e){ jlToast(e.message||"Could not delete (system accounts can't be deleted).",{type:"error"}); }
+    }
+  });
+
+  $("showInactive").addEventListener("change", load);
+  let t; $("search").addEventListener("input", ()=>{ clearTimeout(t); t=setTimeout(render, 200); });
+
+  jlWireLogout("#logoutBtn");
+  jlRequireAdmin(["ACCOUNTANT"]).then((a)=>{
+    $("adminBadge").textContent = jlDisplayName(a).split(/[\s@.]+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join("")||"JL";
+    jlWithBusy(()=>Promise.all([load()]));
+  });
+</script>
+</body>
+</html>

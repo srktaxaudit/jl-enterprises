@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Journal / Vouchers — JL Admin</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = { theme: { extend: { colors: {
+    navy: { DEFAULT: "#0b2447", 600: "#19376d" }, brand: { DEFAULT: "#576cbc", sky: "#a5d7e8" },
+    orange: { DEFAULT: "#f97316" } }, boxShadow: { card: "0 12px 30px rgba(15,23,42,.12)" } } } };
+</script>
+<style> body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .chip{display:inline-block;font-size:11px;font-weight:600;border-radius:6px;padding:2px 8px}
+  .lbl{display:block;font-size:13px;font-weight:600;color:#475569;margin-bottom:4px}
+  .inp{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:9px 12px;font-size:14px;outline:none} .inp:focus{border-color:#576cbc}
+  .inps{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:7px 9px;font-size:13px;outline:none} .inps:focus{border-color:#576cbc} </style>
+</head>
+<body class="bg-[#eef1f6] min-h-screen text-slate-800">
+
+  <div class="bg-white border-b border-slate-200 px-4 md:px-7 py-3 flex items-center gap-3 sticky top-0 z-10">
+    <a href="admin.html" class="flex items-center gap-2 text-navy">
+      <div class="w-9 h-7 rounded bg-navy text-white text-[11px] font-extrabold flex items-center justify-center">JL</div>
+      <span class="font-bold text-sm">← Dashboard</span>
+    </a>
+    <div class="ml-auto flex items-center gap-3">
+      <span id="adminBadge" class="w-9 h-9 rounded-full bg-gradient-to-br from-navy-600 to-brand text-white flex items-center justify-center font-bold text-[13px]">··</span>
+      <a href="#" id="logoutBtn" class="text-[13px] text-slate-500 hover:text-navy">⎋ Logout</a>
+    </div>
+  </div>
+
+  <div class="max-w-[1150px] mx-auto p-4 md:p-7">
+    <div class="mb-5">
+      <h1 class="text-2xl text-navy font-bold mb-1">Journal / Vouchers</h1>
+      <p class="text-slate-400 text-sm">Post double-entry vouchers and review recent entries.</p>
+    </div>
+
+    <!-- POST VOUCHER -->
+    <div class="bg-white border border-slate-200 rounded-2xl p-5 mb-6">
+      <h2 class="text-navy font-semibold mb-4">Post a voucher</h2>
+      <form id="form" novalidate>
+        <div class="grid md:grid-cols-4 gap-4 mb-4">
+          <div><label class="lbl">Voucher type *</label><select id="voucherType" name="voucherType" class="inp">
+            <option value="JOURNAL">Journal</option><option value="SALES">Sales</option><option value="PURCHASE">Purchase</option>
+            <option value="RECEIPT">Receipt</option><option value="PAYMENT">Payment</option><option value="CONTRA">Contra</option>
+            <option value="CREDIT_NOTE">Credit Note</option><option value="DEBIT_NOTE">Debit Note</option></select></div>
+          <div><label class="lbl">Date *</label><input id="entryDate" name="entryDate" type="date" class="inp" /></div>
+          <div><label class="lbl">Reference</label><input id="reference" name="reference" maxlength="120" class="inp" /></div>
+          <div><label class="lbl">Narration</label><input id="narration" name="narration" maxlength="250" class="inp" /></div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead><tr class="text-left text-slate-400 text-[12px] uppercase">
+              <th class="py-2 w-[38%]">Account</th><th class="text-right">Debit</th><th class="text-right">Credit</th>
+              <th>Line narration</th><th></th>
+            </tr></thead>
+            <tbody id="lines"></tbody>
+            <tfoot>
+              <tr class="border-t-2 border-navy text-navy font-bold">
+                <td class="py-2 text-right pr-2">Totals</td>
+                <td class="text-right" id="totDr">₹0.00</td>
+                <td class="text-right" id="totCr">₹0.00</td>
+                <td colspan="2" class="pl-2" id="diffCell"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <div class="flex items-center gap-2 mt-3 flex-wrap">
+          <button type="button" id="addLine" class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm text-navy">+ Add line</button>
+          <span id="lineMsg" class="text-[12px] text-red-600"></span>
+          <div class="ml-auto flex gap-2">
+            <button type="submit" class="bg-navy hover:bg-navy-600 text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Post voucher</button>
+            <button type="button" id="resetBtn" class="text-slate-500 rounded-lg px-4 py-2.5 text-sm border border-slate-300">Reset</button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- RECENT VOUCHERS -->
+    <div class="bg-white border border-slate-200 rounded-2xl p-5">
+      <div class="flex items-center gap-2 mb-4 flex-wrap">
+        <h2 class="text-navy font-semibold">Recent vouchers</h2>
+        <div class="ml-auto flex items-end gap-2 flex-wrap">
+          <label class="text-[12px] text-slate-500">From<br><input id="from" type="date" class="inp" /></label>
+          <label class="text-[12px] text-slate-500">To<br><input id="to" type="date" class="inp" /></label>
+          <select id="fType" class="inp"><option value="">All types</option>
+            <option value="JOURNAL">Journal</option><option value="SALES">Sales</option><option value="PURCHASE">Purchase</option>
+            <option value="RECEIPT">Receipt</option><option value="PAYMENT">Payment</option><option value="CONTRA">Contra</option>
+            <option value="CREDIT_NOTE">Credit Note</option><option value="DEBIT_NOTE">Debit Note</option></select>
+          <button id="applyRange" class="bg-navy hover:bg-navy-600 text-white font-semibold rounded-lg px-4 py-2 text-sm">Apply</button>
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead><tr class="text-left text-slate-400 text-[12px] uppercase">
+            <th class="py-2">Date</th><th>Voucher #</th><th>Type</th><th>Narration</th><th class="text-right">Total</th>
+          </tr></thead>
+          <tbody id="rows"><tr><td colspan="5" class="py-4 text-slate-400 text-center">Loading…</td></tr></tbody>
+        </table>
+      </div>
+      <div class="flex items-center gap-2 mt-4 text-sm">
+        <button id="prevBtn" class="border border-slate-300 rounded-lg px-3 py-1.5 disabled:opacity-40">← Prev</button>
+        <span id="pageInfo" class="text-slate-500"></span>
+        <button id="nextBtn" class="border border-slate-300 rounded-lg px-3 py-1.5 disabled:opacity-40">Next →</button>
+      </div>
+    </div>
+  </div>
+
+<script src="jl-ui.js"></script>
+<script src="admin.js"></script>
+<script>
+  const API = "/api/v1/admin/accounting";
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c)=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+  const $ = (id) => document.getElementById(id);
+  const inr = (n) => "₹" + Number(n||0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmtDate = (iso) => { if(!iso) return "—"; const d = new Date(iso); return isNaN(d) ? esc(iso) : d.toLocaleDateString("en-IN",{dateStyle:"medium"}); };
+  const TYPE_LABEL = { JOURNAL:"Journal", SALES:"Sales", PURCHASE:"Purchase", RECEIPT:"Receipt", PAYMENT:"Payment", CONTRA:"Contra", CREDIT_NOTE:"Credit Note", DEBIT_NOTE:"Debit Note" };
+  let PAGE = 0; const SIZE = 20; let TOTAL_PAGES = 1;
+  let ACCOUNTS = [];
+
+  // ── Line rows ──
+  function accountOptions(selectedId){
+    return `<option value="">Select account…</option>` + ACCOUNTS.map(a=>
+      `<option value="${a.id}"${String(a.id)===String(selectedId)?" selected":""}>${esc(a.code)} — ${esc(a.name)}</option>`).join("");
+  }
+  function addLine(){
+    const tr = document.createElement("tr");
+    tr.className = "border-t border-slate-100 align-top jl-line";
+    tr.innerHTML = `
+      <td class="py-2 pr-2"><select class="inps jl-acct">${accountOptions("")}</select></td>
+      <td class="pr-2"><input type="number" step="0.01" min="0" class="inps text-right jl-dr" placeholder="0.00" /></td>
+      <td class="pr-2"><input type="number" step="0.01" min="0" class="inps text-right jl-cr" placeholder="0.00" /></td>
+      <td class="pr-2"><input type="text" maxlength="200" class="inps jl-note" /></td>
+      <td class="text-right"><button type="button" class="jl-rm text-red-500 text-lg leading-none px-1" aria-label="Remove line">×</button></td>`;
+    $("lines").appendChild(tr);
+    recalc();
+  }
+  function ensureMinLines(){ $("lines").innerHTML=""; addLine(); addLine(); }
+
+  function lineValues(){
+    return Array.from(document.querySelectorAll("#lines .jl-line")).map(tr=>({
+      accountId: tr.querySelector(".jl-acct").value,
+      debit: Number(tr.querySelector(".jl-dr").value)||0,
+      credit: Number(tr.querySelector(".jl-cr").value)||0,
+      lineNarration: tr.querySelector(".jl-note").value.trim()||null,
+    }));
+  }
+  function recalc(){
+    const rows = lineValues();
+    const dr = rows.reduce((s,r)=>s+r.debit,0), cr = rows.reduce((s,r)=>s+r.credit,0);
+    $("totDr").textContent = inr(dr); $("totCr").textContent = inr(cr);
+    const diff = Math.round((dr-cr)*100)/100;
+    $("diffCell").innerHTML = diff===0
+      ? `<span class="chip bg-green-50 text-green-700">Balanced</span>`
+      : `<span class="chip bg-red-50 text-red-700">Difference ${inr(Math.abs(diff))} ${diff>0?"(Dr)":"(Cr)"}</span>`;
+  }
+
+  // Validate lines; returns {ok, msg, filled:[...]}.
+  function validateLines(){
+    const rows = lineValues();
+    const filled = rows.filter(r=> r.accountId || r.debit>0 || r.credit>0);
+    if(filled.length < 2) return { ok:false, msg:"Add at least 2 lines." };
+    for(const r of filled){
+      if(!r.accountId) return { ok:false, msg:"Every line needs an account." };
+      const hasDr = r.debit>0, hasCr = r.credit>0;
+      if(hasDr === hasCr) return { ok:false, msg:"Each line must have exactly one of debit or credit > 0." };
+    }
+    const dr = filled.reduce((s,r)=>s+r.debit,0), cr = filled.reduce((s,r)=>s+r.credit,0);
+    if(Math.round((dr-cr)*100)!==0) return { ok:false, msg:"Total debit must equal total credit." };
+    return { ok:true, msg:"", filled };
+  }
+
+  $("lines").addEventListener("input", (ev)=>{ if(ev.target.matches(".jl-dr,.jl-cr")) { $("lineMsg").textContent=""; recalc(); } });
+  $("lines").addEventListener("click", (ev)=>{
+    const rm = ev.target.closest(".jl-rm"); if(!rm) return;
+    if(document.querySelectorAll("#lines .jl-line").length <= 2){ jlToast("A voucher needs at least 2 lines.",{type:"warn"}); return; }
+    rm.closest("tr").remove(); recalc();
+  });
+  $("addLine").addEventListener("click", addLine);
+
+  jlField($("entryDate"), [jlV.required("Pick a date.")]);
+
+  function resetForm(){ $("form").reset(); $("lineMsg").textContent=""; $("entryDate").value=new Date().toISOString().slice(0,10); $("voucherType").value="JOURNAL"; ensureMinLines(); }
+  $("resetBtn").addEventListener("click", resetForm);
+
+  $("form").addEventListener("submit", async (ev)=>{
+    ev.preventDefault();
+    if(!jlValidate($("form"), { entryDate:[jlV.required("Pick a date.")] }).valid) return;
+    const chk = validateLines();
+    if(!chk.ok){ $("lineMsg").textContent = chk.msg; jlToast(chk.msg,{type:"warn"}); return; }
+    const body = {
+      voucherType: $("voucherType").value,
+      entryDate: $("entryDate").value,
+      reference: $("reference").value.trim()||null,
+      narration: $("narration").value.trim()||null,
+      lines: chk.filled.map(r=>({ accountId: r.accountId, debit: r.debit, credit: r.credit, lineNarration: r.lineNarration })),
+    };
+    const btn = $("form").querySelector('button[type=submit]');
+    try {
+      jlBtn(btn, true);
+      await jlApi(`${API}/journals`, {method:"POST", body});
+      jlToast("Voucher posted.",{type:"success"}); resetForm(); PAGE=0; loadList();
+    } catch(e){ if(e.errors) jlShowServerErrors($("form"), e.errors); jlToast(e.message||"Could not post voucher",{type:"error"}); }
+    finally { jlBtn(btn, false); }
+  });
+
+  // ── Recent vouchers list ──
+  function rangeQuery(){
+    const f=$("from").value, t=$("to").value, ty=$("fType").value;
+    return (f?`&from=${f}`:"") + (t?`&to=${t}`:"") + (ty?`&type=${ty}`:"");
+  }
+  async function loadList(){
+    const body = $("rows");
+    body.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:20px">${jlSpinnerHTML()}</td></tr>`;
+    try {
+      const page = await jlApi(`${API}/journals?page=${PAGE}&size=${SIZE}${rangeQuery()}`);
+      TOTAL_PAGES = Math.max(1, page.totalPages || 1);
+      const rows = page.content || [];
+      body.innerHTML = rows.length ? rows.map(v=>{
+        const total = v.totalDebit!=null ? v.totalDebit : (v.lines||[]).reduce((s,l)=>s+(Number(l.debit)||0),0);
+        return `<tr class="border-t border-slate-100 hover:bg-slate-50 cursor-pointer" data-view="${v.id}">
+          <td class="py-2.5 text-slate-500 whitespace-nowrap">${fmtDate(v.entryDate)}</td>
+          <td class="font-semibold text-navy">${esc(v.voucherNumber||"—")}</td>
+          <td><span class="chip bg-slate-100 text-slate-600">${esc(TYPE_LABEL[v.voucherType]||v.voucherType||"—")}</span></td>
+          <td class="text-slate-600">${esc(v.narration||"—")}</td>
+          <td class="text-right font-bold text-navy">${inr(total)}</td>
+        </tr>`;
+      }).join("") : `<tr><td colspan="5" class="py-4 text-slate-400 text-center">No vouchers in this range.</td></tr>`;
+      $("pageInfo").textContent = `Page ${PAGE+1} of ${TOTAL_PAGES}`;
+      $("prevBtn").disabled = PAGE<=0; $("nextBtn").disabled = PAGE>=TOTAL_PAGES-1;
+    } catch(e){ body.innerHTML = `<tr><td colspan="5" class="py-4 text-red-600 text-center">Could not load (${esc(e.message)}).</td></tr>`; }
+  }
+
+  function voucherHTML(v){
+    const lineRows = (v.lines||[]).map(l=>`<tr class="border-t border-slate-100">
+      <td class="py-1.5 pr-2">${esc(l.accountCode||"")}${l.accountCode?" — ":""}${esc(l.accountName||"")}
+        ${l.lineNarration?`<div class="text-[11px] text-slate-400">${esc(l.lineNarration)}</div>`:""}</td>
+      <td class="text-right pr-2">${Number(l.debit)>0?inr(l.debit):""}</td>
+      <td class="text-right">${Number(l.credit)>0?inr(l.credit):""}</td></tr>`).join("");
+    return `<div>
+      <div class="grid grid-cols-2 gap-2 text-sm mb-3">
+        <div><span class="text-slate-400 text-[12px]">Voucher #</span><div class="font-semibold text-navy">${esc(v.voucherNumber||"—")}</div></div>
+        <div><span class="text-slate-400 text-[12px]">Type</span><div>${esc(TYPE_LABEL[v.voucherType]||v.voucherType||"—")}</div></div>
+        <div><span class="text-slate-400 text-[12px]">Date</span><div>${fmtDate(v.entryDate)}</div></div>
+        <div><span class="text-slate-400 text-[12px]">Reference</span><div>${esc(v.reference||"—")}</div></div>
+      </div>
+      ${v.narration?`<div class="text-sm text-slate-600 mb-3">${esc(v.narration)}</div>`:""}
+      <div class="overflow-x-auto"><table class="w-full text-sm">
+        <thead><tr class="text-left text-slate-400 text-[12px] uppercase"><th class="py-1">Account</th><th class="text-right pr-2">Debit</th><th class="text-right">Credit</th></tr></thead>
+        <tbody>${lineRows}</tbody>
+        <tfoot><tr class="border-t-2 border-navy font-bold text-navy">
+          <td class="py-2 text-right pr-2">Totals</td>
+          <td class="text-right pr-2">${inr(v.totalDebit)}</td>
+          <td class="text-right">${inr(v.totalCredit)}</td></tr></tfoot>
+      </table></div>
+    </div>`;
+  }
+  async function viewVoucher(id){
+    let v;
+    try { v = await jlApi(`${API}/journals/${id}`); }
+    catch(e){ jlToast(e.message||"Could not load voucher",{type:"error"}); return; }
+    const el = document.createElement("div");
+    el.className = "bg-white rounded-2xl p-5 md:p-6";
+    el.innerHTML = voucherHTML(v);
+    jlDialog(el, { title: "Voucher " + (v.voucherNumber||""), size:"lg" });
+  }
+
+  $("rows").addEventListener("click", (ev)=>{ const tr = ev.target.closest("[data-view]"); if(tr) viewVoucher(tr.dataset.view); });
+  $("applyRange").addEventListener("click", ()=>{ PAGE=0; loadList(); });
+  $("fType").addEventListener("change", ()=>{ PAGE=0; loadList(); });
+  $("prevBtn").addEventListener("click", ()=>{ if(PAGE>0){ PAGE--; loadList(); } });
+  $("nextBtn").addEventListener("click", ()=>{ if(PAGE<TOTAL_PAGES-1){ PAGE++; loadList(); } });
+
+  async function loadAccounts(){
+    ACCOUNTS = (await jlApi(`${API}/accounts?includeInactive=false`)).filter(a=>!a.blocked);
+    ensureMinLines();
+  }
+
+  // default: today + last 30-day range for list
+  $("entryDate").value = new Date().toISOString().slice(0,10);
+  (function initRange(){ const to=new Date(), from=new Date(); from.setDate(from.getDate()-30);
+    const iso=(d)=>d.toISOString().slice(0,10); $("from").value=iso(from); $("to").value=iso(to); })();
+
+  jlWireLogout("#logoutBtn");
+  jlRequireAdmin(["ACCOUNTANT"]).then((a)=>{
+    $("adminBadge").textContent = jlDisplayName(a).split(/[\s@.]+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join("")||"JL";
+    jlWithBusy(()=>Promise.all([loadAccounts(), loadList()]));
+  });
+</script>
+</body>
+</html>

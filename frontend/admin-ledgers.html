@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Ledgers — JL Admin</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = { theme: { extend: { colors: {
+    navy: { DEFAULT: "#0b2447", 600: "#19376d" }, brand: { DEFAULT: "#576cbc", sky: "#a5d7e8" },
+    orange: { DEFAULT: "#f97316" } }, boxShadow: { card: "0 12px 30px rgba(15,23,42,.12)" } } } };
+</script>
+<style> body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .chip{display:inline-block;font-size:11px;font-weight:600;border-radius:6px;padding:2px 8px}
+  .inp{border:1px solid #cbd5e1;border-radius:8px;padding:8px 10px;font-size:13px;outline:none} .inp:focus{border-color:#576cbc}
+  .card{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:16px} </style>
+</head>
+<body class="bg-[#eef1f6] min-h-screen text-slate-800">
+
+  <div class="bg-white border-b border-slate-200 px-4 md:px-7 py-3 flex items-center gap-3 sticky top-0 z-10">
+    <a href="admin.html" class="flex items-center gap-2 text-navy">
+      <div class="w-9 h-7 rounded bg-navy text-white text-[11px] font-extrabold flex items-center justify-center">JL</div>
+      <span class="font-bold text-sm">← Dashboard</span>
+    </a>
+    <div class="ml-auto flex items-center gap-3">
+      <span id="adminBadge" class="w-9 h-9 rounded-full bg-gradient-to-br from-navy-600 to-brand text-white flex items-center justify-center font-bold text-[13px]">··</span>
+      <a href="#" id="logoutBtn" class="text-[13px] text-slate-500 hover:text-navy">⎋ Logout</a>
+    </div>
+  </div>
+
+  <div class="max-w-[1150px] mx-auto p-4 md:p-7">
+    <div class="flex items-center gap-3 mb-4 flex-wrap">
+      <div><h1 class="text-2xl text-navy font-bold mb-1">Ledgers</h1>
+        <p class="text-slate-400 text-sm">Account ledger statement with running balance.</p></div>
+      <div class="ml-auto flex items-end gap-2 flex-wrap">
+        <label class="text-[12px] text-slate-500">Account<br><select id="account" class="inp min-w-[220px]"><option value="">Loading accounts…</option></select></label>
+        <label class="text-[12px] text-slate-500">From<br><input id="from" type="date" class="inp" /></label>
+        <label class="text-[12px] text-slate-500">To<br><input id="to" type="date" class="inp" /></label>
+        <button id="viewBtn" class="bg-navy hover:bg-navy-600 text-white font-semibold rounded-lg px-4 py-2 text-sm">View</button>
+        <button id="printBtn" class="border border-slate-300 rounded-lg px-4 py-2 text-sm font-semibold text-navy disabled:opacity-40" disabled>🖨 Print</button>
+      </div>
+    </div>
+
+    <!-- STATEMENT HEADER -->
+    <div id="stmtHeader" class="mb-4"></div>
+
+    <!-- LEDGER TABLE -->
+    <div class="bg-white border border-slate-200 rounded-2xl p-5">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead><tr class="text-left text-slate-400 text-[12px] uppercase">
+            <th class="py-2">Date</th><th>Voucher</th><th>Narration</th>
+            <th class="text-right">Debit</th><th class="text-right">Credit</th><th class="text-right">Running balance</th>
+          </tr></thead>
+          <tbody id="rows"><tr><td colspan="6" class="py-4 text-slate-400 text-center">Select an account and click View.</td></tr></tbody>
+          <tfoot id="foot"></tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+
+<script src="jl-ui.js"></script>
+<script src="admin.js"></script>
+<script>
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c)=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+  const $ = (id) => document.getElementById(id);
+  const inr = (n) => "₹" + Number(n||0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmtDate = (iso) => { if(!iso) return "—"; const d = new Date(iso); return isNaN(d) ? esc(iso) : d.toLocaleDateString("en-IN",{dateStyle:"medium"}); };
+  // Signed balance → "X Dr" (+ve) / "|X| Cr" (-ve).
+  const bal = (n) => { const v = Number(n||0); if(v>0) return inr(v)+" Dr"; if(v<0) return inr(-v)+" Cr"; return inr(0); };
+  const balPlain = (n) => { const v = Number(n||0); if(v>0) return "₹"+Math.abs(v).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2})+" Dr"; if(v<0) return "₹"+Math.abs(v).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2})+" Cr"; return "₹0.00"; };
+
+  let LAST = null; // last loaded statement (for Print)
+
+  async function loadAccounts(){
+    const accounts = await jlApi("/api/v1/admin/accounting/accounts?includeInactive=false");
+    const list = Array.isArray(accounts) ? accounts : [];
+    $("account").innerHTML = list.length
+      ? `<option value="">— Select account —</option>` + list.map(a=>`<option value="${esc(a.id)}">${esc(a.code)} — ${esc(a.name)}</option>`).join("")
+      : `<option value="">No accounts found</option>`;
+  }
+
+  async function loadLedger(){
+    const accountId = $("account").value;
+    if(!accountId){ jlToast("Pick an account first.",{type:"warn"}); return; }
+    const from = $("from").value, to = $("to").value;
+    const body = $("rows");
+    body.innerHTML = `<tr><td colspan="6" class="py-5 text-center">${jlSpinnerHTML()}</td></tr>`;
+    $("foot").innerHTML = ""; $("stmtHeader").innerHTML = ""; $("printBtn").disabled = true;
+    const q = `?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+    try {
+      const st = await jlApi(`/api/v1/admin/accounting/ledger/${encodeURIComponent(accountId)}${q}`);
+      LAST = st;
+      renderHeader(st);
+      const lines = st.lines || [];
+      body.innerHTML = lines.length ? lines.map(l=>`<tr class="border-t border-slate-100 align-top">
+          <td class="py-2.5 text-slate-500 whitespace-nowrap">${fmtDate(l.date)}</td>
+          <td class="text-navy font-medium whitespace-nowrap">${esc(l.voucherNumber||"—")}</td>
+          <td class="text-slate-600">${esc(l.narration||"—")}</td>
+          <td class="text-right text-slate-600">${Number(l.debit)?inr(l.debit):"—"}</td>
+          <td class="text-right text-slate-600">${Number(l.credit)?inr(l.credit):"—"}</td>
+          <td class="text-right font-medium text-navy whitespace-nowrap">${bal(l.runningBalance)}</td>
+        </tr>`).join("")
+        : `<tr><td colspan="6" class="py-4 text-slate-400 text-center">No transactions in this period.</td></tr>`;
+      $("foot").innerHTML = `<tr class="border-t-2 border-navy"><td class="py-3 font-bold text-navy" colspan="5">Closing balance</td>
+        <td class="py-3 text-right font-bold text-navy whitespace-nowrap">${bal(st.closingBalance)}</td></tr>`;
+      $("printBtn").disabled = false;
+    } catch(e){
+      LAST = null;
+      body.innerHTML = `<tr><td colspan="6" class="py-4 text-red-600 text-center">Could not load ledger (${esc(e.message)}).</td></tr>`;
+    }
+  }
+
+  function renderHeader(st){
+    $("stmtHeader").innerHTML = `<div class="card flex items-center gap-4 flex-wrap">
+      <div><div class="text-[11px] uppercase tracking-wide text-slate-400">Account</div>
+        <div class="text-lg font-extrabold text-navy">${esc(st.accountCode||"")} — ${esc(st.accountName||"")}</div>
+        <div class="text-[12px] text-slate-400">${fmtDate(st.from)} → ${fmtDate(st.to)}</div></div>
+      <div class="ml-auto text-right"><div class="text-[11px] uppercase tracking-wide text-slate-400">Opening balance</div>
+        <div class="text-lg font-bold text-navy">${bal(st.openingBalance)}</div></div>
+    </div>`;
+  }
+
+  // ── Printable statement ──
+  function statementHTML(st){
+    const lines = st.lines || [];
+    const rows = lines.length ? lines.map(l=>`<tr>
+        <td style="padding:6px 8px;border-bottom:1px solid #eee;white-space:nowrap">${fmtDate(l.date)}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #eee">${esc(l.voucherNumber||"—")}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #eee">${esc(l.narration||"—")}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right">${Number(l.debit)?inr(l.debit):"—"}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right">${Number(l.credit)?inr(l.credit):"—"}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;white-space:nowrap">${balPlain(l.runningBalance)}</td></tr>`).join("")
+      : `<tr><td colspan="6" style="padding:12px;text-align:center;color:#888">No transactions in this period.</td></tr>`;
+    return `<div style="font-family:system-ui,sans-serif;color:#0f172a;max-width:820px">
+      <div style="font-size:20px;font-weight:800;color:#0b2447">JL Enterprises</div>
+      <div style="font-size:16px;font-weight:700;margin-top:4px">Ledger Statement</div>
+      <div style="font-size:13px;color:#475569;margin-top:6px"><b>${esc(st.accountCode||"")} — ${esc(st.accountName||"")}</b></div>
+      <div style="font-size:12px;color:#64748b">${fmtDate(st.from)} → ${fmtDate(st.to)}</div>
+      <div style="font-size:13px;color:#0b2447;margin:10px 0"><b>Opening balance:</b> ${balPlain(st.openingBalance)}</div>
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead><tr style="text-align:left;color:#94a3b8;font-size:11px;text-transform:uppercase">
+          <th style="padding:6px 8px">Date</th><th style="padding:6px 8px">Voucher</th><th style="padding:6px 8px">Narration</th>
+          <th style="padding:6px 8px;text-align:right">Debit</th><th style="padding:6px 8px;text-align:right">Credit</th>
+          <th style="padding:6px 8px;text-align:right">Balance</th></tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot><tr style="border-top:2px solid #0b2447;font-weight:800;color:#0b2447">
+          <td colspan="5" style="padding:8px">Closing balance</td>
+          <td style="padding:8px;text-align:right;white-space:nowrap">${balPlain(st.closingBalance)}</td></tr></tfoot>
+      </table>
+      <p style="font-size:11px;color:#94a3b8;margin-top:16px">This is a computer-generated statement.</p>
+    </div>`;
+  }
+
+  function printStatement(){
+    if(!LAST){ jlToast("Load a statement first.",{type:"warn"}); return; }
+    const w = window.open("", "_blank", "width=900,height=1000");
+    if(!w){ jlToast("Allow pop-ups to print the statement.",{type:"warn"}); return; }
+    w.document.write(`<html><head><title>Ledger — ${esc(LAST.accountName||"")}</title></head><body style="margin:24px">${statementHTML(LAST)}</body></html>`);
+    w.document.close(); w.focus(); setTimeout(()=>{ w.print(); }, 300);
+  }
+
+  $("viewBtn").addEventListener("click", loadLedger);
+  $("printBtn").addEventListener("click", printStatement);
+
+  // default range: start of current year → today
+  (function initRange(){
+    const to = new Date();
+    const from = new Date(to.getFullYear(), 0, 1);
+    const iso = (d)=> `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+    $("from").value = iso(from); $("to").value = iso(to);
+  })();
+
+  jlWireLogout("#logoutBtn");
+  jlRequireAdmin(["ACCOUNTANT"]).then((a)=>{
+    $("adminBadge").textContent = jlDisplayName(a).split(/[\s@.]+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join("")||"JL";
+    jlWithBusy(()=>loadAccounts());
+  });
+</script>
+</body>
+</html>
