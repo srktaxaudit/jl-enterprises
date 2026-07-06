@@ -1,0 +1,20 @@
+# Expo / RN
+node_modules/
+.expo/
+dist/
+web-build/
+*.log
+
+# Native
+android/
+ios/
+*.keystore
+*.jks
+
+# Env / secrets
+.env
+.env.*
+
+# Misc
+.DS_Store
+expo-env.d.ts

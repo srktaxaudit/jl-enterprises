@@ -1,0 +1,96 @@
+# JL Admin — Mobile App (React Native + Expo)
+
+Native Android/iOS admin app for JL Enterprises. Talks to the **same** Spring Boot
+API (`https://jl-enterprises-api.onrender.com`) with the same JWT auth, RBAC and
+business rules as the web admin — but with a purpose-built mobile UI.
+
+> **Status: production-grade foundation + reference modules.** The core
+> architecture and the cross-cutting layers are complete, plus three fully-worked
+> modules (**Auth + biometrics, Dashboard, Orders, Products**). The remaining
+> modules are registered in the sidebar/More hub and are built by repeating the
+> Orders/Products pattern (a data hook + a screen). See “Add a module” below.
+
+## Stack (chosen for maintainability + your JS skills)
+
+| Concern | Choice | Why |
+|---|---|---|
+| Language | **TypeScript** | Type-safe, matches the web codebase |
+| Framework | **Expo (React Native)** | Managed workflow, OTA updates, EAS builds, huge ecosystem |
+| Navigation | **Expo Router** | File-based, typed routes, native stack + tabs |
+| Server state / cache | **TanStack Query** | Caching, retries, infinite scroll, pull-to-refresh, offline-ready |
+| Client state | **Zustand** | Tiny, no boilerplate (used for the auth session) |
+| Networking | **axios** | Interceptors for bearer token + single-flight JWT refresh |
+| Secure storage | **expo-secure-store** | Tokens in the OS keychain/keystore (encrypted) |
+| Biometrics | **expo-local-authentication** | Face ID / fingerprint unlock gate |
+| Push | **expo-notifications** | Device token + notification handling (wiring TODO) |
+| Images | **expo-image** / **expo-image-picker** | Fast caching + upload |
+| Forms | **react-hook-form + zod** | Declarative validation, shared schemas |
+
+## Architecture (clean / modular)
+
+```
+mobile/
+  app/                         # Expo Router routes (thin screens only)
+    _layout.tsx                # providers (QueryClient, Theme), session restore, root Stack
+    index.tsx                  # auth gate → redirects to (app) or login
+    login.tsx
+    (app)/                     # authenticated area (bottom tabs) — guarded + biometric gate
+      _layout.tsx              # Tabs: Dashboard · Orders · Products · More
+      index.tsx                # Dashboard
+      orders.tsx  products.tsx  more.tsx
+    order/[id].tsx             # order detail (pushes over the tabs)
+  src/
+    core/                      # cross-cutting infrastructure
+      api/        client.ts (axios + interceptors + envelope unwrap), queryClient.ts
+      auth/       authStore.ts (zustand), tokenStore.ts (secure), rbac.ts, biometric.ts
+      config/     env.ts
+      navigation/ modules.ts   # the 15-module registry + RBAC (mirrors admin-shell.js)
+      theme/      tokens.ts, ThemeProvider.tsx (system dark mode)
+      types.ts                 # ApiResponse / PageResponse / AuthUser
+    features/                  # one folder per domain: data hooks + types
+      dashboard/ orders/ products/
+    shared/                    # reusable UI + utils
+      components/ui.tsx        # Screen, Button, Card, TextField, StatusBadge, Empty/Loading/Error
+      format.ts                # inr(), dateTime()
+```
+
+Screens stay thin: they consume a feature hook (which owns the API call + cache)
+and compose shared components. API access is centralised in `core/api/client.ts`
+— nothing calls `fetch`/`axios` directly.
+
+## Run it
+
+```bash
+cd mobile
+npm install
+npx expo start            # press a for Android emulator, i for iOS (macOS), or scan the QR in Expo Go
+```
+
+The API base URL is in `app.json` → `expo.extra.apiBaseUrl` (defaults to the
+Render backend). Log in with a staff account; RBAC hides modules you can’t access.
+
+## Add a module (the pattern)
+
+1. `src/features/<name>/hooks.ts` — a `useQuery`/`useInfiniteQuery` calling `apiGet(...)`
+   (+ mutations with `apiPost/apiPatch`). Copy `features/orders/hooks.ts`.
+2. `app/(app)/<name>.tsx` — a screen using `Screen`, a `FlatList` (pull-to-refresh +
+   `onEndReached`), and the Loading/Empty/Error states. Copy `orders.tsx`.
+3. Flip `built: true` on that entry in `src/core/navigation/modules.ts` and point its
+   `route` at the new screen. It appears (RBAC-filtered) in the More hub automatically.
+
+## Production checklist (follow-ups)
+
+- **App icon & splash** — add `assets/icon.png` + `assets/splash.png` and re-add them to `app.json`.
+- **Offline caching** — wrap the QueryClient with `@tanstack/query-async-storage-persister` + AsyncStorage.
+- **Push notifications** — register the device token (`expo-notifications`) and add a backend endpoint to store it + send on order/low-stock/exchange events (the backend already has a NotificationService).
+- **Image upload** — `expo-image-picker` → multipart POST to `/api/v1/products/{id}/images` (reuse the web pattern).
+- **Remaining modules** — Inventory, Offers, Customers, Reviews, Service, WhatsApp, Accounting (Chart/Journal/Ledgers/Reports/GST/Outstanding), Billing, Staff, Team, Logs, Import/Export, Branding, Settings.
+- **Builds & stores** — `eas build -p android|ios`, then `eas submit`. App IDs: `com.jlenterprises.admin`.
+- **Verify endpoints** — a few paths in the hooks (e.g. order status PATCH) are marked to confirm against the controllers.
+
+## Security notes
+
+- Tokens are stored **only** in `expo-secure-store` (OS keychain/keystore), never AsyncStorage.
+- A single-flight refresh interceptor renews the access token on 401; a failed refresh drops to the login screen.
+- RBAC (`core/auth/rbac.ts`) mirrors the web `admin.js`/`admin-shell.js` rules exactly, so the same roles see the same modules. The **backend `@PreAuthorize` guards remain the source of truth** — the app UI just hides what a role can’t use.
+- Optional biometric unlock gates the authenticated area on cold start.
