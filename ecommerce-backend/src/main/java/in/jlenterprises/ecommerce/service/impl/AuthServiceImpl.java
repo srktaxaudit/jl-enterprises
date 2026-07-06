@@ -37,6 +37,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.LockedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -150,7 +151,9 @@ public class AuthServiceImpl implements AuthService {
             authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(identifier, request.password()));
         } catch (LockedException e) {
             throw new ApiException(HttpStatus.LOCKED, "Account is temporarily locked. Please try again later.");
-        } catch (BadCredentialsException e) {
+        } catch (AuthenticationException e) {
+            // Covers bad password, unknown email/mobile, and any lookup failure —
+            // all surface to the client as a single, non-revealing message.
             loginAttemptService.recordFailure(rateKey);
             registerFailedAttempt(identifier);
             throw new ApiException(HttpStatus.UNAUTHORIZED, "Invalid email/mobile or password");
@@ -183,11 +186,12 @@ public class AuthServiceImpl implements AuthService {
         });
     }
 
-    /** Resolve a normalised identifier (email or canonical phone) to its account. */
+    /** Resolve an identifier (email or phone) to its account, matching a phone by its
+        last 10 digits regardless of stored format. */
     private java.util.Optional<User> findByIdentifier(String identifier) {
         return IdentifierUtil.isEmail(identifier)
                 ? userRepository.findByEmailIgnoreCase(identifier)
-                : userRepository.findByPhone(identifier);
+                : userRepository.findByPhoneLast10(IdentifierUtil.last10(identifier)).stream().findFirst();
     }
 
     // ── Refresh / logout ────────────────────────────────────────────────

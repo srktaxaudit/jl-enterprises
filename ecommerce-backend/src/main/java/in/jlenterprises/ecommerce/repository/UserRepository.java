@@ -19,8 +19,15 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
 
     Optional<User> findByEmailIgnoreCase(String email);
 
-    /** Look up an account by its (canonical) phone number — used for login by mobile. */
-    Optional<User> findByPhone(String phone);
+    /**
+     * Find accounts whose phone ends with the given 10 digits, ignoring how the stored
+     * value is formatted (+91…, spaces, etc.). Native query (so it also strips non-digits);
+     * returns a List so duplicate/legacy rows never blow up a single-result lookup.
+     * Excludes soft-deleted rows explicitly (native queries bypass @SQLRestriction).
+     */
+    @Query(value = "select * from users u where u.phone is not null and u.deleted = false "
+            + "and right(regexp_replace(u.phone, '[^0-9]', '', 'g'), 10) = :last10", nativeQuery = true)
+    List<User> findByPhoneLast10(@Param("last10") String last10);
 
     boolean existsByEmailIgnoreCase(String email);
 

@@ -27,7 +27,7 @@ public class CustomUserDetailsService implements UserDetailsService {
     public UserDetails loadUserByUsername(String identifier) throws UsernameNotFoundException {
         return (IdentifierUtil.isEmail(identifier)
                 ? userRepository.findByEmailIgnoreCase(identifier)
-                : userRepository.findByPhone(IdentifierUtil.normalizePhone(identifier)))
+                : userRepository.findByPhoneLast10(IdentifierUtil.last10(identifier)).stream().findFirst())
                 .map(UserPrincipal::from)
                 .orElseThrow(() -> new UsernameNotFoundException("No account for " + identifier));
     }
