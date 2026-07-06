@@ -124,6 +124,29 @@ public class DocumentServiceImpl implements DocumentService {
         if (d.getDocumentType() == DocumentType.ESTIMATE) throw new BusinessException("Convert the estimate to an invoice first.");
         if (d.getParty() == null) throw new BusinessException("Select a party ledger before posting.");
 
+        LedgerAccount party = d.getParty();
+        if (party.isBlocked()) {
+            throw new BusinessException("Party ledger '" + party.getName() + "' is blocked for transactions.");
+        }
+        // Credit control on sales: value limit + overdue-days.
+        if (d.getDocumentType() == DocumentType.SALES_INVOICE) {
+            BigDecimal receivable = accountingService.netBalance(party.getId());   // +ve = amount owed to us
+            BigDecimal exposure = receivable.max(BigDecimal.ZERO).add(nz(d.getGrandTotal()));
+            if (party.getCreditLimit() != null && party.getCreditLimit().signum() > 0
+                    && exposure.compareTo(party.getCreditLimit()) > 0) {
+                throw new BusinessException("Credit limit exceeded for " + party.getName()
+                        + ": limit ₹" + party.getCreditLimit() + ", outstanding would become ₹" + exposure
+                        + ". Collect dues or raise the limit.");
+            }
+            if (party.getCreditDays() != null && party.getCreditDays() > 0 && receivable.signum() > 0) {
+                LocalDate oldest = docRepo.oldestSalesInvoiceDate(party.getId());
+                if (oldest != null && java.time.temporal.ChronoUnit.DAYS.between(oldest, d.getDocumentDate()) > party.getCreditDays()) {
+                    throw new BusinessException(party.getName() + " has invoices overdue beyond "
+                            + party.getCreditDays() + " days. Collect the outstanding before billing again.");
+                }
+            }
+        }
+
         UUID journalId = accountingService.postingJournal(voucherType(d.getDocumentType()), d.getDocumentDate(),
                 d.getDocumentNumber(), d.getId(), narration(d), buildPostings(d));
         d.setJournalEntryId(journalId);

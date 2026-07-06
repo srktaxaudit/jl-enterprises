@@ -35,4 +35,9 @@ public interface JournalLineRepository extends JpaRepository<JournalLine, UUID> 
     @Query("select coalesce(sum(l.debit),0) - coalesce(sum(l.credit),0) "
             + "from JournalLine l where l.account.id = :accountId and l.journalEntry.entryDate < :before")
     BigDecimal netMovementBefore(@Param("accountId") UUID accountId, @Param("before") LocalDate before);
+
+    /** Net (debit − credit) movement for an account across all posted journals. */
+    @Query("select coalesce(sum(l.debit),0) - coalesce(sum(l.credit),0) "
+            + "from JournalLine l where l.account.id = :accountId")
+    BigDecimal netMovement(@Param("accountId") UUID accountId);
 }

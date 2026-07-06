@@ -328,6 +328,13 @@ public class AccountingServiceImpl implements AccountingService {
         }
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public BigDecimal netBalance(UUID accountId) {
+        LedgerAccount a = account(accountId);
+        return openingSigned(a).add(nz(lineRepo.netMovement(accountId)));
+    }
+
     // ── Post a journal from a document's postings ──────────────────────────
     @Override
     @Transactional

@@ -43,6 +43,9 @@ public interface AccountingService {
     /** Best-effort: post a Sales voucher for a paid order (idempotent). Never throws. */
     void postSaleForOrder(UUID orderId);
 
+    /** Net balance of an account (opening + all movements). +ve = debit balance, -ve = credit. */
+    BigDecimal netBalance(UUID accountId);
+
     /** Seed the default chart of accounts if none exist (called on startup). */
     void ensureDefaultAccounts();
 
