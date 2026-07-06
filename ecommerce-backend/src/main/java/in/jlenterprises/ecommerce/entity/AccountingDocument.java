@@ -43,7 +43,7 @@ public class AccountingDocument extends BaseEntity {
     private LocalDate documentDate;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 20)
+    @Column(name = "doc_status", nullable = false, length = 20)
     private DocumentStatus documentStatus = DocumentStatus.DRAFT;
 
     /** The party ledger (a Sundry Debtor for sales, a Sundry Creditor for purchases). */
