@@ -19,10 +19,13 @@ import in.jlenterprises.ecommerce.payment.PaymentStrategyFactory;
 import in.jlenterprises.ecommerce.repository.OrderRepository;
 import in.jlenterprises.ecommerce.repository.PaymentRepository;
 import in.jlenterprises.ecommerce.request.payment.PaymentConfirmRequest;
+import in.jlenterprises.ecommerce.service.AccountingService;
 import in.jlenterprises.ecommerce.service.NotificationService;
 import in.jlenterprises.ecommerce.service.PaymentService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -34,13 +37,27 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentRepository paymentRepository;
     private final PaymentStrategyFactory strategyFactory;
     private final NotificationService notificationService;
+    private final AccountingService accountingService;
 
     public PaymentServiceImpl(OrderRepository orderRepository, PaymentRepository paymentRepository,
-                              PaymentStrategyFactory strategyFactory, NotificationService notificationService) {
+                              PaymentStrategyFactory strategyFactory, NotificationService notificationService,
+                              AccountingService accountingService) {
         this.orderRepository = orderRepository;
         this.paymentRepository = paymentRepository;
         this.strategyFactory = strategyFactory;
         this.notificationService = notificationService;
+        this.accountingService = accountingService;
+    }
+
+    /** After the current transaction commits, post the sale to the books (best-effort). */
+    private void postSaleAfterCommit(UUID orderId) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            accountingService.postSaleForOrder(orderId);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override public void afterCommit() { accountingService.postSaleForOrder(orderId); }
+        });
     }
 
     @Override
@@ -89,6 +106,7 @@ public class PaymentServiceImpl implements PaymentService {
             }
             notificationService.notifyUser(order.getUser().getId(), NotificationType.ORDER, "Payment received",
                     "Payment for order " + order.getOrderNumber() + " was successful.", "/orders/" + order.getId());
+            postSaleAfterCommit(order.getId());
         } else {
             payment.setPaymentStatus(PaymentStatus.FAILED);
             txn.setTransactionStatus(PaymentStatus.FAILED);

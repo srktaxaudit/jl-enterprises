@@ -19,6 +19,7 @@ import in.jlenterprises.ecommerce.exception.ResourceNotFoundException;
 import in.jlenterprises.ecommerce.mapper.OrderMapper;
 import in.jlenterprises.ecommerce.repository.OrderRepository;
 import in.jlenterprises.ecommerce.repository.PaymentRepository;
+import in.jlenterprises.ecommerce.service.AccountingService;
 import in.jlenterprises.ecommerce.service.BillingService;
 import in.jlenterprises.ecommerce.util.GstUtil;
 import jakarta.persistence.criteria.JoinType;
@@ -28,6 +29,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -42,13 +45,16 @@ public class BillingServiceImpl implements BillingService {
     private final PaymentRepository paymentRepository;
     private final OrderMapper orderMapper;
     private final BillingConfig billingConfig;
+    private final AccountingService accountingService;
 
     public BillingServiceImpl(OrderRepository orderRepository, PaymentRepository paymentRepository,
-                              OrderMapper orderMapper, BillingConfig billingConfig) {
+                              OrderMapper orderMapper, BillingConfig billingConfig,
+                              AccountingService accountingService) {
         this.orderRepository = orderRepository;
         this.paymentRepository = paymentRepository;
         this.orderMapper = orderMapper;
         this.billingConfig = billingConfig;
+        this.accountingService = accountingService;
     }
 
     @Override
@@ -138,6 +144,14 @@ public class BillingServiceImpl implements BillingService {
         txn.setProcessedAt(Instant.now());
         payment.getTransactions().add(txn);
         paymentRepository.save(payment);
+
+        // Post the sale to the books once this payment change is committed (best-effort).
+        final UUID oid = order.getId();
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override public void afterCommit() { accountingService.postSaleForOrder(oid); }
+            });
+        }
         return toDto(payment);
     }
 
