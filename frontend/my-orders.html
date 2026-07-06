@@ -164,23 +164,45 @@
     }
     async function downloadInvoice(id) {
       try {
-        const o = await JLCheckout.order(id);
-        const rows = (o.items || []).map((it) => `<tr><td>${jlEsc(it.productName || "Item")}</td><td style="text-align:center">${it.quantity}</td><td style="text-align:right">${jlInr(it.unitPrice)}</td><td style="text-align:right">${jlInr(it.lineTotal)}</td></tr>`).join("");
-        const a = o.shippingAddress || {};
-        const addr = [a.fullName, a.line1, a.line2, a.city, a.state, a.postalCode].filter(Boolean).join(", ");
+        // Full GST invoice (prices are GST-inclusive; the backend returns the tax breakup).
+        const inv = await JLCheckout.invoice(id);
+        const b = inv.billTo || {};
+        const addr = [b.line1, b.line2, b.city, b.state, b.postalCode].filter(Boolean).map(jlEsc).join(", ");
+        const rows = (inv.items || []).map((it) => `<tr><td>${jlEsc(it.productName || "Item")}<div class="sku">${jlEsc(it.sku || "")}</div></td><td style="text-align:center">${it.quantity}</td><td style="text-align:right">${jlInr(it.unitPrice)}</td><td style="text-align:right">${jlInr(it.lineTotal)}</td></tr>`).join("");
+        const half = Number(inv.gstRate || 0) / 2;
+        const line = (l, v) => `<div class="t"><span>${l}</span><span>${v}</span></div>`;
         const w = window.open("", "_blank");
         if (!w) { await jlAlert("Please allow pop-ups to view the invoice.", { type: "warn", title: "Pop-up blocked" }); return; }
-        w.document.write(`<html><head><title>Invoice ${jlEsc(o.orderNumber)}</title>
-          <style>body{font-family:system-ui,Arial,sans-serif;padding:28px;color:#0b2447}h1{margin:0}table{width:100%;border-collapse:collapse;margin-top:16px}th,td{border-bottom:1px solid #e2e8f0;padding:8px;font-size:14px}th{text-align:left;color:#64748b}.t{text-align:right;margin-top:6px}</style></head>
+        w.document.write(`<html><head><title>${jlEsc(inv.invoiceNumber || "Invoice")}</title>
+          <style>body{font-family:system-ui,Arial,sans-serif;padding:28px;color:#0b2447;max-width:720px;margin:auto}
+          .hd{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+          .muted{color:#64748b;font-size:12px} h1{margin:0;font-size:20px}
+          table{width:100%;border-collapse:collapse;margin-top:16px}th,td{border-bottom:1px solid #e2e8f0;padding:8px;font-size:13px}th{text-align:left;color:#64748b;font-size:11px;text-transform:uppercase}
+          .sku{font-size:11px;color:#94a3b8} .totals{margin-top:12px;margin-left:auto;width:280px;font-size:13px}
+          .t{display:flex;justify-content:space-between;padding:3px 0} .grand{border-top:2px solid #0b2447;margin-top:6px;padding-top:6px;font-weight:800;font-size:15px}
+          .bill{margin:14px 0;padding:10px 12px;background:#f8fafc;border-radius:10px;font-size:13px}</style></head>
           <body>
-            <h1>JL Enterprises</h1><div style="color:#64748b">Tax Invoice · Thoothukudi</div>
-            <div style="margin-top:12px;font-size:14px"><b>Order:</b> ${jlEsc(o.orderNumber)}<br><b>Date:</b> ${fmtDate(o.placedAt)}<br><b>Deliver to:</b> ${jlEsc(addr)}</div>
-            <table><thead><tr><th>Item</th><th style="text-align:center">Qty</th><th style="text-align:right">Price</th><th style="text-align:right">Total</th></tr></thead><tbody>${rows}</tbody></table>
-            <div class="t">Subtotal: ${jlInr(o.subtotal)}</div>
-            ${Number(o.discountTotal) > 0 ? `<div class="t">Discount: -${jlInr(o.discountTotal)}</div>` : ""}
-            <div class="t">Delivery: ${Number(o.shippingTotal) > 0 ? jlInr(o.shippingTotal) : "FREE"}</div>
-            <div class="t" style="font-size:18px;font-weight:800">Grand Total: ${jlInr(o.grandTotal)}</div>
-            <div style="margin-top:24px;color:#64748b;font-size:12px">Thank you for shopping with JL Enterprises.</div>
+            <div class="hd">
+              <div><h1>${jlEsc(inv.sellerName || "JL Enterprises")}</h1>
+                <div class="muted" style="max-width:320px">${jlEsc(inv.sellerAddress || "")}</div>
+                ${inv.sellerGstin ? `<div class="muted">GSTIN: <b>${jlEsc(inv.sellerGstin)}</b></div>` : ""}</div>
+              <div style="text-align:right"><div style="font-weight:800">TAX INVOICE</div>
+                <div class="muted">${jlEsc(inv.invoiceNumber)}</div><div class="muted">${fmtDate(inv.issuedAt)}</div>
+                <div class="muted">${jlEsc(inv.paymentMethod || "")} · ${jlEsc(inv.paymentStatus || "")}</div></div>
+            </div>
+            <div class="bill"><div class="muted" style="text-transform:uppercase">Bill to</div>
+              <b>${jlEsc(b.fullName || "—")}</b> ${b.phone ? ("· " + jlEsc(b.phone)) : ""}<div style="color:#475569">${addr}</div></div>
+            <table><thead><tr><th>Item</th><th style="text-align:center">Qty</th><th style="text-align:right">Rate</th><th style="text-align:right">Amount</th></tr></thead><tbody>${rows}</tbody></table>
+            <div class="totals">
+              ${line("Subtotal", jlInr(inv.subtotal))}
+              ${Number(inv.discountTotal) > 0 ? line("Discount", "− " + jlInr(inv.discountTotal)) : ""}
+              ${Number(inv.shippingTotal) > 0 ? line("Shipping", jlInr(inv.shippingTotal)) : line("Delivery", "FREE")}
+              ${line("Taxable value", jlInr(inv.taxableValue))}
+              ${line("CGST (" + half + "%)", jlInr(inv.cgst))}
+              ${line("SGST (" + half + "%)", jlInr(inv.sgst))}
+              <div class="t grand"><span>Grand Total</span><span>${jlInr(inv.grandTotal)}</span></div>
+            </div>
+            <div class="muted" style="margin-top:20px">Prices are inclusive of GST. Thank you for shopping with JL Enterprises.</div>
             <scr` + `ipt>window.onload=function(){window.print()}</scr` + `ipt>
           </body></html>`);
         w.document.close();

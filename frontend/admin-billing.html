@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Billing — JL Admin</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = { theme: { extend: { colors: {
+    navy: { DEFAULT: "#0b2447", 600: "#19376d" }, brand: { DEFAULT: "#576cbc", sky: "#a5d7e8" },
+    orange: { DEFAULT: "#f97316" } }, boxShadow: { card: "0 12px 30px rgba(15,23,42,.12)" } } } };
+</script>
+<style> body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .chip{display:inline-block;font-size:11px;font-weight:600;border-radius:6px;padding:2px 8px}
+  .inp{border:1px solid #cbd5e1;border-radius:8px;padding:8px 10px;font-size:13px;outline:none} .inp:focus{border-color:#576cbc}
+  .card{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:16px} </style>
+</head>
+<body class="bg-[#eef1f6] min-h-screen text-slate-800">
+
+  <div class="bg-white border-b border-slate-200 px-4 md:px-7 py-3 flex items-center gap-3 sticky top-0 z-10">
+    <a href="admin.html" class="flex items-center gap-2 text-navy">
+      <div class="w-9 h-7 rounded bg-navy text-white text-[11px] font-extrabold flex items-center justify-center">JL</div>
+      <span class="font-bold text-sm">← Dashboard</span>
+    </a>
+    <div class="ml-auto flex items-center gap-3">
+      <span id="adminBadge" class="w-9 h-9 rounded-full bg-gradient-to-br from-navy-600 to-brand text-white flex items-center justify-center font-bold text-[13px]">··</span>
+      <a href="#" id="logoutBtn" class="text-[13px] text-slate-500 hover:text-navy">⎋ Logout</a>
+    </div>
+  </div>
+
+  <div class="max-w-[1150px] mx-auto p-4 md:p-7">
+    <div class="flex items-center gap-3 mb-4 flex-wrap">
+      <div><h1 class="text-2xl text-navy font-bold mb-1">Billing &amp; Accounts</h1>
+        <p class="text-slate-400 text-sm">Invoices, payments and GST — prices are GST-inclusive.</p></div>
+      <div class="ml-auto flex items-end gap-2 flex-wrap">
+        <label class="text-[12px] text-slate-500">From<br><input id="from" type="date" class="inp" /></label>
+        <label class="text-[12px] text-slate-500">To<br><input id="to" type="date" class="inp" /></label>
+        <button id="applyRange" class="bg-navy hover:bg-navy-600 text-white font-semibold rounded-lg px-4 py-2 text-sm">Apply</button>
+      </div>
+    </div>
+
+    <!-- SUMMARY CARDS -->
+    <div id="summary" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6"></div>
+
+    <!-- LEDGER -->
+    <div class="bg-white border border-slate-200 rounded-2xl p-5">
+      <div class="flex items-center gap-2 mb-4 flex-wrap">
+        <h2 class="text-navy font-semibold">Invoices &amp; payments</h2>
+        <div class="ml-auto flex items-center gap-2 flex-wrap">
+          <select id="fStatus" class="inp"><option value="">All statuses</option><option value="SUCCESS">Paid</option><option value="PENDING">Pending</option><option value="REFUNDED">Refunded</option><option value="FAILED">Failed</option></select>
+          <select id="fMethod" class="inp"><option value="">All methods</option><option value="COD">COD</option><option value="RAZORPAY">Razorpay</option></select>
+          <input id="search" placeholder="Order # or email…" class="inp w-52" />
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead><tr class="text-left text-slate-400 text-[12px] uppercase">
+            <th class="py-2">Invoice / Order</th><th>Customer</th><th>Date</th><th>Method</th><th>Status</th>
+            <th class="text-right">GST</th><th class="text-right">Total</th><th class="text-right">Actions</th>
+          </tr></thead>
+          <tbody id="rows"><tr><td colspan="8" class="py-4 text-slate-400 text-center">Loading…</td></tr></tbody>
+        </table>
+      </div>
+      <div class="flex items-center gap-2 mt-4 text-sm">
+        <button id="prevBtn" class="border border-slate-300 rounded-lg px-3 py-1.5 disabled:opacity-40">← Prev</button>
+        <span id="pageInfo" class="text-slate-500"></span>
+        <button id="nextBtn" class="border border-slate-300 rounded-lg px-3 py-1.5 disabled:opacity-40">Next →</button>
+      </div>
+    </div>
+  </div>
+
+<script src="jl-ui.js"></script>
+<script src="admin.js"></script>
+<script>
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c)=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+  const $ = (id) => document.getElementById(id);
+  const inr = (n) => "₹" + Number(n||0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmtDate = (iso) => { if(!iso) return "—"; const d = new Date(iso); return isNaN(d) ? esc(iso) : d.toLocaleDateString("en-IN",{dateStyle:"medium"}); };
+  let PAGE = 0; const SIZE = 25; let TOTAL_PAGES = 1;
+
+  const STATUS_STYLE = { SUCCESS:"bg-green-50 text-green-700", PENDING:"bg-amber-50 text-amber-700",
+    REFUNDED:"bg-slate-100 text-slate-600", FAILED:"bg-red-50 text-red-700" };
+  const STATUS_LABEL = { SUCCESS:"Paid", PENDING:"Pending", REFUNDED:"Refunded", FAILED:"Failed" };
+
+  // Date range → ISO instants. Default: last 30 days.
+  function isoFrom(){ const v=$("from").value; return v ? new Date(v+"T00:00:00").toISOString() : ""; }
+  function isoTo(){ const v=$("to").value; return v ? new Date(v+"T23:59:59").toISOString() : ""; }
+  function rangeQuery(){ const f=isoFrom(), t=isoTo(); return (f?`&from=${encodeURIComponent(f)}`:"") + (t?`&to=${encodeURIComponent(t)}`:""); }
+
+  function summaryCard(label, value, sub, tone){
+    return `<div class="card"><div class="text-[11px] uppercase tracking-wide text-slate-400">${esc(label)}</div>
+      <div class="text-xl font-extrabold ${tone||"text-navy"} mt-0.5">${value}</div>
+      <div class="text-[12px] text-slate-400 mt-0.5">${esc(sub||"")}</div></div>`;
+  }
+  async function loadSummary(){
+    try {
+      const s = await jlApi(`/api/v1/admin/billing/summary?_=1${rangeQuery()}`);
+      $("summary").innerHTML = [
+        summaryCard("Gross revenue", inr(s.grossRevenue), `${s.orderCount} orders`),
+        summaryCard("Collected (paid)", inr(s.paidTotal), `${s.paidCount} paid`, "text-green-600"),
+        summaryCard("GST collected", inr(s.taxCollected), `@ ${Number(s.gstRate)}% incl.`),
+        summaryCard("Pending", inr(s.pendingTotal), `${s.pendingCount} unpaid`, "text-amber-600"),
+        summaryCard("Refunded", inr(s.refundedTotal), `${s.refundedCount} refunds`, "text-red-600"),
+        summaryCard("Net collected", inr(s.netCollected), "paid − refunded", "text-green-700"),
+        summaryCard("Cash on Delivery", inr(s.codTotal), "COD orders"),
+        summaryCard("Online", inr(s.onlineTotal), "Razorpay etc."),
+      ].join("");
+    } catch(e){ $("summary").innerHTML = `<div class="col-span-full text-red-600 text-sm">Could not load summary (${esc(e.message)}).</div>`; }
+  }
+
+  async function loadRows(){
+    const body = $("rows");
+    body.innerHTML = `<tr><td colspan="8" class="py-5 text-center">${jlSpinnerHTML()}</td></tr>`;
+    const q = `?page=${PAGE}&size=${SIZE}` + rangeQuery()
+      + ($("fStatus").value?`&status=${$("fStatus").value}`:"")
+      + ($("fMethod").value?`&method=${$("fMethod").value}`:"")
+      + ($("search").value.trim()?`&q=${encodeURIComponent($("search").value.trim())}`:"");
+    try {
+      const page = await jlApi("/api/v1/admin/billing/invoices" + q);
+      TOTAL_PAGES = Math.max(1, page.totalPages || 1);
+      const rows = page.content || [];
+      body.innerHTML = rows.length ? rows.map(r=>{
+        const st = r.paymentStatus || "PENDING";
+        const canPay = st !== "SUCCESS" && st !== "REFUNDED";
+        const canRefund = st === "SUCCESS";
+        return `<tr class="border-t border-slate-100 align-top">
+          <td class="py-2.5"><button data-inv="${r.orderId}" class="font-semibold text-navy hover:text-brand">INV-${esc(r.orderNumber)}</button></td>
+          <td class="text-slate-600">${esc(r.customerName||"—")}<div class="text-[11px] text-slate-400">${esc(r.customerEmail||"")}</div></td>
+          <td class="text-slate-500 whitespace-nowrap">${fmtDate(r.placedAt)}</td>
+          <td class="text-slate-500">${esc(r.paymentMethod||"—")}</td>
+          <td><span class="chip ${STATUS_STYLE[st]||"bg-slate-100"}">${esc(STATUS_LABEL[st]||st)}</span></td>
+          <td class="text-right text-slate-500">${inr(r.taxTotal)}</td>
+          <td class="text-right font-bold text-navy">${inr(r.grandTotal)}</td>
+          <td class="text-right whitespace-nowrap">
+            <button data-inv="${r.orderId}" class="text-[12px] text-brand mr-2">Invoice</button>
+            ${canPay?`<button data-paid="${r.orderId}" class="text-[12px] text-green-600 mr-2">Mark paid</button>`:""}
+            ${canRefund?`<button data-refund="${r.orderId}" class="text-[12px] text-red-600">Refund</button>`:""}
+          </td></tr>`;
+      }).join("") : `<tr><td colspan="8" class="py-4 text-slate-400 text-center">No invoices in this range.</td></tr>`;
+      $("pageInfo").textContent = `Page ${PAGE+1} of ${TOTAL_PAGES}`;
+      $("prevBtn").disabled = PAGE<=0; $("nextBtn").disabled = PAGE>=TOTAL_PAGES-1;
+    } catch(e){ body.innerHTML = `<tr><td colspan="8" class="py-4 text-red-600 text-center">Could not load (${esc(e.message)}).</td></tr>`; }
+  }
+
+  // ── Invoice view (printable) ──
+  function invoiceHTML(inv){
+    const itemRows = (inv.items||[]).map(i=>`<tr>
+      <td style="padding:6px 8px;border-bottom:1px solid #eee">${esc(i.productName)}<div style="font-size:11px;color:#888">${esc(i.sku||"")}</div></td>
+      <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:center">${i.quantity}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right">${inr(i.unitPrice)}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right">${inr(i.lineTotal)}</td></tr>`).join("");
+    const b = inv.billTo || {};
+    const addr = [b.line1,b.line2,b.city,b.state,b.postalCode].filter(Boolean).map(esc).join(", ");
+    return `<div style="font-family:system-ui,sans-serif;color:#0f172a;max-width:720px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+        <div><div style="font-size:20px;font-weight:800;color:#0b2447">${esc(inv.sellerName||"JL Enterprises")}</div>
+          <div style="font-size:12px;color:#64748b;max-width:320px">${esc(inv.sellerAddress||"")}</div>
+          ${inv.sellerGstin?`<div style="font-size:12px;color:#64748b">GSTIN: <b>${esc(inv.sellerGstin)}</b></div>`:""}</div>
+        <div style="text-align:right"><div style="font-size:16px;font-weight:800">TAX INVOICE</div>
+          <div style="font-size:12px;color:#64748b">${esc(inv.invoiceNumber)}</div>
+          <div style="font-size:12px;color:#64748b">${fmtDate(inv.issuedAt)}</div>
+          <div style="font-size:12px;color:#64748b">${esc(inv.paymentMethod||"")} · ${esc(STATUS_LABEL[inv.paymentStatus]||inv.paymentStatus||"")}</div></div>
+      </div>
+      <div style="margin:14px 0;padding:10px 12px;background:#f8fafc;border-radius:10px;font-size:13px">
+        <div style="font-size:11px;text-transform:uppercase;color:#94a3b8">Bill to</div>
+        <b>${esc(b.fullName||"—")}</b> ${b.phone?("· "+esc(b.phone)):""}<div style="color:#475569">${addr}</div>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead><tr style="text-align:left;color:#94a3b8;font-size:11px;text-transform:uppercase">
+          <th style="padding:6px 8px">Item</th><th style="padding:6px 8px;text-align:center">Qty</th>
+          <th style="padding:6px 8px;text-align:right">Rate</th><th style="padding:6px 8px;text-align:right">Amount</th></tr></thead>
+        <tbody>${itemRows}</tbody>
+      </table>
+      <div style="margin-top:12px;margin-left:auto;width:280px;font-size:13px">
+        ${row("Subtotal", inr(inv.subtotal))}
+        ${Number(inv.discountTotal)>0?row("Discount", "− "+inr(inv.discountTotal)):""}
+        ${Number(inv.shippingTotal)>0?row("Shipping", inr(inv.shippingTotal)):""}
+        <div style="border-top:1px solid #e2e8f0;margin:6px 0"></div>
+        ${row("Taxable value", inr(inv.taxableValue))}
+        ${row(`CGST (${Number(inv.gstRate)/2}%)`, inr(inv.cgst))}
+        ${row(`SGST (${Number(inv.gstRate)/2}%)`, inr(inv.sgst))}
+        <div style="border-top:2px solid #0b2447;margin:6px 0"></div>
+        ${row("<b>Grand Total</b>", "<b>"+inr(inv.grandTotal)+"</b>")}
+      </div>
+      <p style="font-size:11px;color:#94a3b8;margin-top:16px">Prices are inclusive of GST. This is a computer-generated invoice.</p>
+    </div>`;
+  }
+  function row(l,v){ return `<div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:#475569">${l}</span><span>${v}</span></div>`; }
+
+  async function viewInvoice(orderId){
+    let inv;
+    try { inv = await jlApi(`/api/v1/admin/billing/invoices/${orderId}`); }
+    catch(e){ jlToast(e.message||"Could not load invoice",{type:"error"}); return; }
+    const el = document.createElement("div");
+    el.className = "bg-white rounded-2xl p-5 md:p-6";
+    el.innerHTML = `<div id="invBody">${invoiceHTML(inv)}</div>
+      <div class="flex gap-2 justify-end mt-4">
+        <button id="printInv" class="bg-navy hover:bg-navy-600 text-white font-semibold rounded-lg px-4 py-2 text-sm">🖨 Print / Save PDF</button>
+      </div>`;
+    jlDialog(el, { title: "Invoice " + (inv.invoiceNumber||"") });
+    el.querySelector("#printInv").addEventListener("click", ()=>{
+      const w = window.open("", "_blank", "width=800,height=900");
+      if(!w){ jlToast("Allow pop-ups to print the invoice.",{type:"warn"}); return; }
+      w.document.write(`<html><head><title>${esc(inv.invoiceNumber)}</title></head><body style="margin:24px">${invoiceHTML(inv)}</body></html>`);
+      w.document.close(); w.focus(); setTimeout(()=>{ w.print(); }, 300);
+    });
+  }
+
+  // ── Actions ──
+  $("rows").addEventListener("click", async (ev)=>{
+    const b = ev.target.closest("button"); if(!b) return;
+    if(b.dataset.inv) return viewInvoice(b.dataset.inv);
+    if(b.dataset.paid){
+      if(!(await jlConfirm("Mark this order's payment as PAID? Use this for a COD collection or an offline payment.",{title:"Mark as paid",confirmText:"Mark paid"}))) return;
+      try { await jlSubmit(b, ()=>jlApi(`/api/v1/admin/billing/orders/${b.dataset.paid}/mark-paid`, {method:"POST"})); jlToast("Marked as paid.",{type:"success"}); loadRows(); loadSummary(); }
+      catch(e){ jlToast(e.message||"Could not update",{type:"error"}); }
+    }
+    if(b.dataset.refund){
+      if(!(await jlConfirm("Refund this payment? The order will be marked refunded.",{title:"Issue refund",confirmText:"Refund",danger:true}))) return;
+      try { await jlSubmit(b, ()=>jlApi(`/api/v1/admin/billing/orders/${b.dataset.refund}/refund`, {method:"POST"})); jlToast("Refund issued.",{type:"success"}); loadRows(); loadSummary(); }
+      catch(e){ jlToast(e.message||"Could not refund",{type:"error"}); }
+    }
+  });
+
+  $("applyRange").addEventListener("click", ()=>{ PAGE=0; loadSummary(); loadRows(); });
+  $("fStatus").addEventListener("change", ()=>{ PAGE=0; loadRows(); });
+  $("fMethod").addEventListener("change", ()=>{ PAGE=0; loadRows(); });
+  let t; $("search").addEventListener("input", ()=>{ clearTimeout(t); t=setTimeout(()=>{ PAGE=0; loadRows(); }, 300); });
+  $("prevBtn").addEventListener("click", ()=>{ if(PAGE>0){ PAGE--; loadRows(); } });
+  $("nextBtn").addEventListener("click", ()=>{ if(PAGE<TOTAL_PAGES-1){ PAGE++; loadRows(); } });
+
+  // default range: last 30 days
+  (function initRange(){
+    const to = new Date(), from = new Date(); from.setDate(from.getDate()-30);
+    const iso = (d)=> d.toISOString().slice(0,10);
+    $("from").value = iso(from); $("to").value = iso(to);
+  })();
+
+  jlWireLogout("#logoutBtn");
+  jlRequireSuper().then((a)=>{
+    $("adminBadge").textContent = jlDisplayName(a).split(/[\s@.]+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join("")||"JL";
+    jlWithBusy(()=>Promise.all([loadSummary(), loadRows()]));
+  });
+</script>
+</body>
+</html>

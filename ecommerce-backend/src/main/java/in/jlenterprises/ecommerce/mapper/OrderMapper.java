@@ -10,8 +10,11 @@ import in.jlenterprises.ecommerce.entity.AddressSnapshot;
 import in.jlenterprises.ecommerce.entity.Order;
 import in.jlenterprises.ecommerce.entity.OrderItem;
 import in.jlenterprises.ecommerce.entity.Payment;
+import in.jlenterprises.ecommerce.util.GstUtil;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 
 /**
@@ -21,9 +24,6 @@ import java.util.List;
  */
 @Component
 public class OrderMapper {
-
-    private static final String SELLER = "JL Enterprises";
-    private static final String SELLER_ADDRESS = "185G/1B, Palai Road, Chidambaramnagar, Thoothukudi, Tamil Nadu 628008";
 
     public OrderDto toDto(Order o) {
         return new OrderDto(
@@ -46,15 +46,26 @@ public class OrderMapper {
                 o.getGrandTotal(), o.getCurrency(), o.getItems().size(), o.getPlacedAt());
     }
 
-    public InvoiceDto toInvoice(Order o) {
+    public InvoiceDto toInvoice(Order o, BigDecimal gstRate, String sellerGstin,
+                                String sellerName, String sellerAddress) {
         List<OrderItemDto> items = o.getItems().stream().map(this::toItemDto).toList();
+        BigDecimal grand = o.getGrandTotal() == null ? BigDecimal.ZERO : o.getGrandTotal();
+        // Prices are GST-inclusive: derive the embedded tax (total unchanged).
+        BigDecimal taxable = GstUtil.taxableValue(grand, gstRate);
+        BigDecimal gst = GstUtil.gstAmount(grand, gstRate);
+        BigDecimal cgst = gst.divide(BigDecimal.valueOf(2), 2, RoundingMode.HALF_UP);
+        BigDecimal sgst = gst.subtract(cgst);   // remainder absorbs any rounding
+        Payment p = o.getPayment();
         return new InvoiceDto(
                 "INV-" + o.getOrderNumber(), o.getOrderNumber(), o.getPlacedAt(),
-                SELLER, SELLER_ADDRESS,
+                sellerName, sellerAddress, sellerGstin == null ? "" : sellerGstin,
                 toSnapshotDto(o.getBillingAddress()),
                 items,
-                o.getSubtotal(), o.getDiscountTotal(), o.getTaxTotal(), o.getShippingTotal(), o.getGrandTotal(),
-                o.getCurrency());
+                o.getSubtotal(), o.getDiscountTotal(),
+                taxable, gstRate, cgst, sgst, gst,
+                o.getShippingTotal(), grand, o.getCurrency(),
+                p == null ? null : p.getMethod().name(),
+                p == null ? null : p.getPaymentStatus().name());
     }
 
     private OrderItemDto toItemDto(OrderItem i) {

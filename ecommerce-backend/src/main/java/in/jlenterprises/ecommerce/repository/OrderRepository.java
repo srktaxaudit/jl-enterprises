@@ -12,6 +12,7 @@ import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -36,4 +37,8 @@ public interface OrderRepository extends JpaRepository<Order, UUID>, JpaSpecific
 
     @Query("select count(o) from Order o where o.placedAt >= :from")
     long countPlacedSince(@Param("from") Instant from);
+
+    /** Orders in a date range with the payment eagerly loaded — for the billing summary. */
+    @Query("select o from Order o left join fetch o.payment where o.placedAt between :from and :to")
+    List<Order> findWithPaymentBetween(@Param("from") Instant from, @Param("to") Instant to);
 }

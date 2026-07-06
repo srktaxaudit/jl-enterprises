@@ -20,6 +20,7 @@ import in.jlenterprises.ecommerce.entity.Product;
 import in.jlenterprises.ecommerce.entity.User;
 import in.jlenterprises.ecommerce.exception.BusinessException;
 import in.jlenterprises.ecommerce.exception.ResourceNotFoundException;
+import in.jlenterprises.ecommerce.config.BillingConfig;
 import in.jlenterprises.ecommerce.mapper.OrderMapper;
 import in.jlenterprises.ecommerce.repository.AddressRepository;
 import in.jlenterprises.ecommerce.repository.CartRepository;
@@ -58,12 +59,13 @@ public class OrderServiceImpl implements OrderService {
     private final NotificationService notificationService;
     private final OrderNumberGenerator orderNumberGenerator;
     private final OrderMapper orderMapper;
+    private final BillingConfig billingConfig;
 
     public OrderServiceImpl(OrderRepository orderRepository, CartRepository cartRepository,
                             AddressRepository addressRepository, InventoryRepository inventoryRepository,
                             PaymentRepository paymentRepository, CouponService couponService,
                             NotificationService notificationService, OrderNumberGenerator orderNumberGenerator,
-                            OrderMapper orderMapper) {
+                            OrderMapper orderMapper, BillingConfig billingConfig) {
         this.orderRepository = orderRepository;
         this.cartRepository = cartRepository;
         this.addressRepository = addressRepository;
@@ -73,6 +75,7 @@ public class OrderServiceImpl implements OrderService {
         this.notificationService = notificationService;
         this.orderNumberGenerator = orderNumberGenerator;
         this.orderMapper = orderMapper;
+        this.billingConfig = billingConfig;
     }
 
     @Override
@@ -222,7 +225,8 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional(readOnly = true)
     public InvoiceDto invoice(UUID userId, UUID orderId) {
-        return orderMapper.toInvoice(ownedOrder(userId, orderId));
+        return orderMapper.toInvoice(ownedOrder(userId, orderId), billingConfig.gstRate(),
+                billingConfig.sellerGstin(), billingConfig.sellerName(), billingConfig.sellerAddress());
     }
 
     @Override
