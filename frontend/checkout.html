@@ -245,6 +245,12 @@
     layout.classList.remove("hidden");
     layout.classList.add("grid");
 
+    // Coupon validation is intentionally performed against the authenticated
+    // server-side cart. Mirror the local storefront cart as soon as checkout
+    // opens (not only when Place Order is clicked), otherwise coupon validation
+    // would see an empty/stale cart.
+    const cartReady = JLCheckout.syncCart(cart);
+
     // 3) Render order summary
     const subtotal = cart.reduce((s, it) => s + it.price * it.qty, 0);
     const count = cart.reduce((s, it) => s + it.qty, 0);
@@ -283,6 +289,8 @@
       if (!code) { couponMsg("Enter a coupon code.", false); return; }
       const btn = $("coApply"); btn.disabled = true; const old = btn.textContent; btn.textContent = "…";
       try {
+        const sync = await cartReady;
+        if (sync.added === 0) throw { message: "Your cart could not be validated. Please return to the cart and try again." };
         const r = await JLCheckout.validateCoupon(code);
         appliedCoupon = { code: r.code, discount: r.discount, items: r.items };
         $("coCoupon").value = r.code;
@@ -301,6 +309,8 @@
     // or first-order-consumed coupons are excluded by the backend).
     (async function loadOffers() {
       try {
+        const sync = await cartReady;
+        if (sync.added === 0) return;
         const offers = await JLCheckout.eligibleCoupons();
         if (!offers || !offers.length) { $("coOffers").innerHTML = ""; return; }
         $("coOffers").innerHTML = '<div class="text-[11px] text-slate-400 mb-1">Available offers — tap to apply:</div>' +
@@ -443,7 +453,7 @@
       const btn = $("coPlace");
       btn.disabled = true; const old = btn.textContent; btn.textContent = "Placing order…";
       try {
-        const sync = await JLCheckout.syncCart(cart);
+        const sync = await cartReady;
         if (sync.added === 0) {
           throw { message: "None of your items could be added — they may be out of stock. Please review your cart." };
         }

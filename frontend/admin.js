@@ -35,6 +35,34 @@ const STAFF_ROLES = [
 // Full-access roles that can see/do everything in the admin.
 const SUPER_ROLES = ["ROLE_SUPER_ADMIN", "ROLE_ADMIN"];
 
+// ── Persistent-shell guard ──────────────────────────────────────────────
+// Every admin section runs inside admin-shell.html, whose sidebar never
+// reloads. If an admin content page is opened on its OWN (a bookmark, an old
+// link, or a redirect), bounce it into the shell so the sidebar is always
+// present. Skipped when already embedded (top !== self) or on the shell/login
+// pages themselves. Runs as early as admin.js loads to minimise any flash.
+(function jlEnsureShell() {
+  try {
+    if (window.top !== window.self) return;                 // already inside the shell iframe
+    const file = (location.pathname.split("/").pop() || "").toLowerCase();
+    if (file === "admin-shell.html" || file === "admin-login.html") return;
+    if (!/^admin(?:-[\w-]+)?\.html$/.test(file)) return;    // not an admin content page
+    location.replace("admin-shell.html?page=" + encodeURIComponent(file + location.search + location.hash));
+  } catch (_) { /* if anything is odd, just render the page standalone */ }
+})();
+
+/** The top-level window (the shell when embedded, else this window). Used for
+    navigation/redirects so an auth failure inside the iframe moves the whole app. */
+function jlTopWindow() { return window.top || window; }
+
+/** The shell URL that represents whatever section is currently showing, so it can
+    be preserved across a login redirect. */
+function jlCurrentShellUrl() {
+  const file = location.pathname.split("/").pop() || "admin.html";
+  if (file === "admin-shell.html") return file + location.search;
+  return "admin-shell.html?page=" + encodeURIComponent(file + location.search + location.hash);
+}
+
 // ── token storage ──
 const jlTokens = {
   get access() { return localStorage.getItem(ACCESS_KEY); },
@@ -220,24 +248,21 @@ async function jlRequireAdmin(allowedRoles) {
   try {
     user = await JLAuth.me();
   } catch (_) {
-    const file = location.pathname.split("/").pop() || "admin.html";
-    // The persistent shell keeps its selected section in the query string.
-    // Preserve it across login so a bookmarked Orders/Product/etc. view returns
-    // to the same section after authentication.
-    const returnTo = file === "admin-shell.html" ? file + location.search : file;
-    const back = encodeURIComponent(returnTo);
-    location.replace(JL_LOGIN_PAGE + "?next=" + back);
+    // Preserve the current shell section across login (redirect the top window so
+    // an expiry inside the iframe moves the whole app, not just the frame).
+    const back = encodeURIComponent(jlCurrentShellUrl());
+    jlTopWindow().location.replace(JL_LOGIN_PAGE + "?next=" + back);
     return new Promise(() => {});
   }
   if (!jlIsStaff(user)) {
     await jlNotify("This account does not have staff access.", { title: "Access denied", type: "error" });
-    location.replace("index.html");
+    jlTopWindow().location.replace("index.html");
     return new Promise(() => {});
   }
   // MANAGER has broad operational access; super-admins always pass.
   if (allowedRoles && allowedRoles.length && !jlIsSuper(user) && !jlHasRole(user, "MANAGER", ...allowedRoles)) {
     await jlNotify("You don't have access to this section.", { title: "Access denied", type: "warn" });
-    location.replace("admin.html");
+    jlTopWindow().location.replace("admin-shell.html");
     return new Promise(() => {});
   }
   return user;
@@ -248,7 +273,7 @@ async function jlRequireSuper() {
   const user = await jlRequireAdmin();
   if (!jlIsSuper(user)) {
     await jlNotify("This section is restricted to administrators.", { title: "Restricted", type: "warn" });
-    location.replace("admin.html");
+    jlTopWindow().location.replace("admin-shell.html");
     return new Promise(() => {});
   }
   return user;

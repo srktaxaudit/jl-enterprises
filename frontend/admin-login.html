@@ -74,9 +74,14 @@
 
   function nextPage() {
     const next = new URLSearchParams(location.search).get("next");
-    // Only allow a same-folder admin document and its optional query/hash. This
-    // supports deep links into the persistent shell without permitting an open redirect.
-    return next && /^admin(?:-[\w-]+)?\.html(?:\?[^#]*)?(?:#.*)?$/.test(next) ? next : "admin.html";
+    // Only allow a same-folder admin document and its optional query/hash — prevents
+    // an open redirect. Everything runs inside the persistent shell, so a bare section
+    // page (e.g. admin-orders.html) is wrapped into admin-shell.html?page=… so the
+    // sidebar is always present.
+    const ok = next && /^admin(?:-[\w-]+)?\.html(?:\?[^#]*)?(?:#.*)?$/.test(next);
+    if (!ok) return "admin-shell.html";
+    if (/^admin-shell\.html/.test(next)) return next;
+    return "admin-shell.html?page=" + encodeURIComponent(next);
   }
 
   // If already logged in, skip the form.
