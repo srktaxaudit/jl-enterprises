@@ -5,8 +5,10 @@ button,a{font:inherit}
 .admin-shell{display:grid;grid-template-columns:var(--sidebar) minmax(0,1fr);height:100dvh;background:#eef1f6}
 .admin-sidebar{position:relative;z-index:40;display:flex;min-width:0;flex-direction:column;height:100dvh;color:#cbd5e1;background:linear-gradient(180deg,var(--navy),var(--navy2));box-shadow:8px 0 28px rgba(15,23,42,.09);transition:width .2s ease,transform .22s ease}
 .admin-brand{height:74px;flex:0 0 74px;display:flex;align-items:center;gap:10px;padding:0 14px 0 18px;border-bottom:1px solid rgba(255,255,255,.1);overflow:hidden}
-.admin-logo{width:42px;height:36px;flex:0 0 42px;border-radius:9px;background:rgba(255,255,255,.1);display:grid;place-items:center;color:#fff;font-weight:800}
-.admin-logo img{display:block;max-width:100%;max-height:100%;object-fit:contain}
+.admin-logo{width:42px;height:36px;flex:0 0 42px;border-radius:9px;background:rgba(255,255,255,.1);display:grid;place-items:center;color:#fff;font-weight:800;overflow:hidden}
+/* Branding applies inline dimensions for larger storefront logos. Override those
+   dimensions inside the compact admin badge so the full logo stays contained. */
+.admin-logo img{display:block;width:100%!important;height:100%!important;max-width:100%!important;max-height:100%!important;object-fit:contain!important;object-position:center}
 .admin-brand-copy{min-width:132px;white-space:nowrap}.admin-brand-copy strong{display:block;font-size:14px;color:#fff}.admin-brand-copy span{display:block;margin-top:2px;font-size:9px;letter-spacing:.12em;color:#a5d7e8}
 .admin-collapse{margin-left:auto;width:28px;height:28px;flex:0 0 28px;border:0;border-radius:8px;background:rgba(255,255,255,.08);color:#cbd5e1;font-size:22px;line-height:1;cursor:pointer}
 .admin-collapse:hover{background:rgba(255,255,255,.14);color:#fff}
