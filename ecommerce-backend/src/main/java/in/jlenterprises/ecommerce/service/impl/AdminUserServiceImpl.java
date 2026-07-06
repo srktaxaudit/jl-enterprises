@@ -16,6 +16,7 @@ import in.jlenterprises.ecommerce.repository.UserRepository;
 import in.jlenterprises.ecommerce.request.admin.StaffRequest;
 import in.jlenterprises.ecommerce.security.SecurityUtils;
 import in.jlenterprises.ecommerce.service.AdminUserService;
+import in.jlenterprises.ecommerce.service.RefreshTokenService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -45,14 +46,17 @@ public class AdminUserServiceImpl implements AdminUserService {
     private final UserMapper userMapper;
     private final RoleMapper roleMapper;
     private final PasswordEncoder passwordEncoder;
+    private final RefreshTokenService refreshTokenService;
 
     public AdminUserServiceImpl(UserRepository userRepository, RoleRepository roleRepository,
-                                UserMapper userMapper, RoleMapper roleMapper, PasswordEncoder passwordEncoder) {
+                                UserMapper userMapper, RoleMapper roleMapper, PasswordEncoder passwordEncoder,
+                                RefreshTokenService refreshTokenService) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.userMapper = userMapper;
         this.roleMapper = roleMapper;
         this.passwordEncoder = passwordEncoder;
+        this.refreshTokenService = refreshTokenService;
     }
 
     @Override
@@ -181,6 +185,7 @@ public class AdminUserServiceImpl implements AdminUserService {
         u.setDeleted(true);
         u.setEnabled(false);
         userRepository.save(u);
+        refreshTokenService.revokeAll(u);   // a stolen refresh token must stop working once the account is removed
     }
 
     // ── helpers ──

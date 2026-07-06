@@ -183,7 +183,7 @@
     try {
       if(b.dataset.edit) return edit(b.dataset.edit);
       if(b.dataset.pwd){ const pw = await jlPrompt("New password (min 8 chars: upper, lower, number, symbol):", {title:"Reset password", inputType:"text", required:true, validate:jlV.strongPassword()}); if(pw===null) return;
-        await jlApi(`/api/v1/admin/staff/${b.dataset.pwd}/reset-password?password=${encodeURIComponent(pw)}`, {method:"POST"}); jlToast("Password reset.", {type:"success"}); return; }
+        await jlApi(`/api/v1/admin/staff/${b.dataset.pwd}/reset-password`, {method:"POST", body:{password:pw}}); jlToast("Password reset.", {type:"success"}); return; }
       if(b.dataset.toggle){ await jlApi(`/api/v1/admin/staff/${b.dataset.toggle}/status?enabled=${b.dataset.on}`, {method:"PATCH"}); jlToast("Status updated.", {type:"success"}); load(); return; }
       if(b.dataset.del){ if(!(await jlConfirm("Remove this staff account?", {danger:true, confirmText:"Remove"}))) return;
         await jlApi(`/api/v1/admin/staff/${b.dataset.del}`, {method:"DELETE"}); jlToast("Staff removed.", {type:"success"}); load(); }

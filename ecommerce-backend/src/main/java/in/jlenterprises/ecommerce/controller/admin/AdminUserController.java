@@ -36,7 +36,7 @@ public class AdminUserController {
     }
 
     @GetMapping("/users")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MANAGER','CUSTOMER_SUPPORT','ORDER_MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MANAGER')")
     @Operation(summary = "List users (paged, optional search)")
     public ApiResponse<PageResponse<UserDto>> listUsers(@RequestParam(required = false) String search,
                                                         @PageableDefault(size = 20) Pageable pageable) {
@@ -44,7 +44,7 @@ public class AdminUserController {
     }
 
     @GetMapping("/users/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MANAGER','CUSTOMER_SUPPORT','ORDER_MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MANAGER')")
     @Operation(summary = "Get a user by id")
     public ApiResponse<UserDto> getUser(@PathVariable UUID id) {
         return ApiResponse.success(adminUserService.getUser(id));

@@ -13,6 +13,16 @@ import java.util.List;
 @Service
 public class SettingServiceImpl implements SettingService {
 
+    // Settings are business config, not a secret store (real secrets live in env
+    // vars). As defense-in-depth, never echo back a value whose key looks like a
+    // credential — so an accidentally-stored secret can't leak via the admin API.
+    private static final java.util.regex.Pattern SENSITIVE_KEY =
+            java.util.regex.Pattern.compile("(?i)(secret|token|password|passwd|api[_-]?key|private[_-]?key|access[_-]?key)");
+
+    private static boolean isSensitive(String key) {
+        return key != null && SENSITIVE_KEY.matcher(key).find();
+    }
+
     private final AppSettingRepository repository;
 
     public SettingServiceImpl(AppSettingRepository repository) {
@@ -23,7 +33,9 @@ public class SettingServiceImpl implements SettingService {
     @Transactional(readOnly = true)
     public List<SettingDto> list() {
         return repository.findAll().stream()
-                .map(s -> new SettingDto(s.getKey(), s.getValue(), s.getUpdatedAt()))
+                .map(s -> new SettingDto(s.getKey(),
+                        isSensitive(s.getKey()) ? "••••••••" : s.getValue(),
+                        s.getUpdatedAt()))
                 .toList();
     }
 

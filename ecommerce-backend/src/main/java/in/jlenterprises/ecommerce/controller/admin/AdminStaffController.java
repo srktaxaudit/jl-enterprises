@@ -1,6 +1,7 @@
 package in.jlenterprises.ecommerce.controller.admin;
 
 import in.jlenterprises.ecommerce.dto.auth.UserDto;
+import in.jlenterprises.ecommerce.request.admin.PasswordResetRequest;
 import in.jlenterprises.ecommerce.request.admin.StaffRequest;
 import in.jlenterprises.ecommerce.response.ApiResponse;
 import in.jlenterprises.ecommerce.response.PageResponse;
@@ -67,8 +68,8 @@ public class AdminStaffController {
 
     @PostMapping("/{id}/reset-password")
     @Operation(summary = "Reset a staff member's password")
-    public ApiResponse<UserDto> resetPassword(@PathVariable UUID id, @RequestParam String password) {
-        return ApiResponse.success("Password reset", adminUserService.resetPassword(id, password));
+    public ApiResponse<UserDto> resetPassword(@PathVariable UUID id, @Valid @RequestBody PasswordResetRequest request) {
+        return ApiResponse.success("Password reset", adminUserService.resetPassword(id, request.password()));
     }
 
     @DeleteMapping("/{id}")

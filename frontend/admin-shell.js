@@ -2,11 +2,11 @@
   "use strict";
 
   const NAV = [
-    ["Overview",[["Dashboard","📊","admin.html"],["Orders","📥","admin-orders.html","ORDER_MANAGER,CUSTOMER_SUPPORT"],["Billing","🧾","admin-billing.html","@admin"]]],
+    ["Overview",[["Dashboard","📊","admin.html"],["Orders","📥","admin-orders.html","ORDER_MANAGER,CUSTOMER_SUPPORT"]]],
     ["Catalog & Sales",[["Products","📦","admin-products.html","PRODUCT_MANAGER"],["Inventory","🗂️","admin-inventory.html","INVENTORY_MANAGER"],["Offers & Deals","🏷️","admin-offers.html","MARKETING_MANAGER"]]],
-    ["Engage",[["Customers (CRM)","👥","admin-customers.html","CUSTOMER_SUPPORT"],["Reviews","⭐","admin-reviews.html","MARKETING_MANAGER,CUSTOMER_SUPPORT"],["Service Bookings","🔧","admin-service.html","CUSTOMER_SUPPORT"],["WhatsApp Offers","💬","admin-whatsapp.html","MARKETING_MANAGER"]]],
-    ["Accounting",[["Chart of Accounts","📒","admin-accounts.html","ACCOUNTANT"],["Invoices & Bills","🧾","admin-vouchers.html","ACCOUNTANT"],["Journal / Vouchers","✍️","admin-journal.html","ACCOUNTANT"],["Ledgers","📚","admin-ledgers.html","ACCOUNTANT"],["Financial Reports","📈","admin-reports.html","ACCOUNTANT"],["GST Returns","🧮","admin-gst.html","ACCOUNTANT"],["Outstanding & Cashflow","📆","admin-outstanding.html","ACCOUNTANT"],["Import / Export","🔄","admin-data.html","ACCOUNTANT"]]],
-    ["Control",[["Staff","🧑‍💼","admin-staff.html","@admin"],["Team & Roles","👤","admin-team.html","@admin"],["Activity Logs","📜","admin-logs.html","@admin"],["Logo & Branding","🖼️","admin-branding.html","@admin"],["Settings","⚙️","admin-settings.html","@admin"]]]
+    ["Engage",[["Customers (CRM)","👥","admin-customers.html","MANAGER"],["Reviews","⭐","admin-reviews.html","MARKETING_MANAGER,CUSTOMER_SUPPORT"],["Service Bookings","🔧","admin-service.html","CUSTOMER_SUPPORT"],["WhatsApp Offers","💬","admin-whatsapp.html","MARKETING_MANAGER"]]],
+    ["Accounting",[["Billing","🧾","admin-billing.html","@admin"],["Chart of Accounts","📒","admin-accounts.html","ACCOUNTANT"],["Invoices & Bills","🧾","admin-vouchers.html","ACCOUNTANT"],["Journal / Vouchers","✍️","admin-journal.html","ACCOUNTANT"],["Ledgers","📚","admin-ledgers.html","ACCOUNTANT"],["Financial Reports","📈","admin-reports.html","ACCOUNTANT"],["GST Returns","🧮","admin-gst.html","ACCOUNTANT"],["Outstanding & Cashflow","📆","admin-outstanding.html","ACCOUNTANT"]]],
+    ["Control",[["Staff","🧑‍💼","admin-staff.html","@admin"],["Team & Roles","👤","admin-team.html","@admin"],["Activity Logs","📜","admin-logs.html","@admin"],["Import / Export","🔄","admin-data.html","ACCOUNTANT"],["Logo & Branding","🖼️","admin-branding.html","@admin"],["Settings","⚙️","admin-settings.html","@admin"]]]
   ];
   const shell = document.getElementById("adminShell");
   const nav = document.getElementById("adminNav");
