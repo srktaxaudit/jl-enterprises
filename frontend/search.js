@@ -1,5 +1,11 @@
 /* ════════════════════════════════════════════════════════════════════
-   JL ENTERPRISES — enhanced storefront search (progressive enhancement).
+   JL ENTERPRISES — storefront UI enhancements (progressive enhancement).
+
+   TWO things run here, both on every storefront page:
+     A) injectPolish() — site-wide interaction polish: consistent hover states,
+        a visible keyboard focus ring (a11y), smooth transitions, press feedback.
+     B) the enhanced search bar (below) — a no-op on pages without a search form.
+
 
    Upgrades the plain header search form into a modern search experience:
      • prominent, branded styling with a search icon + clear (×) button
@@ -60,9 +66,9 @@
     if (document.getElementById("jl-search-styles")) return;
     var css = ''
       + '.jl-search{position:relative;flex:1;display:flex;align-items:center;gap:6px;min-width:0;'
-      + 'background:#fff;border:1.5px solid #e2e8f0;border-radius:14px;padding:0 6px 0 12px;'
-      + 'transition:border-color .18s ease,box-shadow .18s ease;box-shadow:0 1px 2px rgba(15,23,42,.04)}'
-      + '.jl-search:hover{border-color:#cbd5e1}'
+      + 'background:#fff;border:1.5px solid #cbd5e1;border-radius:14px;padding:0 6px 0 12px;'
+      + 'transition:border-color .18s ease,box-shadow .18s ease;box-shadow:0 1px 2px rgba(15,23,42,.05)}'
+      + '.jl-search:hover{border-color:#94a3b8}'
       + '.jl-search.is-focus{border-color:#576cbc;box-shadow:0 0 0 3px rgba(87,108,188,.18),0 10px 24px rgba(15,23,42,.10)}'
       + '.jl-search-ic{display:flex;color:#94a3b8;flex:0 0 auto;transition:color .18s ease}'
       + '.jl-search.is-focus .jl-search-ic{color:#576cbc}'
@@ -325,9 +331,44 @@
     } catch (_) {}
   }
 
+  // ── Global interaction polish (applies to every storefront page) ──────
+  // Adds consistent hover feedback to elements that lacked it (header nav
+  // links, footer links), a visible keyboard focus ring on all interactive
+  // elements (accessibility), smooth transitions, and press feedback. Injected
+  // last so it wins CSS ties; written to NOT fight existing Tailwind hovers
+  // (the navy category strip keeps its own hover via higher specificity, and
+  // the search input keeps its own focus ring via :not()).
+  function injectPolish() {
+    if (document.getElementById("jl-ui-polish")) return;
+    var css = ''
+      + 'a,button,[role="button"],input,select,textarea,.product-card,summary{'
+      + 'transition:color .18s ease,background-color .18s ease,border-color .18s ease,'
+      + 'box-shadow .18s ease,transform .16s ease,opacity .18s ease}'
+      // keyboard focus visibility — the search input keeps its own ring
+      + 'a:focus-visible,button:focus-visible,[role="button"]:focus-visible,[tabindex]:focus-visible,'
+      + 'select:focus-visible,textarea:focus-visible,input:focus-visible:not(.jl-search-input){'
+      + 'outline:2px solid #576cbc;outline-offset:2px}'
+      // header top-nav links (Service, Sign Up, Login, Cart, My Orders, Logout, Profile)
+      + 'header>div>nav a:hover{color:#576cbc}'
+      + 'header>div>nav a>span:first-child{display:inline-block;transition:transform .16s ease}'
+      + 'header>div>nav a:hover>span:first-child{transform:translateY(-2px) scale(1.08)}'
+      // press feedback on nav links and any button
+      + 'header>div>nav a:active,button:not(:disabled):active{transform:scale(.96)}'
+      // footer links
+      + 'footer a{transition:color .16s ease}'
+      + 'footer a:hover{color:#fff}'
+      // ensure pointer cursor on card actions
+      + '.product-card a,.product-card button{cursor:pointer}';
+    var st = document.createElement("style");
+    st.id = "jl-ui-polish";
+    st.textContent = css;
+    (document.head || document.documentElement).appendChild(st);
+  }
+
   function boot() {
+    injectPolish();                           // site-wide interaction polish (runs on every page)
     var input = document.querySelector('header input[name="q"], header #searchInput, #searchInput');
-    if (!input) return;                       // no header search on this page → nothing to do
+    if (!input) return;                       // no header search on this page → search enhancement is a no-op
     var form = input.closest("form");
     if (!form) return;
     injectStyles();
