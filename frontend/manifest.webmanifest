@@ -1,0 +1,14 @@
+{
+  "name": "JL Admin",
+  "short_name": "JL Admin",
+  "description": "JL Enterprises store admin — orders, products, inventory, accounting.",
+  "start_url": "/admin-login.html",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b2447",
+  "theme_color": "#0b2447",
+  "icons": [
+    { "src": "jl-admin-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

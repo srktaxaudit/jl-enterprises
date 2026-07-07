@@ -5,6 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="robots" content="noindex, nofollow" />
 <title>Admin Login — JL Enterprises</title>
+<!-- Installable admin app (PWA) -->
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#0b2447" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="JL Admin" />
+<link rel="apple-touch-icon" href="jl-admin-icon.svg" />
+<link rel="icon" href="jl-admin-icon.svg" />
+<script>if("serviceWorker" in navigator){addEventListener("load",function(){navigator.serviceWorker.register("admin-sw.js").catch(function(){});});}</script>
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
   tailwind.config = {
