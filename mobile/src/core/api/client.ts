@@ -85,16 +85,16 @@ export async function apiGet<T>(url: string, params?: Record<string, unknown>): 
   const res = await http.get<ApiResponse<T>>(url, { params });
   return res.data.data;
 }
-export async function apiPost<T>(url: string, body?: unknown): Promise<T> {
-  const res = await http.post<ApiResponse<T>>(url, body);
+export async function apiPost<T>(url: string, body?: unknown, params?: Record<string, unknown>): Promise<T> {
+  const res = await http.post<ApiResponse<T>>(url, body, { params });
   return res.data.data;
 }
-export async function apiPut<T>(url: string, body?: unknown): Promise<T> {
-  const res = await http.put<ApiResponse<T>>(url, body);
+export async function apiPut<T>(url: string, body?: unknown, params?: Record<string, unknown>): Promise<T> {
+  const res = await http.put<ApiResponse<T>>(url, body, { params });
   return res.data.data;
 }
-export async function apiPatch<T>(url: string, body?: unknown): Promise<T> {
-  const res = await http.patch<ApiResponse<T>>(url, body);
+export async function apiPatch<T>(url: string, body?: unknown, params?: Record<string, unknown>): Promise<T> {
+  const res = await http.patch<ApiResponse<T>>(url, body, { params });
   return res.data.data;
 }
 export async function apiDelete<T>(url: string): Promise<T> {

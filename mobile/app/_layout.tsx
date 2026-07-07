@@ -23,6 +23,12 @@ export default function RootLayout() {
             <StatusBar style="auto" />
             <Stack screenOptions={{ headerShown: false }}>
               <Stack.Screen name="order/[id]" options={{ headerShown: true, title: "Order" }} />
+              <Stack.Screen name="inventory" options={{ headerShown: true, title: "Inventory" }} />
+              <Stack.Screen name="offers" options={{ headerShown: true, title: "Offers & Deals" }} />
+              <Stack.Screen name="customers" options={{ headerShown: true, title: "Customers" }} />
+              <Stack.Screen name="reviews" options={{ headerShown: true, title: "Reviews" }} />
+              <Stack.Screen name="service" options={{ headerShown: true, title: "Service Bookings" }} />
+              <Stack.Screen name="exchange" options={{ headerShown: true, title: "Exchange Requests" }} />
             </Stack>
           </ThemeProvider>
         </QueryClientProvider>
