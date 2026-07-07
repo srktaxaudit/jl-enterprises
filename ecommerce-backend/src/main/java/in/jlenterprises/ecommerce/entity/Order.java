@@ -74,8 +74,10 @@ public class Order extends BaseEntity {
     @JoinColumn(name = "coupon_id", foreignKey = @jakarta.persistence.ForeignKey(name = "fk_order_coupon"))
     private Coupon coupon;
 
-    /** Trade-in value applied from an approved exchange request (0 if none). */
-    @Column(name = "exchange_value", nullable = false, precision = 12, scale = 2)
+    /** Trade-in value applied from an approved exchange request (0/none).
+        Nullable at the DB level so ddl-auto=update can add the column to the
+        existing orders table without a NOT NULL rewrite; new orders always set it. */
+    @Column(name = "exchange_value", precision = 12, scale = 2)
     private BigDecimal exchangeValue = BigDecimal.ZERO;
 
     /** The exchange request consumed by this order (null if none). */
