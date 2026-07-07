@@ -28,7 +28,7 @@ export const MODULES: AdminModule[] = [
   { key: "reviews", label: "Reviews", icon: "⭐", route: "/reviews", rule: "MARKETING_MANAGER,CUSTOMER_SUPPORT", group: "Engage", built: true },
   { key: "service", label: "Service Bookings", icon: "🔧", route: "/service", rule: "CUSTOMER_SUPPORT", group: "Engage", built: true },
   { key: "exchange", label: "Exchange Requests", icon: "♻️", route: "/exchange", rule: "CUSTOMER_SUPPORT,MANAGER", group: "Engage", built: true },
-  { key: "whatsapp", label: "WhatsApp Offers", icon: "💬", route: "/(app)/whatsapp", rule: "MARKETING_MANAGER", group: "Engage", built: false },
+  { key: "whatsapp", label: "WhatsApp Offers", icon: "💬", route: "/whatsapp", rule: "MARKETING_MANAGER", group: "Engage", built: true },
   { key: "billing", label: "Billing", icon: "🧾", route: "/(app)/billing", rule: "@admin", group: "Accounting", built: false },
   { key: "accounts", label: "Chart of Accounts", icon: "📒", route: "/(app)/accounts", rule: "ACCOUNTANT", group: "Accounting", built: false },
   { key: "vouchers", label: "Invoices & Bills", icon: "🧾", route: "/(app)/vouchers", rule: "ACCOUNTANT", group: "Accounting", built: false },
@@ -37,12 +37,12 @@ export const MODULES: AdminModule[] = [
   { key: "reports", label: "Financial Reports", icon: "📈", route: "/(app)/reports", rule: "ACCOUNTANT", group: "Accounting", built: false },
   { key: "gst", label: "GST Returns", icon: "🧮", route: "/(app)/gst", rule: "ACCOUNTANT", group: "Accounting", built: false },
   { key: "outstanding", label: "Outstanding & Cashflow", icon: "📆", route: "/(app)/outstanding", rule: "ACCOUNTANT", group: "Accounting", built: false },
-  { key: "staff", label: "Staff", icon: "🧑‍💼", route: "/(app)/staff", rule: "@admin", group: "Control", built: false },
-  { key: "team", label: "Team & Roles", icon: "👤", route: "/(app)/team", rule: "@admin", group: "Control", built: false },
-  { key: "logs", label: "Activity Logs", icon: "📜", route: "/(app)/logs", rule: "@admin", group: "Control", built: false },
+  { key: "staff", label: "Staff", icon: "🧑‍💼", route: "/staff", rule: "@admin", group: "Control", built: true },
+  { key: "team", label: "Team & Roles", icon: "👤", route: "/team", rule: "@admin", group: "Control", built: true },
+  { key: "logs", label: "Activity Logs", icon: "📜", route: "/logs", rule: "@admin", group: "Control", built: true },
   { key: "data", label: "Import / Export", icon: "🔄", route: "/(app)/data", rule: "ACCOUNTANT", group: "Control", built: false },
-  { key: "branding", label: "Logo & Branding", icon: "🖼️", route: "/(app)/branding", rule: "@admin", group: "Control", built: false },
-  { key: "settings", label: "Settings", icon: "⚙️", route: "/(app)/settings", rule: "@admin", group: "Control", built: false },
+  { key: "branding", label: "Logo & Branding", icon: "🖼️", route: "/branding", rule: "@admin", group: "Control", built: true },
+  { key: "settings", label: "Settings", icon: "⚙️", route: "/settings", rule: "@admin", group: "Control", built: true },
 ];
 
 export const GROUP_ORDER: AdminModule["group"][] = [
