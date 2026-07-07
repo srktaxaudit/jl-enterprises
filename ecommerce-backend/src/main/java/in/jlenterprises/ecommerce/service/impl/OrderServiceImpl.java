@@ -60,12 +60,14 @@ public class OrderServiceImpl implements OrderService {
     private final OrderNumberGenerator orderNumberGenerator;
     private final OrderMapper orderMapper;
     private final BillingConfig billingConfig;
+    private final in.jlenterprises.ecommerce.service.ExchangeService exchangeService;
 
     public OrderServiceImpl(OrderRepository orderRepository, CartRepository cartRepository,
                             AddressRepository addressRepository, InventoryRepository inventoryRepository,
                             PaymentRepository paymentRepository, CouponService couponService,
                             NotificationService notificationService, OrderNumberGenerator orderNumberGenerator,
-                            OrderMapper orderMapper, BillingConfig billingConfig) {
+                            OrderMapper orderMapper, BillingConfig billingConfig,
+                            in.jlenterprises.ecommerce.service.ExchangeService exchangeService) {
         this.orderRepository = orderRepository;
         this.cartRepository = cartRepository;
         this.addressRepository = addressRepository;
@@ -76,6 +78,7 @@ public class OrderServiceImpl implements OrderService {
         this.orderNumberGenerator = orderNumberGenerator;
         this.orderMapper = orderMapper;
         this.billingConfig = billingConfig;
+        this.exchangeService = exchangeService;
     }
 
     @Override
@@ -123,8 +126,17 @@ public class OrderServiceImpl implements OrderService {
             discount = applied.discount();
         }
 
+        // 3b) Exchange (trade-in) credit. Validated against the user + approved value;
+        // capped so it never exceeds the post-coupon merchandise total.
+        BigDecimal exchangeValue = BigDecimal.ZERO;
+        if (request.exchangeRequestId() != null) {
+            BigDecimal credit = exchangeService.valueForCheckout(userId, request.exchangeRequestId());
+            exchangeValue = credit.min(subtotal.subtract(discount).max(BigDecimal.ZERO));
+        }
+
         // 4) Totals.
-        BigDecimal base = subtotal.subtract(discount);
+        BigDecimal base = subtotal.subtract(discount).subtract(exchangeValue);
+        if (base.signum() < 0) base = BigDecimal.ZERO;
         BigDecimal shipping_ = base.compareTo(FREE_SHIPPING_THRESHOLD) >= 0 ? BigDecimal.ZERO : FLAT_SHIPPING;
         BigDecimal tax = BigDecimal.ZERO;
         BigDecimal grand = base.add(tax).add(shipping_);
@@ -140,6 +152,10 @@ public class OrderServiceImpl implements OrderService {
         order.setShippingTotal(shipping_);
         order.setGrandTotal(grand);
         order.setCurrency("INR");
+        order.setExchangeValue(exchangeValue);
+        if (request.exchangeRequestId() != null && exchangeValue.signum() > 0) {
+            order.setExchangeRequestId(request.exchangeRequestId());
+        }
         if (applied != null) order.setCoupon(applied.coupon());
         order.setShippingAddress(snapshot(shipping));
         order.setBillingAddress(snapshot(billing));
@@ -170,8 +186,11 @@ public class OrderServiceImpl implements OrderService {
         paymentRepository.save(payment);
         saved.setPayment(payment);
 
-        // 7) Record coupon usage, empty the cart, notify.
+        // 7) Record coupon usage, consume the exchange, empty the cart, notify.
         if (applied != null) couponService.recordUsage(applied, user, saved);
+        if (saved.getExchangeRequestId() != null) {
+            exchangeService.applyToOrder(saved.getExchangeRequestId(), saved.getId());
+        }
         cart.getItems().clear();
         cartRepository.save(cart);
         notificationService.notifyUser(userId, NotificationType.ORDER, "Order placed",

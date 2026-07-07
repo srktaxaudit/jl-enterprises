@@ -74,6 +74,14 @@ public class Order extends BaseEntity {
     @JoinColumn(name = "coupon_id", foreignKey = @jakarta.persistence.ForeignKey(name = "fk_order_coupon"))
     private Coupon coupon;
 
+    /** Trade-in value applied from an approved exchange request (0 if none). */
+    @Column(name = "exchange_value", nullable = false, precision = 12, scale = 2)
+    private BigDecimal exchangeValue = BigDecimal.ZERO;
+
+    /** The exchange request consumed by this order (null if none). */
+    @Column(name = "exchange_request_id")
+    private java.util.UUID exchangeRequestId;
+
     @Embedded
     @AttributeOverrides({
             @AttributeOverride(name = "fullName",   column = @Column(name = "ship_full_name", length = 120)),

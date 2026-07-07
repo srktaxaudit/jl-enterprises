@@ -11,6 +11,8 @@ public record PlaceOrderRequest(
         @NotNull UUID shippingAddressId,
         UUID billingAddressId,
         String couponCode,
+        /** Optional: an approved exchange request to apply as a trade-in credit. */
+        UUID exchangeRequestId,
         @NotNull PaymentMethod paymentMethod,
         @Size(max = 500) String notes
 ) {}
