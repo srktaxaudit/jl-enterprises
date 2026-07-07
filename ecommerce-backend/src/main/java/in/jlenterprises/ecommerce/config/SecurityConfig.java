@@ -132,10 +132,10 @@ public class SecurityConfig {
         if (originPatterns.stream().noneMatch(o -> o.contains("*.vercel.app"))) {
             originPatterns.add("https://*.vercel.app");
         }
-        // The production custom domain (MilesWeb-registered, served by Vercel). Added
-        // here so the storefront + admin work on it without needing CORS_ORIGINS env
-        // changes. Apex + www.
-        for (String origin : List.of("https://srktaxaudit.com", "https://www.srktaxaudit.com")) {
+        // The JL store production domain (served by Vercel). Added here so the
+        // storefront + admin work on it without needing CORS_ORIGINS env changes.
+        // Apex + www.
+        for (String origin : List.of("https://jlstores.in", "https://www.jlstores.in")) {
             if (!originPatterns.contains(origin)) originPatterns.add(origin);
         }
         cfg.setAllowedOriginPatterns(originPatterns);
