@@ -122,13 +122,26 @@
   };
 
   // ── Auth gate ──
-  if (!JLCustomer.isLoggedIn()) {
+  function showGate() {
+    $("app").classList.add("hidden");
     $("gate").classList.remove("hidden");
     $("loginLink").href = "login.html?next=" + encodeURIComponent("exchange.html");
-  } else {
+  }
+  function showApp() {
+    $("gate").classList.add("hidden");
     $("app").classList.remove("hidden");
     loadProducts();
     loadMine();
+  }
+  // isLoggedIn() only checks a token EXISTS — it may be expired. Validate the
+  // session so a stale token routes to login instead of showing an auth error.
+  if (!JLCustomer.isLoggedIn()) {
+    showGate();
+  } else {
+    jlAuthApi("/api/v1/auth/me").then(showApp).catch((e) => {
+      if (e && e.status === 401) { JLCustomer.logout(); showGate(); }
+      else { showApp(); } // transient/network error — let the page load and retry
+    });
   }
 
   async function loadProducts() {
@@ -147,7 +160,10 @@
       const rows = await JLExchange.mine();
       box.innerHTML = rows.length ? rows.map(card).join("")
         : `<div class="bg-white border border-slate-200 rounded-2xl p-5 text-slate-400 text-sm">No requests yet.</div>`;
-    } catch (e) { box.innerHTML = `<div class="text-red-600 text-sm py-3">Could not load (${esc(e.message||"error")}).</div>`; }
+    } catch (e) {
+      if (e && e.status === 401) { JLCustomer.logout(); showGate(); return; }
+      box.innerHTML = `<div class="text-red-600 text-sm py-3">Could not load (${esc(e.message||"error")}).</div>`;
+    }
   }
 
   function card(r) {
