@@ -160,10 +160,18 @@
           <div id="coOffers" class="mt-1 space-y-1"></div>
         </div>
 
+        <!-- Exchange credit -->
+        <div id="coExchangeWrap" class="hidden border-t border-slate-100 pt-3 mt-3">
+          <label class="block text-[12px] font-semibold text-slate-500 mb-1">♻️ Apply exchange credit</label>
+          <select id="coExchange" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"><option value="">Don't apply</option></select>
+          <p id="coExchangeMsg" class="text-[12px] mt-1 text-green-600"></p>
+        </div>
+
         <div class="border-t border-slate-100 pt-3 mt-3 space-y-2 text-sm">
           <div class="flex justify-between"><span class="text-slate-500">Items</span><span id="coCount">0</span></div>
           <div class="flex justify-between"><span class="text-slate-500">Subtotal</span><span id="coSubtotal">₹0</span></div>
           <div id="coDiscountRow" class="hidden flex justify-between"><span class="text-slate-500">Discount</span><span id="coDiscount" class="text-green-600 font-semibold">-₹0</span></div>
+          <div id="coExchangeRow" class="hidden flex justify-between"><span class="text-slate-500">Exchange credit</span><span id="coExchangeAmt" class="text-green-600 font-semibold">-₹0</span></div>
           <div class="flex justify-between"><span class="text-slate-500">Delivery</span><span class="text-green-600 font-semibold">FREE</span></div>
           <div class="flex justify-between text-lg font-extrabold text-navy pt-1 border-t border-slate-100 mt-1"><span>Total</span><span id="coTotal">₹0</span></div>
         </div>
@@ -270,11 +278,16 @@
 
     // ── Coupons ──
     let appliedCoupon = null;
+    let appliedExchange = null; // { id, value }
     function renderTotals() {
       const disc = appliedCoupon ? Number(appliedCoupon.discount) : 0;
       $("coDiscountRow").classList.toggle("hidden", !appliedCoupon);
       if (appliedCoupon) $("coDiscount").textContent = "-" + jlInr(disc);
-      $("coTotal").textContent = jlInr(Math.max(0, subtotal - disc));
+      // Exchange credit is capped to whatever remains after the coupon.
+      const ex = appliedExchange ? Math.min(Number(appliedExchange.value), Math.max(0, subtotal - disc)) : 0;
+      $("coExchangeRow").classList.toggle("hidden", !ex);
+      if (ex) $("coExchangeAmt").textContent = "-" + jlInr(ex);
+      $("coTotal").textContent = jlInr(Math.max(0, subtotal - disc - ex));
     }
     function couponMsg(t, ok) { const m = $("coCouponMsg"); m.textContent = t || ""; m.style.color = ok ? "#16a34a" : "#dc2626"; }
     function renderCouponDetails(items) {
@@ -305,6 +318,28 @@
       } finally { btn.disabled = false; btn.textContent = old; }
     }
     $("coApply").addEventListener("click", () => applyCoupon($("coCoupon").value));
+
+    // ── Exchange credit (approved trade-ins the customer can apply) ──
+    (async function loadExchange() {
+      try {
+        const opts = await JLExchange.checkoutOptions();
+        if (!opts || !opts.length) return;
+        $("coExchange").innerHTML = '<option value="">Don\'t apply</option>' +
+          opts.map(o => `<option value="${jlEsc(o.id)}" data-value="${o.finalValue}">${jlEsc(o.applianceCategory)} — save ${jlInr(o.finalValue)}</option>`).join("");
+        $("coExchangeWrap").classList.remove("hidden");
+      } catch (_) { /* none / not logged in */ }
+    })();
+    $("coExchange").addEventListener("change", (e) => {
+      const opt = e.target.selectedOptions[0];
+      if (e.target.value && opt) {
+        appliedExchange = { id: e.target.value, value: Number(opt.dataset.value) };
+        $("coExchangeMsg").textContent = "✓ Exchange credit of " + jlInr(appliedExchange.value) + " will be applied.";
+      } else {
+        appliedExchange = null;
+        $("coExchangeMsg").textContent = "";
+      }
+      renderTotals();
+    });
 
     // Show offers THIS customer can actually use (per-user eligible — already-used
     // or first-order-consumed coupons are excluded by the backend).
@@ -466,7 +501,8 @@
         });
         const method = (document.querySelector('input[name="pay"]:checked') || {}).value || "COD";
         const order = await JLCheckout.placeOrder(addr.id, $("coNotes").value.trim(), method,
-                                                  appliedCoupon ? appliedCoupon.code : null);
+                                                  appliedCoupon ? appliedCoupon.code : null,
+                                                  appliedExchange ? appliedExchange.id : null);
 
         if (method === "RAZORPAY") {
           btn.textContent = "Opening payment…";

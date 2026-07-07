@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Exchange your old appliance — JL Enterprises</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = { theme: { extend: { colors: {
+    navy: { DEFAULT: "#0b2447", 600: "#19376d" }, brand: { DEFAULT: "#576cbc", sky: "#a5d7e8" },
+    orange: { DEFAULT: "#f97316", 600: "#ea580c" }, amber: { DEFAULT: "#fbbf24" } },
+    boxShadow: { card: "0 12px 30px rgba(15,23,42,.12)" } } } };
+</script>
+<style> body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .inp{width:100%;border:1.5px solid #cbd5e1;border-radius:10px;padding:10px 12px;font-size:14px;outline:none;background:#fff}
+  .inp:focus{border-color:#576cbc;box-shadow:0 0 0 3px rgba(87,108,188,.15)} label.fld{display:block;font-size:13px;font-weight:600;color:#475569;margin-bottom:5px} </style>
+</head>
+<body class="text-slate-800 bg-[#eef1f6] min-h-screen">
+
+<!-- HEADER -->
+<header class="bg-white border-b border-slate-200 sticky top-0 z-40">
+  <div class="max-w-[1440px] mx-auto px-5 flex items-center gap-5 py-3">
+    <a href="index.html" class="flex items-center gap-2.5 shrink-0"><div class="w-12 h-10 rounded-lg bg-gradient-to-br from-navy to-brand text-white font-extrabold flex items-center justify-center text-lg">JL</div><div class="leading-tight hidden sm:block"><div class="font-extrabold text-navy">JL ENTERPRISES</div><div class="text-[10px] font-semibold text-slate-400 tracking-wider">HOME APPLIANCES · THOOTHUKUDI</div></div></a>
+    <form action="index.html" method="get" class="flex-1 flex bg-slate-100 border border-slate-200 rounded-full overflow-hidden"><input name="q" class="flex-1 bg-transparent px-4 py-2.5 text-sm outline-none text-slate-600" placeholder="Search products…" /><button class="bg-navy text-white px-5 font-semibold text-sm">Search</button></form>
+    <nav class="flex items-center gap-4 text-slate-600">
+      <a href="index.html" class="flex flex-col items-center text-[11px]"><span class="text-xl">🏬</span>Store</a>
+      <a href="login.html" class="hidden sm:flex flex-col items-center text-[11px]"><span class="text-xl">👤</span>Login</a>
+      <a href="cart.html" class="relative flex flex-col items-center text-[11px]"><span class="text-xl">🛒</span>Cart<span id="cartBadge" class="hidden absolute -top-1.5 -right-2 bg-orange text-white text-[11px] font-bold w-[18px] h-[18px] rounded-full items-center justify-center">0</span></a>
+    </nav>
+  </div>
+</header>
+
+<main class="max-w-[1000px] mx-auto px-5 py-6">
+  <!-- HERO -->
+  <div class="rounded-3xl p-7 md:p-9 text-white bg-gradient-to-br from-green-700 to-green-500 mb-6 relative overflow-hidden">
+    <div class="pointer-events-none absolute -top-10 -right-8 w-52 h-52 rounded-full bg-white/10 blur-2xl"></div>
+    <span class="inline-block bg-white/15 text-white text-[12px] font-bold px-3 py-1.5 rounded-full mb-3">♻️ EXCHANGE OFFER</span>
+    <h1 class="text-3xl font-bold mb-1.5">Trade in your old appliance</h1>
+    <p class="text-green-50 max-w-[560px]">Tell us about your old AC, fridge, TV or washing machine, upload a few photos, and get an instant estimated exchange value. Our team confirms the final value — then apply it as credit toward a new product at checkout.</p>
+  </div>
+
+  <div id="gate" class="hidden bg-white border border-slate-200 rounded-2xl p-6 text-center">
+    <p class="text-slate-600 mb-4">Please log in to submit an exchange request and track its status.</p>
+    <a id="loginLink" href="login.html" class="inline-block bg-navy hover:bg-orange text-white font-bold px-6 py-2.5 rounded-lg text-sm transition">Log in to continue</a>
+  </div>
+
+  <div id="app" class="hidden grid md:grid-cols-[1.3fr_1fr] gap-6 items-start">
+    <!-- FORM -->
+    <div class="bg-white border border-slate-200 rounded-2xl p-5 md:p-6">
+      <h2 class="text-navy font-bold text-lg mb-4">Your old appliance</h2>
+      <form id="form" novalidate>
+        <div class="grid sm:grid-cols-2 gap-4">
+          <div><label class="fld">Category *</label>
+            <select id="category" class="inp">
+              <option value="">Select…</option>
+              <option>Air Conditioner</option><option>Refrigerator</option><option>Television</option>
+              <option>Washing Machine</option><option>Kitchen Appliance</option><option>Furniture</option><option>Other</option>
+            </select></div>
+          <div><label class="fld">Brand</label><input id="brand" class="inp" placeholder="LG, Samsung, Voltas…" /></div>
+          <div><label class="fld">Model number</label><input id="model" class="inp" placeholder="Optional" /></div>
+          <div><label class="fld">Purchase year</label><input id="year" class="inp" inputmode="numeric" placeholder="e.g. 2019" /></div>
+          <div><label class="fld">Condition *</label>
+            <select id="condition" class="inp">
+              <option value="">Select…</option>
+              <option value="EXCELLENT">Excellent</option><option value="GOOD">Good</option>
+              <option value="FAIR">Fair</option><option value="POOR">Poor</option><option value="NOT_WORKING">Not working</option>
+            </select></div>
+          <div><label class="fld">Working status *</label>
+            <select id="working" class="inp"><option value="true">Working</option><option value="false">Not working</option></select></div>
+        </div>
+        <div class="mt-4"><label class="fld">Reason for exchange</label><textarea id="reason" rows="2" class="inp" placeholder="Optional — e.g. upgrading to a bigger size"></textarea></div>
+        <div class="grid sm:grid-cols-2 gap-4 mt-4">
+          <div><label class="fld">Your expected value (₹)</label><input id="expected" class="inp" inputmode="numeric" placeholder="Optional" /></div>
+          <div><label class="fld">New product you want</label><select id="product" class="inp"><option value="">Optional — choose later</option></select></div>
+        </div>
+
+        <div class="mt-4">
+          <label class="fld">Photos of the old appliance</label>
+          <input id="photos" type="file" accept="image/png,image/jpeg,image/webp" multiple class="text-sm" />
+          <div id="thumbs" class="flex flex-wrap gap-2 mt-2"></div>
+          <p class="text-[12px] text-slate-400 mt-1">PNG/JPG/WebP, up to 5 MB each. Clear photos help us value it accurately.</p>
+        </div>
+
+        <button type="submit" id="submitBtn" class="mt-5 w-full bg-navy hover:bg-orange text-white font-bold py-3 rounded-lg text-sm transition">Get my exchange estimate →</button>
+      </form>
+    </div>
+
+    <!-- MY REQUESTS -->
+    <div>
+      <div class="bg-white border border-slate-200 rounded-2xl p-5 mb-4">
+        <h3 class="text-navy font-bold mb-1">How it works</h3>
+        <ol class="text-[13px] text-slate-500 list-decimal list-inside space-y-1">
+          <li>Submit your appliance details + photos.</li>
+          <li>Get an instant estimated value.</li>
+          <li>Our team reviews and confirms the final value.</li>
+          <li>Apply the approved credit at checkout on a new product.</li>
+        </ol>
+      </div>
+      <h3 class="text-navy font-bold mb-2 px-1">My exchange requests</h3>
+      <div id="myList" class="space-y-3"></div>
+    </div>
+  </div>
+</main>
+
+<footer class="bg-navy text-slate-400 mt-9 py-6 text-center text-[13px]">© 2026 JL Enterprises, Thoothukudi</footer>
+
+<script src="jl-ui.js"></script>
+<script src="store.js"></script>
+<script src="script.js"></script>
+<script src="search.js"></script>
+<script>
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c)=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+  const inr = (n) => "₹" + Math.round(Number(n || 0)).toLocaleString("en-IN");
+  const uploaded = []; // {url}
+
+  const STATUS_TONE = {
+    PENDING:"bg-blue-50 text-blue-700", UNDER_REVIEW:"bg-amber-50 text-amber-700",
+    INSPECTION_SCHEDULED:"bg-violet-50 text-violet-700", OFFER_SENT:"bg-cyan-50 text-cyan-700",
+    APPROVED:"bg-green-50 text-green-700", REJECTED:"bg-red-50 text-red-700",
+    COMPLETED:"bg-slate-100 text-slate-600", CANCELLED:"bg-slate-100 text-slate-500",
+  };
+
+  // ── Auth gate ──
+  if (!JLCustomer.isLoggedIn()) {
+    $("gate").classList.remove("hidden");
+    $("loginLink").href = "login.html?next=" + encodeURIComponent("exchange.html");
+  } else {
+    $("app").classList.remove("hidden");
+    loadProducts();
+    loadMine();
+  }
+
+  async function loadProducts() {
+    try {
+      const page = await JLStore.products({ size: 100 });
+      const items = (page && page.content) || [];
+      $("product").innerHTML = '<option value="">Optional — choose later</option>' +
+        items.map(p => `<option value="${esc(p.id)}" data-name="${esc(p.name)}">${esc(p.name)} — ${inr(p.price)}</option>`).join("");
+    } catch (_) { /* optional */ }
+  }
+
+  async function loadMine() {
+    const box = $("myList");
+    box.innerHTML = `<div class="text-slate-400 text-sm py-4">${jlSpinnerHTML ? jlSpinnerHTML({label:"Loading"}) : "Loading…"}</div>`;
+    try {
+      const rows = await JLExchange.mine();
+      box.innerHTML = rows.length ? rows.map(card).join("")
+        : `<div class="bg-white border border-slate-200 rounded-2xl p-5 text-slate-400 text-sm">No requests yet.</div>`;
+    } catch (e) { box.innerHTML = `<div class="text-red-600 text-sm py-3">Could not load (${esc(e.message||"error")}).</div>`; }
+  }
+
+  function card(r) {
+    const value = r.finalValue != null ? inr(r.finalValue) + " (approved)" : inr(r.estimatedValue) + " (estimate)";
+    const imgs = (r.imageUrls||[]).slice(0,3).map(u=>`<img src="${esc(u)}" class="w-11 h-11 rounded-lg object-cover border border-slate-200" />`).join("");
+    return `<div class="bg-white border border-slate-200 rounded-2xl p-4">
+      <div class="flex items-center justify-between gap-2">
+        <b class="text-navy text-sm">${esc(r.applianceCategory)}${r.brand?" · "+esc(r.brand):""}</b>
+        <span class="text-[11px] font-bold px-2 py-0.5 rounded-full ${STATUS_TONE[r.status]||"bg-slate-100"}">${esc(r.status)}</span>
+      </div>
+      <div class="text-[13px] text-slate-600 mt-1">Value: <b>${value}</b></div>
+      ${imgs?`<div class="flex gap-1.5 mt-2">${imgs}</div>`:""}
+      ${r.status==="APPROVED"?`<a href="cart.html" class="inline-block mt-2 text-[12px] font-semibold text-brand">Shop & apply at checkout →</a>`:""}
+    </div>`;
+  }
+
+  // ── Image upload ──
+  $("photos") && $("photos").addEventListener("change", async (e) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = "";
+    for (const f of files) {
+      try {
+        const data = await jlWithBusy(() => JLExchange.uploadImage(f), "Uploading photo…");
+        if (data && data.url) { uploaded.push(data.url); renderThumbs(); }
+      } catch (err) { jlToast(err.message || "Upload failed", { type:"error" }); }
+    }
+  });
+  function renderThumbs() {
+    $("thumbs").innerHTML = uploaded.map((u,i)=>`<div class="relative"><img src="${esc(u)}" class="w-16 h-16 rounded-lg object-cover border border-slate-200" /><button type="button" data-rm="${i}" class="absolute -top-1.5 -right-1.5 bg-red-600 text-white w-5 h-5 rounded-full text-[11px] leading-none">×</button></div>`).join("");
+  }
+  $("thumbs") && $("thumbs").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-rm]"); if (!b) return;
+    uploaded.splice(Number(b.dataset.rm), 1); renderThumbs();
+  });
+
+  // ── Submit ──
+  $("form") && $("form").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const category = $("category").value, condition = $("condition").value;
+    if (!category) { jlToast("Please choose a category.", {type:"warn"}); return; }
+    if (!condition) { jlToast("Please choose the condition.", {type:"warn"}); return; }
+    const yearRaw = $("year").value.trim();
+    const prodOpt = $("product").selectedOptions[0];
+    const body = {
+      applianceCategory: category,
+      brand: $("brand").value.trim() || null,
+      modelNumber: $("model").value.trim() || null,
+      purchaseYear: yearRaw ? Number(yearRaw.replace(/\D/g,"")) : null,
+      conditionGrade: condition,
+      working: $("working").value === "true",
+      reason: $("reason").value.trim() || null,
+      expectedValue: $("expected").value ? Number($("expected").value.replace(/[^\d.]/g,"")) : null,
+      desiredProductId: $("product").value || null,
+      desiredProductName: prodOpt && prodOpt.dataset.name ? prodOpt.dataset.name : null,
+      imageUrls: uploaded.slice(),
+    };
+    const btn = $("submitBtn"); jlBtn && jlBtn(btn, true);
+    try {
+      const dto = await jlWithBusy(() => JLExchange.create(body), "Submitting…");
+      await jlAlert(`We've estimated your ${esc(dto.applianceCategory)} at about ${inr(dto.estimatedValue)}. Our team will review your request and confirm the final value — you'll be notified and can apply it at checkout.`,
+        { title: "Exchange request submitted 🎉", type: "success" });
+      $("form").reset(); uploaded.length = 0; renderThumbs();
+      loadMine();
+    } catch (e) {
+      jlToast(e.message || "Could not submit. Please try again.", { type:"error" });
+    } finally { jlBtn && jlBtn(btn, false); }
+  });
+</script>
+</body>
+</html>

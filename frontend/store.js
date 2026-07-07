@@ -154,9 +154,10 @@ const JLCheckout = {
     });
   },
   /** Place an order from the current backend cart. method = "COD" | "RAZORPAY". Returns OrderDto. */
-  placeOrder(shippingAddressId, notes, method, couponCode) {
+  placeOrder(shippingAddressId, notes, method, couponCode, exchangeRequestId) {
     return jlAuthApi("/api/v1/orders",
-      { shippingAddressId, paymentMethod: method || "COD", notes: notes || "", couponCode: couponCode || null });
+      { shippingAddressId, paymentMethod: method || "COD", notes: notes || "",
+        couponCode: couponCode || null, exchangeRequestId: exchangeRequestId || null });
   },
   /** Active coupons (public — for browsing/offers page, no per-user filtering). */
   activeCoupons: () => jlPublicApi("/api/v1/coupons/active"),
@@ -180,6 +181,31 @@ const JLCheckout = {
   cancelOrder: (id, reason) => jlAuthApi("/api/v1/orders/" + encodeURIComponent(id) + "/cancel?reason=" + encodeURIComponent(reason || ""), {}, "POST"),
   requestReturn: (id, reason) => jlAuthApi("/api/v1/orders/" + encodeURIComponent(id) + "/return?reason=" + encodeURIComponent(reason || ""), {}, "POST"),
   invoice: (id) => jlAuthApi("/api/v1/orders/" + encodeURIComponent(id) + "/invoice"),
+};
+
+/* ── Exchange (trade-in) helpers (customer, authenticated) ─────────────── */
+const JLExchange = {
+  create: (body) => jlAuthApi("/api/v1/exchanges", body),
+  mine: () => jlAuthApi("/api/v1/exchanges/mine"),
+  /** Approved, unused exchanges the customer can apply at checkout. */
+  checkoutOptions: () => jlAuthApi("/api/v1/exchanges/checkout-options"),
+  /** Upload one appliance photo (multipart). Returns { url }. */
+  async uploadImage(file) {
+    const fd = new FormData();
+    fd.append("file", file);
+    const tok = localStorage.getItem(JL_CTOK);
+    const res = await fetch(JL_API_BASE + "/api/v1/exchanges/images", {
+      method: "POST",
+      headers: tok ? { Authorization: "Bearer " + tok } : {},
+      body: fd,
+    });
+    let json = null;
+    try { json = await res.json(); } catch (_) { /* empty */ }
+    if (!res.ok || (json && json.success === false)) {
+      throw { status: res.status, message: (json && json.message) || "Upload failed" };
+    }
+    return json ? json.data : null;
+  },
 };
 
 const JLStore = {
