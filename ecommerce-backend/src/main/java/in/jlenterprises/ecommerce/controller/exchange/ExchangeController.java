@@ -45,6 +45,7 @@ public class ExchangeController {
 
     // ── Customer (authenticated) ──
     @PostMapping("/api/v1/exchanges")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Submit an exchange request")
     public ResponseEntity<ApiResponse<ExchangeRequestDto>> create(@Valid @RequestBody ExchangeCreateRequest request) {
         ExchangeRequestDto dto = service.create(SecurityUtils.currentUserId(), request);
@@ -52,18 +53,21 @@ public class ExchangeController {
     }
 
     @GetMapping("/api/v1/exchanges/mine")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "List my exchange requests")
     public ApiResponse<java.util.List<ExchangeRequestDto>> mine() {
         return ApiResponse.success(service.listMine(SecurityUtils.currentUserId()));
     }
 
     @GetMapping("/api/v1/exchanges/checkout-options")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "My approved, unused exchanges (apply at checkout)")
     public ApiResponse<java.util.List<ExchangeRequestDto>> checkoutOptions() {
         return ApiResponse.success(service.checkoutOptions(SecurityUtils.currentUserId()));
     }
 
     @PostMapping("/api/v1/exchanges/images")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Upload an image of the old appliance; returns its URL")
     public ApiResponse<Map<String, String>> uploadImage(@RequestParam("file") MultipartFile file) {
         String url = service.uploadImage(SecurityUtils.currentUserId(), file);

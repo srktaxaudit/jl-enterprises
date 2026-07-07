@@ -144,6 +144,12 @@ public class ExchangeServiceImpl implements ExchangeService {
     @Transactional
     public ExchangeRequestDto updateStatus(UUID id, ExchangeStatus status, String internalNotes) {
         ExchangeRequest e = entity(id);
+        ExchangeStatus from = e.getExchangeStatus();
+        // Guard illegal jumps (e.g. moving out of a terminal state). Re-setting the
+        // same status is allowed so an admin can update notes without a status change.
+        if (from != status && !TRANSITIONS.getOrDefault(from, Set.of()).contains(status)) {
+            throw new BusinessException("Cannot change an exchange request from " + from + " to " + status + ".");
+        }
         e.setExchangeStatus(status);
         if (internalNotes != null) e.setInternalNotes(internalNotes);
         // Approving with no explicit value falls back to the auto-estimate.
@@ -196,6 +202,19 @@ public class ExchangeServiceImpl implements ExchangeService {
     }
 
     // ── helpers ──
+
+    /** Allowed status transitions (admin). Terminal states (REJECTED, COMPLETED,
+        CANCELLED) have no outgoing edges, so a used/closed exchange cannot be reopened. */
+    private static final Map<ExchangeStatus, Set<ExchangeStatus>> TRANSITIONS = Map.of(
+            ExchangeStatus.PENDING, Set.of(ExchangeStatus.UNDER_REVIEW, ExchangeStatus.INSPECTION_SCHEDULED,
+                    ExchangeStatus.OFFER_SENT, ExchangeStatus.APPROVED, ExchangeStatus.REJECTED, ExchangeStatus.CANCELLED),
+            ExchangeStatus.UNDER_REVIEW, Set.of(ExchangeStatus.INSPECTION_SCHEDULED, ExchangeStatus.OFFER_SENT,
+                    ExchangeStatus.APPROVED, ExchangeStatus.REJECTED, ExchangeStatus.CANCELLED),
+            ExchangeStatus.INSPECTION_SCHEDULED, Set.of(ExchangeStatus.OFFER_SENT, ExchangeStatus.APPROVED,
+                    ExchangeStatus.REJECTED, ExchangeStatus.CANCELLED),
+            ExchangeStatus.OFFER_SENT, Set.of(ExchangeStatus.APPROVED, ExchangeStatus.REJECTED, ExchangeStatus.CANCELLED),
+            ExchangeStatus.APPROVED, Set.of(ExchangeStatus.COMPLETED, ExchangeStatus.CANCELLED));
+
     private ExchangeRequest entity(UUID id) {
         return repository.findById(id).orElseThrow(() -> ResourceNotFoundException.of("ExchangeRequest", id));
     }
