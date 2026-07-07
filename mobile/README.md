@@ -4,11 +4,15 @@ Native Android/iOS admin app for JL Enterprises. Talks to the **same** Spring Bo
 API (`https://jl-enterprises-api.onrender.com`) with the same JWT auth, RBAC and
 business rules as the web admin — but with a purpose-built mobile UI.
 
-> **Status: production-grade foundation + reference modules.** The core
-> architecture and the cross-cutting layers are complete, plus three fully-worked
-> modules (**Auth + biometrics, Dashboard, Orders, Products**). The remaining
-> modules are registered in the sidebar/More hub and are built by repeating the
-> Orders/Products pattern (a data hook + a screen). See “Add a module” below.
+> **Status: all admin modules built.** Auth + biometrics, Dashboard, Orders and
+> Products, plus every module in the More hub: Inventory, Offers, Customers,
+> Reviews, Service, Exchange, Staff, Team/Roles, Activity Logs, Settings, WhatsApp,
+> Branding, and the full Accounting suite (Chart of Accounts, Journal, Invoices &
+> Bills, Billing, Financial Reports, GST, Outstanding & Cashflow, Ledgers,
+> Import/Export). Each is a data hook (`src/features/<key>/hooks.ts`) + a screen
+> (`app/<key>.tsx`) following the Orders/Products pattern. Accounting screens are
+> read-focused; heavy data entry (journal posting, invoice creation, file
+> import/export) stays on the web admin.
 
 ## Stack (chosen for maintainability + your JS skills)
 
