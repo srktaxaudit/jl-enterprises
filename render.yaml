@@ -52,7 +52,7 @@ services:
       # ── App ──
       - key: JWT_SECRET
         generateValue: true          # Render generates a strong random value
-      - key: CORS_ORIGINS             # your admin/site origin(s), e.g. https://jlenterprises.vercel.app
+      - key: CORS_ORIGINS             # live origins: https://jlstores.in, https://www.jlstores.in, https://*.vercel.app (deployed host: jl-enterprises-api.onrender.com)
         sync: false
       - key: APP_BOOTSTRAP_ADMIN_PASSWORD
         sync: false

@@ -2,8 +2,6 @@
 
 E-commerce store for **JL Enterprises** (Home Appliances & Furniture, Thoothukudi).
 
-> **Which stack is live?** This repository contains **two** codebases. Read this first so you work on the right one.
-
 ## Architecture (the deployed stack)
 
 The store that is actually built, deployed, and maintained is a **three-part** system:
@@ -20,14 +18,10 @@ The store that is actually built, deployed, and maintained is a **three-part** s
 
 **Deployment & operations are documented in [`DEPLOY.md`](DEPLOY.md); the backend internals in [`ecommerce-backend/README.md`](ecommerce-backend/README.md).** Start there.
 
-### Vercel deploy guard (important)
-The Vercel project's **Root Directory is set to `frontend`** so it serves the static storefront and ignores the Next.js app below. This is currently a **dashboard setting** — if it is ever reset, Vercel would auto-detect and build the legacy Next.js app at the repo root instead. Keep Root Directory = `frontend`.
+### Vercel deploy guard
+The Vercel project's **Root Directory is set to `frontend`** so it serves the static storefront. Keep it that way — there is no build step; the folder is served as-is.
 
-## ⚠️ Legacy Next.js app (reference only — NOT deployed)
-
-An earlier **Next.js 14 + Supabase** implementation of the same store still lives at the repo root (`app/`, `components/`, `lib/`, `middleware.ts`, `next.config.mjs`, `package.json`, `tailwind.config.ts`, `capacitor.config.ts`, `MOBILE.md`, and the various `supabase/*.sql` files). It is **frozen, unmaintained, and not deployed**. Do not build on it. It is kept only for reference and may be archived/removed later.
-
-If you need to run it for reference: `npm install && npm run dev` (opens on `http://localhost:3000`). Its own docs (admin password, phases, Supabase schema) describe *that* app, not the live stack.
+> **History:** an earlier Next.js 14 + Capacitor implementation of the same store once lived at the repo root. It was removed in favour of this static + Spring stack; the only thing to remember is that the leftover `supabase/*.sql` files below belong to that old app (see Database).
 
 ## Run the live stack locally
 
@@ -42,7 +36,7 @@ mvn spring-boot:run          # serves the API on http://localhost:8081
 cd frontend
 python -m http.server 5500   # then open http://localhost:5500/index.html
 ```
-Point the frontend at your API by setting the API base in `frontend/store.js` / `frontend/admin.js` (see those files).
+Point the frontend at your API by setting the single API-base line in `frontend/config.js` (loaded before `store.js` / `admin.js` on every page).
 
 ## Database
 
@@ -55,4 +49,4 @@ The live schema is owned by the Spring backend. During entity development it is 
 | Supabase | Isolated project for JL |
 | Razorpay | JL's own account → settles to JL's bank |
 | WhatsApp | JL's own Meta Business number |
-| Domain | jlenterprises.in (JL-owned) |
+| Domain | jlstores.in (JL-owned) |
