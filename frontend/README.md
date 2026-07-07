@@ -16,14 +16,15 @@ static site. Talks to the backend (`../ecommerce-backend`) over `/api/v1`.
 3. Framework preset: **Other** (static). No build command, output = the folder itself.
 4. Deploy. Pages are served at `/index.html`, `/admin-login.html`, etc.
 
-## Point the admin at your backend
-Edit [`admin.js`](admin.js) and set the production API URL:
+## Point the site at your backend
+The backend URL lives in one place — [`config.js`](config.js), loaded before
+`store.js` / `admin.js` on every page:
 ```js
-// non-localhost branch:
-return "https://jl-ecommerce-api.onrender.com";   // your Render backend URL
+window.JL_API_BASE = window.JL_API_BASE || "https://jl-enterprises-api.onrender.com";
 ```
-Then add this site's Vercel origin (e.g. `https://jlenterprises.vercel.app`) to the
-backend's `CORS_ORIGINS` env var so the browser calls are allowed.
+Change that single line if the API ever moves (e.g. `https://api.jlstores.in`).
+Then add this site's origin (e.g. `https://jlstores.in`) to the backend's
+`CORS_ORIGINS` env var so the browser calls are allowed.
 
 ## Local preview
 Any static server, e.g.:

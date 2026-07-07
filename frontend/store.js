@@ -8,7 +8,7 @@
 const JL_API_BASE = (() => {
   const h = location.hostname;
   if (h === "localhost" || h === "127.0.0.1") return "http://localhost:8081";
-  return "https://jl-enterprises-api.onrender.com";   // Render backend
+  return window.JL_API_BASE;   // single source: config.js (loaded first)
 })();
 
 const jlSleep = (ms) => new Promise((r) => setTimeout(r, ms));

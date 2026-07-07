@@ -18,11 +18,9 @@
   }
 })();
 
-// Where the Spring Boot API lives. Localhost during dev; set the prod URL below.
-const JL_API_BASE = (() => {
-  // The backend runs only on Render, so always call it (even from a local server).
-  return "https://jl-enterprises-api.onrender.com";
-})();
+// Where the Spring Boot API lives. Single source: config.js (loaded first).
+// The backend runs only on Render, so admin always calls it (even from a local server).
+const JL_API_BASE = window.JL_API_BASE;
 
 const JL_LOGIN_PAGE = "admin-login.html";
 const ACCESS_KEY = "jl_access";
