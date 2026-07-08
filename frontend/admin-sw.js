@@ -3,7 +3,7 @@
    NETWORK-FIRST so the admin always shows live data when online; the cache
    is only a fallback when the phone is offline. API calls are never cached.
    ══════════════════════════════════════════════════════════════════════ */
-const CACHE = "jl-admin-v1";
+const CACHE = "jl-admin-v2";
 const SHELL = [
   "/admin-login.html",
   "/admin-shell.html",
