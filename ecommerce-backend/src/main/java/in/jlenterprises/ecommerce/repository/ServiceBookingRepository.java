@@ -8,4 +8,7 @@ import java.util.UUID;
 
 @Repository
 public interface ServiceBookingRepository extends JpaRepository<ServiceBooking, UUID> {
+
+    /** New (unhandled) bookings — for the sidebar count badge. */
+    long countByBookingStatus(String bookingStatus);
 }
