@@ -2,7 +2,7 @@
   "use strict";
 
   const NAV = [
-    ["Overview",[["Dashboard","📊","admin.html"],["Notifications","🔔","admin-notifications.html"],["Orders","📥","admin-orders.html","ORDER_MANAGER,CUSTOMER_SUPPORT"]]],
+    ["Overview",[["Dashboard","📊","admin.html"],["Orders","📥","admin-orders.html","ORDER_MANAGER,CUSTOMER_SUPPORT"]]],
     ["Catalog & Sales",[["Products","📦","admin-products.html","PRODUCT_MANAGER"],["Inventory","🗂️","admin-inventory.html","INVENTORY_MANAGER"],["Offers & Deals","🏷️","admin-offers.html","MARKETING_MANAGER"]]],
     ["Engage",[["Customers (CRM)","👥","admin-customers.html","MANAGER"],["Reviews","⭐","admin-reviews.html","MARKETING_MANAGER,CUSTOMER_SUPPORT"],["Service Bookings","🔧","admin-service.html","CUSTOMER_SUPPORT"],["Exchange Requests","♻️","admin-exchanges.html","CUSTOMER_SUPPORT,MANAGER"],["Contact Enquiries","✉️","admin-enquiries.html","CUSTOMER_SUPPORT"],["EMI Requests","🧾","admin-emi-requests.html","CUSTOMER_SUPPORT"],["WhatsApp Marketing","💬","admin-whatsapp.html","MARKETING_MANAGER"]]],
     ["Human Resources",[["Employees & Payroll","🧑‍🤝‍🧑","admin-hr.html","@hr"]]],
@@ -27,6 +27,10 @@
   const title = document.getElementById("pageTitle");
   const allowedPages = new Set(NAV.flatMap(group => group[1].map(item => item[2])));
   const labels = Object.fromEntries(NAV.flatMap(group => group[1].map(item => [item[2], item[0]])));
+  // Notifications isn't a sidebar item (the header bell opens it), but the shell must
+  // still allow navigating to it and know its page title.
+  allowedPages.add("admin-notifications.html");
+  labels["admin-notifications.html"] = "Notifications";
   // The "Accounting" group renders as a collapsible parent menu. Its expanded
   // state persists in localStorage; the pages below tell us when it holds the
   // active page (so we can highlight the parent + default-open on that page).
