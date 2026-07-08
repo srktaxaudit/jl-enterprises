@@ -38,6 +38,17 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
     /** Recipients for a WhatsApp/SMS broadcast — users who have a phone number. */
     List<User> findByPhoneNotNull();
 
+    // ── WhatsApp marketing audiences ──
+    /** Opted-in customers with a phone number. */
+    List<User> findByWhatsappOptInTrueAndPhoneNotNull();
+
+    /** Opted-in customers whose phone is verified. */
+    List<User> findByWhatsappOptInTrueAndPhoneVerifiedTrueAndPhoneNotNull();
+
+    /** Opted-in customers who have placed at least one order. */
+    @Query("select distinct o.user from Order o where o.user.phone is not null and o.user.whatsappOptIn = true")
+    List<User> findOptedInWithOrders();
+
     /** Users holding any of the given roles (e.g. admins) — for internal admin alerts. */
     @Query("select distinct u from User u join u.roles r where r.name in :names")
     List<User> findByRoleNames(@Param("names") Collection<RoleName> names);

@@ -116,6 +116,10 @@ public class AuthServiceImpl implements AuthService {
         user.setFirstName(request.firstName());
         user.setLastName(request.lastName());
         user.setPhone(request.phone() == null || request.phone().isBlank() ? null : request.phone());
+        if (Boolean.TRUE.equals(request.whatsappOptIn())) {
+            user.setWhatsappOptIn(true);
+            user.setWhatsappOptInAt(Instant.now());
+        }
         user.getRoles().add(customer);
         user = userRepository.save(user);
 
@@ -306,6 +310,11 @@ public class AuthServiceImpl implements AuthService {
                 throw new DuplicateResourceException("Phone already in use");
             }
             user.setPhone(request.phone());
+        }
+        if (request.whatsappOptIn() != null) {
+            boolean opt = request.whatsappOptIn();
+            user.setWhatsappOptIn(opt);
+            user.setWhatsappOptInAt(opt ? Instant.now() : null);
         }
         return userMapper.toDto(userRepository.save(user));
     }

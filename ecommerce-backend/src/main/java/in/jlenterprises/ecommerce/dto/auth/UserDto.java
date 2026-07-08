@@ -16,6 +16,7 @@ public record UserDto(
         boolean enabled,
         boolean emailVerified,
         boolean phoneVerified,
+        boolean whatsappOptIn,
         Instant lastLoginAt,
         Set<String> roles
 ) {}

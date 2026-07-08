@@ -68,6 +68,14 @@ public class User extends BaseEntity {
     @Column(name = "phone_verified", nullable = false)
     private boolean phoneVerified = false;
 
+    /** Customer opted in to receive marketing on WhatsApp. columnDefinition default keeps
+        ddl-auto's ALTER on the existing users table safe on Postgres (NOT-NULL gotcha). */
+    @Column(name = "whatsapp_opt_in", nullable = false, columnDefinition = "boolean not null default false")
+    private boolean whatsappOptIn = false;
+
+    @Column(name = "whatsapp_opt_in_at")
+    private Instant whatsappOptInAt;
+
     @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
 
