@@ -81,6 +81,11 @@
         <textarea id="suAddress" rows="2" required minlength="10" placeholder="Door no, street, area, city"></textarea>
       </div>
 
+      <label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;color:#475569;margin:-2px 0 14px;cursor:pointer">
+        <input id="suWhatsapp" type="checkbox" style="margin-top:3px" />
+        <span>Send me offers &amp; updates on <b>WhatsApp</b> — you can opt out anytime.</span>
+      </label>
+
       <button type="submit" class="btn-primary">Sign Up 🚀</button>
     </form>
 
@@ -192,7 +197,8 @@
 
       btn.disabled = true; const old = btn.textContent; btn.textContent = "Creating account…";
       try {
-        await JLCustomer.register({ email, password: pass.value, firstName, lastName, phone });
+        const whatsappOptIn = document.getElementById("suWhatsapp")?.checked || false;
+        await JLCustomer.register({ email, password: pass.value, firstName, lastName, phone, whatsappOptIn });
         showSuccess(form, "signupSuccess");
         const dest = next || (getCart().length ? "checkout.html" : "index.html");
         setTimeout(() => location.replace(dest), 800);

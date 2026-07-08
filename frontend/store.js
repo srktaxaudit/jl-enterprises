@@ -110,8 +110,8 @@ const JLCustomer = {
     if (auth.refreshToken) localStorage.setItem(JL_CREFRESH, auth.refreshToken);
     localStorage.setItem(JL_CUSER, JSON.stringify(auth.user || {}));
   },
-  async register({ email, password, firstName, lastName, phone }) {
-    const d = await jlAuthApi("/api/v1/auth/register", { email, password, firstName, lastName, phone });
+  async register({ email, password, firstName, lastName, phone, whatsappOptIn }) {
+    const d = await jlAuthApi("/api/v1/auth/register", { email, password, firstName, lastName, phone, whatsappOptIn: !!whatsappOptIn });
     this._save(d); return d;
   },
   async login(email, password, rememberMe) {

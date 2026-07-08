@@ -4,15 +4,21 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="robots" content="noindex, nofollow" />
-<title>WhatsApp — JL Admin</title>
+<title>WhatsApp Marketing — JL Admin</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
   tailwind.config = { theme: { extend: { colors: {
     navy: { DEFAULT: "#0b2447", 600: "#19376d" }, brand: { DEFAULT: "#576cbc", sky: "#a5d7e8" },
     orange: { DEFAULT: "#f97316" } }, boxShadow: { card: "0 12px 30px rgba(15,23,42,.12)" } } } };
 </script>
-<style> body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-  .inp{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:9px 12px;font-size:14px;outline:none} .inp:focus{border-color:#576cbc} </style>
+<style>
+  body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .inp{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:9px 12px;font-size:14px;outline:none;background:#fff}
+  .inp:focus{border-color:#576cbc}
+  .tab{padding:8px 14px;border-radius:9px;font-size:14px;font-weight:600;color:#64748b;cursor:pointer}
+  .tab.active{background:#0b2447;color:#fff}
+  .chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;border-radius:999px;padding:2px 9px}
+</style>
 </head>
 <body class="bg-[#eef1f6] min-h-screen text-slate-800">
 
@@ -27,25 +33,95 @@
     </div>
   </div>
 
-  <div class="max-w-[720px] mx-auto p-4 md:p-7">
-    <h1 class="text-2xl text-navy font-bold mb-1">WhatsApp Offers</h1>
-    <p class="text-slate-400 text-sm mb-5">Broadcast a promotional message to customers who have a phone number.</p>
-    <div id="msg" class="hidden mb-4 text-[13px] rounded-lg px-3 py-2"></div>
+  <div class="max-w-[860px] mx-auto p-4 md:p-7">
+    <h1 class="text-2xl text-navy font-bold mb-1">WhatsApp Marketing</h1>
+    <p class="text-slate-400 text-sm mb-4">Compose campaigns, target opted-in customers, and track delivery.</p>
 
-    <div class="bg-white border border-slate-200 rounded-2xl p-5">
-      <label class="block text-[13px] font-semibold text-slate-600 mb-1">Message</label>
-      <textarea id="message" rows="5" maxlength="1000" class="inp" placeholder="e.g. 🎉 Diwali Sale! Flat 10% off all ACs this week at JL Enterprises."></textarea>
-      <div class="flex items-center gap-3 mt-3">
-        <label class="flex items-center gap-2 text-sm"><input id="onlyVerified" type="checkbox" /> Only phone-verified customers</label>
-        <button id="sendBtn" class="ml-auto bg-navy hover:bg-navy-600 text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Send broadcast</button>
-      </div>
-      <p class="text-[12px] text-slate-400 mt-3">
-        If WhatsApp credentials aren't configured on the server, this runs in <b>demo mode</b> —
-        recipients are counted and logged, but no messages are actually sent.
-      </p>
+    <!-- analytics strip -->
+    <div id="analytics" class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5"></div>
+
+    <!-- tabs -->
+    <div class="flex gap-2 mb-5 bg-white rounded-xl p-1 border border-slate-200 w-max">
+      <div class="tab active" data-tab="compose">Compose</div>
+      <div class="tab" data-tab="campaigns">Campaigns</div>
+      <div class="tab" data-tab="templates">Templates</div>
     </div>
 
-    <div id="result" class="hidden bg-white border border-slate-200 rounded-2xl p-5 mt-5"></div>
+    <!-- ── COMPOSE ── -->
+    <section id="tab-compose">
+      <div class="bg-white border border-slate-200 rounded-2xl p-5 space-y-4">
+        <div>
+          <label class="block text-[13px] font-semibold text-slate-600 mb-1">Campaign name</label>
+          <input id="cName" class="inp" maxlength="160" placeholder="e.g. Diwali Sale 2026" />
+        </div>
+
+        <div>
+          <label class="block text-[13px] font-semibold text-slate-600 mb-1">Start from a template <span class="text-slate-400 font-normal">(optional)</span></label>
+          <select id="cTemplate" class="inp"><option value="">— None (write below) —</option></select>
+        </div>
+
+        <div>
+          <div class="flex items-center gap-2 mb-1">
+            <label class="text-[13px] font-semibold text-slate-600">Message</label>
+            <button type="button" id="tokName" class="ml-auto text-[12px] text-brand hover:underline">+ Insert {{name}}</button>
+          </div>
+          <textarea id="cBody" rows="5" maxlength="2000" class="inp" placeholder="Hi {{name}}, 🎉 Flat 10% off all ACs this week at JL Enterprises. Reply STOP to opt out."></textarea>
+          <p class="text-[12px] text-slate-400 mt-1"><b>{{name}}</b> is replaced with each customer's first name.</p>
+        </div>
+
+        <div class="grid sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-[13px] font-semibold text-slate-600 mb-1">Audience</label>
+            <select id="cAudience" class="inp">
+              <option value="ALL_OPTED_IN">Opted-in customers</option>
+              <option value="VERIFIED_OPTED_IN">Opted-in + verified phone</option>
+              <option value="HAS_ORDERED">Opted-in past buyers</option>
+              <option value="EVERYONE_WITH_PHONE">Everyone with a phone (test)</option>
+            </select>
+            <p id="audienceInfo" class="text-[12px] text-slate-500 mt-2">…</p>
+          </div>
+          <div>
+            <label class="block text-[13px] font-semibold text-slate-600 mb-1">Preview</label>
+            <div id="preview" class="text-[13px] bg-[#e7ffdb] border border-green-200 rounded-lg p-3 min-h-[72px] whitespace-pre-wrap text-slate-700"></div>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2 pt-1">
+          <button id="draftBtn" class="border border-slate-300 text-slate-600 hover:bg-slate-50 font-semibold rounded-lg px-4 py-2.5 text-sm">Save draft</button>
+          <button id="scheduleBtn" disabled title="Coming in Phase 2" class="border border-slate-200 text-slate-300 rounded-lg px-4 py-2.5 text-sm cursor-not-allowed">Schedule ⏱</button>
+          <button id="sendBtn" class="ml-auto bg-navy hover:bg-navy-600 text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Send now</button>
+        </div>
+        <p class="text-[12px] text-slate-400">
+          If WhatsApp credentials aren't set on the server this runs in <b>demo mode</b> — recipients are logged, nothing is sent.
+        </p>
+      </div>
+    </section>
+
+    <!-- ── CAMPAIGNS ── -->
+    <section id="tab-campaigns" class="hidden">
+      <div id="campaignList" class="space-y-3"></div>
+    </section>
+
+    <!-- ── TEMPLATES ── -->
+    <section id="tab-templates" class="hidden">
+      <div class="bg-white border border-slate-200 rounded-2xl p-5 mb-4">
+        <div class="font-semibold text-navy mb-3">New template</div>
+        <div class="grid sm:grid-cols-2 gap-3">
+          <input id="tName" class="inp" maxlength="120" placeholder="Template name (e.g. Festive Offer)" />
+          <input id="tMeta" class="inp" maxlength="160" placeholder="Meta template name (optional, for live)" />
+        </div>
+        <textarea id="tBody" rows="3" maxlength="2000" class="inp mt-3" placeholder="Hi {{name}}, ..."></textarea>
+        <button id="tSave" class="mt-3 bg-navy hover:bg-navy-600 text-white font-semibold rounded-lg px-4 py-2 text-sm">Save template</button>
+      </div>
+      <div id="templateList" class="space-y-3"></div>
+    </section>
+  </div>
+
+  <!-- campaign detail modal -->
+  <div id="detailModal" class="hidden fixed inset-0 z-30 bg-black/40 flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-white w-full sm:max-w-[640px] sm:rounded-2xl rounded-t-2xl max-h-[92vh] overflow-auto">
+      <div id="detailBody" class="p-5"></div>
+    </div>
   </div>
 
 <script src="jl-ui.js"></script>
@@ -54,37 +130,177 @@
 <script>
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c)=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
   const $ = (id) => document.getElementById(id);
-  function flash(t, ok=true){ const el=$("msg"); el.textContent=t;
-    el.className="mb-4 text-[13px] rounded-lg px-3 py-2 "+(ok?"bg-green-50 text-green-700 border border-green-200":"bg-red-50 text-red-700 border border-red-200");
-    el.classList.remove("hidden"); }
+  const API = "/api/v1/admin/whatsapp";
+  const AUD_LABEL = { ALL_OPTED_IN:"Opted-in customers", VERIFIED_OPTED_IN:"Opted-in + verified", HAS_ORDERED:"Opted-in past buyers", EVERYONE_WITH_PHONE:"Everyone with a phone" };
 
-  jlField($("message"), [jlV.required("Enter a message first."), jlV.maxLen(1000)]);
+  function campaignTone(s){ return ({ COMPLETED:"bg-green-100 text-green-700", SENDING:"bg-amber-100 text-amber-700",
+    FAILED:"bg-red-100 text-red-700", CANCELLED:"bg-slate-100 text-slate-500", DRAFT:"bg-blue-100 text-blue-700", SCHEDULED:"bg-indigo-100 text-indigo-700" }[s] || "bg-slate-100 text-slate-600"); }
+  function msgTone(s){ return ({ SENT:"bg-blue-100 text-blue-700", DELIVERED:"bg-green-100 text-green-700", READ:"bg-emerald-100 text-emerald-700",
+    FAILED:"bg-red-100 text-red-700", QUEUED:"bg-slate-100 text-slate-500" }[s] || "bg-slate-100 text-slate-600"); }
 
-  $("sendBtn").addEventListener("click", async ()=>{
-    const message = $("message").value.trim();
-    const err = jlV.required("Enter a message first.")(message) || jlV.maxLen(1000)(message);
-    if(err){ jlSetError($("message"), err); $("message").focus(); return; }
-    jlClearError($("message"));
-    if(!(await jlConfirm("Send this broadcast to all matching customers?", {confirmText:"Send"}))) return;
-    jlBtn($("sendBtn"), true, "Sending…");
+  // ── tabs ──
+  document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", ()=>{
+    document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+    t.classList.add("active");
+    ["compose","campaigns","templates"].forEach(n => $("tab-"+n).classList.toggle("hidden", n !== t.dataset.tab));
+    if (t.dataset.tab === "campaigns") loadCampaigns();
+    if (t.dataset.tab === "templates") loadTemplates();
+  }));
+
+  // ── analytics strip ──
+  async function loadAnalytics(){
     try {
-      const r = await jlApi("/api/v1/admin/whatsapp/broadcast", { method:"POST", body:{ message, onlyVerified:$("onlyVerified").checked }});
-      $("result").classList.remove("hidden");
-      $("result").innerHTML = `
-        <div class="font-semibold text-navy mb-2">${r.demoMode ? "Demo run (nothing sent)" : "Broadcast complete"}</div>
-        <div class="grid grid-cols-3 gap-4 text-center">
-          <div><div class="text-2xl font-extrabold text-navy">${r.recipients}</div><div class="text-[12px] text-slate-400">recipients</div></div>
-          <div><div class="text-2xl font-extrabold text-green-600">${r.sent}</div><div class="text-[12px] text-slate-400">sent</div></div>
-          <div><div class="text-2xl font-extrabold text-red-600">${r.failed}</div><div class="text-[12px] text-slate-400">failed</div></div>
-        </div>`;
-      jlToast(r.demoMode ? "Demo mode — configure WHATSAPP_TOKEN/PHONE_ID to send for real." : "Broadcast sent.", {type: r.demoMode ? "info" : "success"});
-    } catch(e){ flash(e.message||"Broadcast failed", false); }
-    finally { jlBtn($("sendBtn"), false); }
+      const a = await jlApi(API + "/analytics");
+      const cards = [["Campaigns",a.totalCampaigns],["Recipients",a.totalRecipients],["Sent",a.totalSent],["Delivery rate",a.deliveryRate+"%"]];
+      $("analytics").innerHTML = cards.map(([k,v])=>`
+        <div class="bg-white border border-slate-200 rounded-xl p-3">
+          <div class="text-[11px] font-semibold text-slate-400 uppercase">${k}</div>
+          <div class="text-xl font-extrabold text-navy mt-1">${esc(v)}</div>
+        </div>`).join("");
+    } catch(_){ $("analytics").innerHTML = ""; }
+  }
+
+  // ── compose ──
+  function renderPreview(){
+    const body = $("cBody").value || "Your message preview appears here…";
+    $("preview").textContent = body.replace(/\{\{\s*name\s*\}\}/g, "Ravi").replace(/\{name\}/g, "Ravi").replace(/\{\{\s*firstName\s*\}\}/g, "Ravi");
+  }
+  let audTimer;
+  async function refreshAudience(){
+    const type = $("cAudience").value;
+    $("audienceInfo").textContent = "Counting…";
+    try {
+      const p = await jlApi(API + "/audience/preview?type=" + type);
+      const names = (p.sampleNames||[]).slice(0,3).map(esc).join(", ");
+      $("audienceInfo").innerHTML = `<b class="text-navy">${p.count}</b> recipient(s)` + (names ? ` · e.g. ${names}` : "");
+    } catch(e){ $("audienceInfo").textContent = "Couldn't count audience."; }
+  }
+  $("cBody").addEventListener("input", renderPreview);
+  $("cAudience").addEventListener("change", refreshAudience);
+  $("tokName").addEventListener("click", ()=>{ const el=$("cBody"); el.value += (el.value && !el.value.endsWith(" ") ? " " : "") + "{{name}}"; renderPreview(); el.focus(); });
+  $("cTemplate").addEventListener("change", async ()=>{
+    const id = $("cTemplate").value; if(!id) return;
+    const t = (window.__templates||[]).find(x=>x.id===id);
+    if(t){ $("cBody").value = t.bodyText; if(!$("cName").value) $("cName").value = t.name; renderPreview(); }
   });
 
+  async function buildPayload(){
+    const name = $("cName").value.trim();
+    const bodyText = $("cBody").value.trim();
+    if(!name){ jlToast("Give the campaign a name.", {type:"error"}); return null; }
+    if(!bodyText && !$("cTemplate").value){ jlToast("Write a message or pick a template.", {type:"error"}); return null; }
+    return { name, bodyText, templateId: $("cTemplate").value || null, audienceType: $("cAudience").value };
+  }
+  $("draftBtn").addEventListener("click", async ()=>{
+    const body = await buildPayload(); if(!body) return;
+    jlBtn($("draftBtn"), true, "Saving…");
+    try { await jlApi(API + "/campaigns", { method:"POST", body }); jlToast("Draft saved.", {type:"success"}); resetCompose(); }
+    catch(e){ jlToast(e.message||"Could not save", {type:"error"}); } finally { jlBtn($("draftBtn"), false); }
+  });
+  $("sendBtn").addEventListener("click", async ()=>{
+    const body = await buildPayload(); if(!body) return;
+    if(!(await jlConfirm(`Send "${esc(body.name)}" to the selected audience now?`, {confirmText:"Send now"}))) return;
+    jlBtn($("sendBtn"), true, "Sending…");
+    try {
+      const c = await jlApi(API + "/campaigns", { method:"POST", body });
+      const sent = await jlApi(API + `/campaigns/${c.id}/send`, { method:"POST" });
+      jlToast(sent.demoMode ? "Demo mode — logged, not sent." : "Campaign sent!", {type: sent.demoMode ? "info" : "success"});
+      resetCompose(); loadAnalytics(); openDetail(sent.id);
+    } catch(e){ jlToast(e.message||"Send failed", {type:"error"}); } finally { jlBtn($("sendBtn"), false); }
+  });
+  function resetCompose(){ $("cName").value=""; $("cBody").value=""; $("cTemplate").value=""; renderPreview(); }
+
+  // ── campaigns ──
+  async function loadCampaigns(){
+    $("campaignList").innerHTML = `<div class="text-slate-400 text-sm">Loading…</div>`;
+    try {
+      const page = await jlApi(API + "/campaigns?size=20");
+      const rows = page.content || [];
+      if(!rows.length){ $("campaignList").innerHTML = `<div class="bg-white border border-slate-200 rounded-2xl p-8 text-center text-slate-400">No campaigns yet. Compose one to get started.</div>`; return; }
+      $("campaignList").innerHTML = rows.map(c=>`
+        <button data-id="${c.id}" class="cRow w-full text-left bg-white border border-slate-200 rounded-2xl p-4 hover:border-brand">
+          <div class="flex items-center justify-between">
+            <span class="font-semibold text-navy">${esc(c.name)}</span>
+            <span class="chip ${campaignTone(c.campaignStatus)}">${c.campaignStatus}${c.demoMode?" · demo":""}</span>
+          </div>
+          <div class="text-[12px] text-slate-500 mt-2">${AUD_LABEL[c.audienceType]||c.audienceType} · ${c.totalRecipients} recipient(s) ·
+            <span class="text-green-600">${c.sentCount} sent</span> · <span class="text-red-600">${c.failedCount} failed</span></div>
+        </button>`).join("");
+      document.querySelectorAll(".cRow").forEach(b=>b.addEventListener("click", ()=>openDetail(b.dataset.id)));
+    } catch(e){ $("campaignList").innerHTML = `<div class="text-red-600 text-sm">${esc(e.message||"Failed to load")}</div>`; }
+  }
+
+  async function openDetail(id){
+    $("detailModal").classList.remove("hidden");
+    $("detailBody").innerHTML = `<div class="text-slate-400 text-sm">Loading…</div>`;
+    try {
+      const c = await jlApi(API + `/campaigns/${id}`);
+      const stat = (label,val,cls)=>`<div class="text-center"><div class="text-xl font-extrabold ${cls||"text-navy"}">${val}</div><div class="text-[11px] text-slate-400">${label}</div></div>`;
+      const logs = (c.logs||[]).map(l=>`
+        <tr class="border-t border-slate-100">
+          <td class="py-1.5 pr-2">${esc(l.recipientName||l.phone)}</td>
+          <td class="py-1.5 pr-2"><span class="chip ${msgTone(l.messageStatus)}">${l.messageStatus}</span></td>
+          <td class="py-1.5 text-[11px] text-slate-400">${esc(l.error||l.providerMessageId||"")}</td>
+        </tr>`).join("");
+      $("detailBody").innerHTML = `
+        <div class="flex items-start justify-between">
+          <div><div class="text-lg font-bold text-navy">${esc(c.name)}</div>
+            <div class="text-[12px] text-slate-400 mt-0.5">${AUD_LABEL[c.audienceType]||c.audienceType} · <span class="chip ${campaignTone(c.campaignStatus)}">${c.campaignStatus}${c.demoMode?" · demo":""}</span></div></div>
+          <button id="dClose" class="text-slate-400 hover:text-navy text-xl leading-none">✕</button>
+        </div>
+        <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 my-3 text-[13px] whitespace-pre-wrap text-slate-700">${esc(c.bodyText)}</div>
+        <div class="grid grid-cols-5 gap-2 my-4">
+          ${stat("recipients",c.totalRecipients)}${stat("sent",c.sentCount,"text-blue-600")}${stat("delivered",c.deliveredCount,"text-green-600")}${stat("read",c.readCount,"text-emerald-600")}${stat("failed",c.failedCount,"text-red-600")}
+        </div>
+        ${c.demoMode ? `<p class="text-[12px] text-slate-400 mb-3">Demo mode: delivered/read stay 0 until real sending + webhooks (Phase 2) are enabled.</p>` : ``}
+        <div class="flex gap-2 mb-4">
+          ${c.failedCount>0 ? `<button id="dRetry" class="border border-slate-300 rounded-lg px-3 py-1.5 text-[13px] font-semibold hover:bg-slate-50">Retry failed (${c.failedCount})</button>`:``}
+          ${c.campaignStatus!=="COMPLETED"&&c.campaignStatus!=="CANCELLED" ? `<button id="dCancel" class="border border-slate-300 rounded-lg px-3 py-1.5 text-[13px] font-semibold hover:bg-slate-50">Cancel</button>`:``}
+          <button id="dDelete" class="ml-auto text-red-500 text-[13px] hover:underline">Delete</button>
+        </div>
+        <div class="text-[12px] font-semibold text-slate-500 mb-1">Recipients (${(c.logs||[]).length})</div>
+        <div class="overflow-auto max-h-[240px]"><table class="w-full text-[13px]"><tbody>${logs||`<tr><td class="text-slate-400 py-2">No messages.</td></tr>`}</tbody></table></div>`;
+      $("dClose").addEventListener("click", closeDetail);
+      const retry=$("dRetry"); if(retry) retry.addEventListener("click", async ()=>{ jlBtn(retry,true,"Retrying…"); try{ await jlApi(API+`/campaigns/${id}/retry-failed`,{method:"POST"}); jlToast("Retried.",{type:"success"}); openDetail(id); loadAnalytics(); }catch(e){ jlToast(e.message,{type:"error"}); jlBtn(retry,false);} });
+      const cancel=$("dCancel"); if(cancel) cancel.addEventListener("click", async ()=>{ if(!(await jlConfirm("Cancel this campaign?"))) return; try{ await jlApi(API+`/campaigns/${id}/cancel`,{method:"POST"}); jlToast("Cancelled."); openDetail(id); loadCampaigns(); }catch(e){ jlToast(e.message,{type:"error"}); } });
+      $("dDelete").addEventListener("click", async ()=>{ if(!(await jlConfirm("Delete this campaign permanently?",{confirmText:"Delete",danger:true}))) return; try{ await jlApi(API+`/campaigns/${id}`,{method:"DELETE"}); jlToast("Deleted."); closeDetail(); loadCampaigns(); loadAnalytics(); }catch(e){ jlToast(e.message,{type:"error"}); } });
+    } catch(e){ $("detailBody").innerHTML = `<div class="text-red-600 text-sm">${esc(e.message||"Failed")}</div>`; }
+  }
+  function closeDetail(){ $("detailModal").classList.add("hidden"); }
+  $("detailModal").addEventListener("click", (e)=>{ if(e.target===$("detailModal")) closeDetail(); });
+
+  // ── templates ──
+  async function loadTemplates(){
+    try {
+      const list = await jlApi(API + "/templates");
+      window.__templates = list;
+      $("cTemplate").innerHTML = `<option value="">— None (write below) —</option>` + list.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join("");
+      $("templateList").innerHTML = list.length ? list.map(t=>`
+        <div class="bg-white border border-slate-200 rounded-2xl p-4">
+          <div class="flex items-center justify-between">
+            <span class="font-semibold text-navy">${esc(t.name)}</span>
+            <button data-id="${t.id}" class="tDel text-red-500 text-[13px] hover:underline">Delete</button>
+          </div>
+          <div class="text-[13px] text-slate-600 mt-1 whitespace-pre-wrap">${esc(t.bodyText)}</div>
+          ${t.metaTemplateName?`<div class="text-[11px] text-slate-400 mt-1">Meta: ${esc(t.metaTemplateName)} · ${esc(t.language)}</div>`:``}
+        </div>`).join("") : `<div class="bg-white border border-slate-200 rounded-2xl p-8 text-center text-slate-400">No templates yet.</div>`;
+      document.querySelectorAll(".tDel").forEach(b=>b.addEventListener("click", async ()=>{ if(!(await jlConfirm("Delete this template?",{confirmText:"Delete",danger:true}))) return; try{ await jlApi(API+`/templates/${b.dataset.id}`,{method:"DELETE"}); jlToast("Deleted."); loadTemplates(); }catch(e){ jlToast(e.message,{type:"error"}); } }));
+    } catch(e){ $("templateList").innerHTML = `<div class="text-red-600 text-sm">${esc(e.message||"Failed")}</div>`; }
+  }
+  $("tSave").addEventListener("click", async ()=>{
+    const name=$("tName").value.trim(), bodyText=$("tBody").value.trim();
+    if(!name || !bodyText){ jlToast("Name and message are required.", {type:"error"}); return; }
+    jlBtn($("tSave"), true, "Saving…");
+    try { await jlApi(API + "/templates", { method:"POST", body:{ name, bodyText, metaTemplateName:$("tMeta").value.trim()||null, language:"en", category:"MARKETING" }});
+      $("tName").value=""; $("tMeta").value=""; $("tBody").value=""; jlToast("Template saved.", {type:"success"}); loadTemplates(); }
+    catch(e){ jlToast(e.message||"Could not save", {type:"error"}); } finally { jlBtn($("tSave"), false); }
+  });
+
+  // ── boot ──
   jlWireLogout("#logoutBtn");
   jlRequireAdmin().then((a)=>{
     $("adminBadge").textContent = jlDisplayName(a).split(/[\s@.]+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join("")||"JL";
+    loadAnalytics(); loadTemplates(); refreshAudience(); renderPreview();
   });
 </script>
 </body>
