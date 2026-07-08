@@ -9,6 +9,18 @@
     ["Accounting",[["Billing","🧾","admin-billing.html","@admin"],["Chart of Accounts","📒","admin-accounts.html","ACCOUNTANT"],["Invoices & Bills","🧾","admin-vouchers.html","ACCOUNTANT"],["Journal / Vouchers","✍️","admin-journal.html","ACCOUNTANT"],["Ledgers","📚","admin-ledgers.html","ACCOUNTANT"],["Financial Reports","📈","admin-reports.html","ACCOUNTANT"],["GST Returns","🧮","admin-gst.html","ACCOUNTANT"],["Outstanding & Cashflow","📆","admin-outstanding.html","ACCOUNTANT"]]],
     ["Control",[["Staff","🧑‍💼","admin-staff.html","@admin"],["Team & Roles","👤","admin-team.html","@admin"],["Activity Logs","📜","admin-logs.html","@admin"],["Import / Export","🔄","admin-data.html","ACCOUNTANT"],["Logo & Branding","🖼️","admin-branding.html","@admin"],["Settings","⚙️","admin-settings.html","@admin"]]]
   ];
+  // Which sidebar links get a "needs attention" badge, and how to derive the number
+  // from the /section-counts payload. (Enquiries/EMI wired in Phase 4.)
+  const BADGE_MAP = {
+    "admin-orders.html": c => (c.ordersPending || 0) + (c.returnRequests || 0),
+    "admin-service.html": c => c.serviceBookingsNew || 0,
+    "admin-exchanges.html": c => c.exchangesPending || 0,
+    "admin-reviews.html": c => c.reviewsPending || 0,
+    "admin-inventory.html": c => c.lowStock || 0,
+    "admin-notifications.html": c => c.unreadNotifications || 0,
+    "admin-enquiries.html": c => c.contactEnquiriesNew || 0,
+    "admin-emi-requests.html": c => c.emiRequestsNew || 0
+  };
   const shell = document.getElementById("adminShell");
   const nav = document.getElementById("adminNav");
   const frame = document.getElementById("adminFrame");
@@ -41,9 +53,10 @@
     nav.innerHTML = NAV.map(group => {
       const items = group[1].filter(item => visible(user, item[3]));
       if (!items.length) return "";
-      const links = items.map(item =>
-        `<a href="${item[2]}" data-page="${item[2]}" title="${item[0]}"><span class="icon">${item[1]}</span><span class="label">${item[0]}</span></a>`
-      ).join("");
+      const links = items.map(item => {
+        const badge = BADGE_MAP[item[2]] ? `<span class="nav-badge" data-badge-href="${item[2]}" hidden></span>` : "";
+        return `<a href="${item[2]}" data-page="${item[2]}" title="${item[0]}"><span class="icon">${item[1]}</span><span class="label">${item[0]}</span>${badge}</a>`;
+      }).join("");
       // Only the Accounting group is a collapsible parent; every other group
       // stays a plain section header (unaffected).
       if (group[0] === "Accounting") {
@@ -159,6 +172,25 @@
   setInterval(refreshBell, 45000);
   addEventListener("focus", refreshBell);
 
+  // ── Sidebar "needs attention" badges ──
+  function applyBadges(counts) {
+    nav.querySelectorAll("[data-badge-href]").forEach(el => {
+      const fn = BADGE_MAP[el.getAttribute("data-badge-href")];
+      const n = fn ? fn(counts) : 0;
+      if (n > 0) { el.textContent = n > 99 ? "99+" : String(n); el.hidden = false; }
+      else el.hidden = true;
+    });
+  }
+  async function refreshCounts() {
+    try { applyBadges(await jlApi("/api/v1/admin/section-counts", { blocking: false }) || {}); }
+    catch (_) { /* best-effort — badges just stay as they are */ }
+  }
+  window.jlRefreshCounts = refreshCounts;   // pages can nudge a refresh after they change a status
+  setInterval(refreshCounts, 45000);
+  addEventListener("focus", refreshCounts);
+  // Refresh after navigating between admin pages (e.g. right after actioning an item).
+  frame.addEventListener("load", () => { refreshCounts(); refreshBell(); });
+
   currentPage = cleanPage(new URLSearchParams(location.search).get("page"));
   jlRequireAdmin().then(user => {
     renderNav(user);
@@ -168,5 +200,6 @@
     requestAnimationFrame(() => { nav.scrollTop = Number(sessionStorage.getItem("jl_admin_nav_scroll") || 0); });
     navigate(currentPage, false);
     refreshBell();
+    refreshCounts();
   });
 })();

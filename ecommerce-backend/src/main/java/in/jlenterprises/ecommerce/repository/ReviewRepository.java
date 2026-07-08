@@ -18,6 +18,9 @@ public interface ReviewRepository extends JpaRepository<Review, UUID> {
 
     Page<Review> findByReviewStatus(ReviewStatus status, Pageable pageable);
 
+    /** Reviews awaiting moderation — for the sidebar count badge. */
+    long countByReviewStatus(ReviewStatus status);
+
     boolean existsByUserIdAndProductId(UUID userId, UUID productId);
 
     @Query("select coalesce(avg(r.rating), 0) from Review r " +

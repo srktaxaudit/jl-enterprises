@@ -16,6 +16,20 @@
 <link rel="icon" href="jl-admin-icon.svg" />
 <script>if("serviceWorker" in navigator){addEventListener("load",function(){navigator.serviceWorker.register("admin-sw.js").catch(function(){});});}</script>
 <link rel="stylesheet" href="admin-shell.css" />
+<style>
+  /* "Needs attention" badges on sidebar links */
+  .admin-nav a { position: relative; }
+  .nav-badge {
+    margin-left: auto; min-width: 18px; height: 18px; padding: 0 5px;
+    background: #f97316; color: #fff; font-size: 11px; font-weight: 700;
+    line-height: 18px; text-align: center; border-radius: 999px; flex: none;
+  }
+  /* When the sidebar is collapsed (icons only), pin the badge to the icon corner. */
+  .admin-shell.collapsed .nav-badge {
+    position: absolute; top: 3px; right: 5px; margin: 0;
+    min-width: 15px; height: 15px; line-height: 15px; font-size: 9px; padding: 0 3px;
+  }
+</style>
 </head>
 <body>
   <div class="admin-shell" id="adminShell">
