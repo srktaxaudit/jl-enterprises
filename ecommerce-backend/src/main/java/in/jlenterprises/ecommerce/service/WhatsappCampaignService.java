@@ -6,6 +6,7 @@ import in.jlenterprises.ecommerce.dto.whatsapp.AudiencePreviewDto;
 import in.jlenterprises.ecommerce.dto.whatsapp.CampaignAnalyticsDto;
 import in.jlenterprises.ecommerce.dto.whatsapp.CampaignDetailDto;
 import in.jlenterprises.ecommerce.dto.whatsapp.CampaignDto;
+import in.jlenterprises.ecommerce.dto.whatsapp.TestSendResult;
 import in.jlenterprises.ecommerce.request.whatsapp.CampaignRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -22,6 +23,8 @@ public interface WhatsappCampaignService {
     CampaignDetailDto cancel(UUID id);
     void delete(UUID id);
     CampaignAnalyticsDto analytics();
+    /** Send one message to a single number to verify setup before broadcasting. */
+    TestSendResult testSend(String phone, UUID templateId, String bodyText);
     /** Back-compat for the legacy /broadcast endpoint (and the mobile screen). */
     BroadcastResult quickBroadcast(String message, boolean onlyVerified);
 }

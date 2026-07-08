@@ -8,8 +8,10 @@ import in.jlenterprises.ecommerce.dto.whatsapp.CampaignAnalyticsDto;
 import in.jlenterprises.ecommerce.dto.whatsapp.CampaignDetailDto;
 import in.jlenterprises.ecommerce.dto.whatsapp.CampaignDto;
 import in.jlenterprises.ecommerce.dto.whatsapp.TemplateDto;
+import in.jlenterprises.ecommerce.dto.whatsapp.TestSendResult;
 import in.jlenterprises.ecommerce.request.whatsapp.CampaignRequest;
 import in.jlenterprises.ecommerce.request.whatsapp.TemplateRequest;
+import in.jlenterprises.ecommerce.request.whatsapp.TestSendRequest;
 import in.jlenterprises.ecommerce.response.ApiResponse;
 import in.jlenterprises.ecommerce.response.PageResponse;
 import in.jlenterprises.ecommerce.service.WhatsappCampaignService;
@@ -132,6 +134,12 @@ public class WhatsAppController {
     @Operation(summary = "Overall WhatsApp marketing analytics")
     public ApiResponse<CampaignAnalyticsDto> analytics() {
         return ApiResponse.success(campaigns.analytics());
+    }
+
+    @PostMapping("/test-send")
+    @Operation(summary = "Send one test message to a number (verify setup before broadcasting)")
+    public ApiResponse<TestSendResult> testSend(@Valid @RequestBody TestSendRequest request) {
+        return ApiResponse.success("Test send attempted", campaigns.testSend(request.phone(), request.templateId(), request.bodyText()));
     }
 
     // ── Legacy quick broadcast (kept for the mobile app + back-compat) ──

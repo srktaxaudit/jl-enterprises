@@ -91,8 +91,14 @@
           <button id="scheduleBtn" disabled title="Coming in Phase 2" class="border border-slate-200 text-slate-300 rounded-lg px-4 py-2.5 text-sm cursor-not-allowed">Schedule ⏱</button>
           <button id="sendBtn" class="ml-auto bg-navy hover:bg-navy-600 text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Send now</button>
         </div>
+        <div class="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
+          <span class="text-[13px] text-slate-500">Test first:</span>
+          <input id="testPhone" class="inp" style="max-width:210px" placeholder="Your number e.g. 9876543210" />
+          <button id="testBtn" class="border border-slate-300 text-slate-600 hover:bg-slate-50 font-semibold rounded-lg px-4 py-2 text-sm">Send test</button>
+        </div>
         <p class="text-[12px] text-slate-400">
           If WhatsApp credentials aren't set on the server this runs in <b>demo mode</b> — recipients are logged, nothing is sent.
+          Live marketing needs an <b>approved template</b> composed from the Templates tab.
         </p>
       </div>
     </section>
@@ -209,6 +215,18 @@
     } catch(e){ jlToast(e.message||"Send failed", {type:"error"}); } finally { jlBtn($("sendBtn"), false); }
   });
   function resetCompose(){ $("cName").value=""; $("cBody").value=""; $("cTemplate").value=""; renderPreview(); }
+
+  $("testBtn").addEventListener("click", async ()=>{
+    const phone = $("testPhone").value.trim();
+    if(!phone){ jlToast("Enter a test number.", {type:"error"}); return; }
+    jlBtn($("testBtn"), true, "Sending…");
+    try {
+      const r = await jlApi(API + "/test-send", { method:"POST", body:{ phone, templateId: $("cTemplate").value||null, bodyText: $("cBody").value.trim()||null }});
+      if(r.sent) jlToast(r.demoMode ? "Demo mode — logged, not sent." : "Test sent! Check WhatsApp on that number.", {type: r.demoMode ? "info" : "success"});
+      else jlToast("Test failed: " + (r.error||"unknown error"), {type:"error"});
+    } catch(e){ jlToast(e.message||"Test failed", {type:"error"}); }
+    finally { jlBtn($("testBtn"), false); }
+  });
 
   // ── campaigns ──
   async function loadCampaigns(){

@@ -31,14 +31,31 @@ public class WhatsAppService {
     private final ObjectMapper mapper;
     private final String token;
     private final String phoneId;
+    private final String defaultCc;
     private final HttpClient http = HttpClient.newHttpClient();
 
     public WhatsAppService(ObjectMapper mapper,
                            @Value("${WHATSAPP_TOKEN:}") String token,
-                           @Value("${WHATSAPP_PHONE_ID:}") String phoneId) {
+                           @Value("${WHATSAPP_PHONE_ID:}") String phoneId,
+                           @Value("${WHATSAPP_DEFAULT_CC:91}") String defaultCc) {
         this.mapper = mapper;
         this.token = token;
         this.phoneId = phoneId;
+        this.defaultCc = (defaultCc == null || defaultCc.isBlank()) ? "91" : defaultCc.replaceAll("[^0-9]", "");
+    }
+
+    /**
+     * Normalise a phone to the digits-only international form Meta expects
+     * (country code + number, no '+'/spaces). Bare 10-digit numbers get the
+     * default country code prepended; a leading national '0' or '00' is stripped.
+     */
+    public String normalize(String phone) {
+        if (phone == null) return null;
+        String d = phone.replaceAll("[^0-9]", "");
+        if (d.startsWith("00")) d = d.substring(2);
+        if (d.length() == 11 && d.startsWith("0")) d = d.substring(1);
+        if (d.length() == 10) d = defaultCc + d;
+        return d;
     }
 
     /** True when Meta credentials are configured (real sends possible). */
@@ -50,7 +67,7 @@ public class WhatsAppService {
     public String sendText(String toPhone, String message) throws Exception {
         String body = mapper.writeValueAsString(Map.of(
                 "messaging_product", "whatsapp",
-                "to", toPhone,
+                "to", normalize(toPhone),
                 "type", "text",
                 "text", Map.of("body", message)));
         return post(body);
@@ -68,7 +85,7 @@ public class WhatsAppService {
         }
         String body = mapper.writeValueAsString(Map.of(
                 "messaging_product", "whatsapp",
-                "to", toPhone,
+                "to", normalize(toPhone),
                 "type", "template",
                 "template", template));
         return post(body);

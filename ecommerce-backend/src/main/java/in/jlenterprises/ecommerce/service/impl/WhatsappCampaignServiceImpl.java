@@ -123,6 +123,12 @@ public class WhatsappCampaignServiceImpl implements WhatsappCampaignService {
         if (recipients.isEmpty()) {
             throw new BusinessException("No customers match this audience yet.");
         }
+        // Live marketing to opted-in customers must use an approved template — Meta
+        // rejects free text outside the 24h reply window. Demo mode simulates, so allow it.
+        if (whatsApp.isConfigured() && !hasApprovedTemplate(c)) {
+            throw new BusinessException("Live sending needs an approved template. Create a template with its "
+                    + "Meta template name, then compose the campaign from it. (Free text only works inside the 24-hour reply window.)");
+        }
         dispatch(c, recipients);
         return toDetail(c);
     }
@@ -179,6 +185,34 @@ public class WhatsappCampaignServiceImpl implements WhatsappCampaignService {
         double deliveryRate = sent == 0 ? 0 : round(delivered * 100.0 / sent);
         double failRate = recipients == 0 ? 0 : round(failed * 100.0 / recipients);
         return new CampaignAnalyticsDto(all.size(), recipients, sent, delivered, read, failed, deliveryRate, failRate);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public in.jlenterprises.ecommerce.dto.whatsapp.TestSendResult testSend(String phone, UUID templateId, String bodyText) {
+        boolean demo = !whatsApp.isConfigured();
+        WhatsappTemplate t = templateId == null ? null : templateRepo.findById(templateId).orElse(null);
+        String body = t != null ? t.getBodyText() : (bodyText == null || bodyText.isBlank() ? "This is a test message from JL Enterprises." : bodyText);
+        String rendered = render(body, "there");
+        try {
+            String id;
+            if (demo) {
+                id = "demo-" + UUID.randomUUID();
+            } else if (t != null && t.getMetaTemplateName() != null && !t.getMetaTemplateName().isBlank()) {
+                id = whatsApp.sendTemplate(phone, t.getMetaTemplateName(), t.getLanguage(), List.of("there"));
+            } else {
+                id = whatsApp.sendText(phone, rendered);
+            }
+            return new in.jlenterprises.ecommerce.dto.whatsapp.TestSendResult(true, demo, id, null);
+        } catch (Exception e) {
+            log.warn("WhatsApp test send failed for {}: {}", phone, e.getMessage());
+            return new in.jlenterprises.ecommerce.dto.whatsapp.TestSendResult(false, demo, null, trim(e.getMessage(), 500));
+        }
+    }
+
+    private boolean hasApprovedTemplate(WhatsappCampaign c) {
+        return c.getTemplate() != null && c.getTemplate().getMetaTemplateName() != null
+                && !c.getTemplate().getMetaTemplateName().isBlank();
     }
 
     // ── Legacy broadcast (mobile + old UI) ──
