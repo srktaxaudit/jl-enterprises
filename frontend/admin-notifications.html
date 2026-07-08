@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Notifications — JL Admin</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = { theme: { extend: { colors: {
+    navy: { DEFAULT: "#0b2447", 600: "#19376d" }, brand: { DEFAULT: "#576cbc", sky: "#a5d7e8" },
+    orange: { DEFAULT: "#f97316" } }, boxShadow: { card: "0 12px 30px rgba(15,23,42,.12)" } } } };
+</script>
+<style> body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; } </style>
+</head>
+<body class="bg-[#eef1f6] min-h-screen text-slate-800">
+
+  <div class="bg-white border-b border-slate-200 px-4 md:px-7 py-3 flex items-center gap-3 sticky top-0 z-10">
+    <a href="admin.html" class="flex items-center gap-2 text-navy">
+      <div class="w-9 h-7 rounded bg-navy text-white text-[11px] font-extrabold flex items-center justify-center">JL</div>
+      <span class="font-bold text-sm">← Dashboard</span>
+    </a>
+    <div class="ml-auto flex items-center gap-3">
+      <span id="adminBadge" class="w-9 h-9 rounded-full bg-gradient-to-br from-navy-600 to-brand text-white flex items-center justify-center font-bold text-[13px]">··</span>
+      <a href="#" id="logoutBtn" class="text-[13px] text-slate-500 hover:text-navy">⎋ Logout</a>
+    </div>
+  </div>
+
+  <div class="max-w-[860px] mx-auto p-4 md:p-7">
+    <div class="flex items-center gap-3 mb-1">
+      <h1 class="text-2xl text-navy font-bold">Notifications</h1>
+      <span id="unreadPill" class="hidden text-[12px] font-bold text-white bg-orange rounded-full px-2 py-0.5"></span>
+    </div>
+    <p class="text-slate-400 text-sm mb-5">Recent customer activity — orders, cancellations, service bookings, payments, reviews and more.</p>
+
+    <div class="bg-white border border-slate-200 rounded-2xl p-4 md:p-5">
+      <div class="flex items-center gap-2 mb-4">
+        <div class="inline-flex rounded-lg border border-slate-200 overflow-hidden text-[13px]">
+          <button id="fAll" class="px-3 py-1.5 font-semibold bg-navy text-white">All</button>
+          <button id="fUnread" class="px-3 py-1.5 text-slate-600">Unread</button>
+        </div>
+        <button id="markAll" class="ml-auto text-[13px] rounded-lg border border-slate-300 px-3 py-1.5 hover:bg-slate-50">✓ Mark all as read</button>
+      </div>
+
+      <div id="list" class="space-y-2"></div>
+
+      <div class="flex items-center justify-between mt-4 text-sm">
+        <button id="prev" class="px-3 py-1.5 rounded border border-slate-300 disabled:opacity-40">← Prev</button>
+        <span id="pageInfo" class="text-slate-400"></span>
+        <button id="next" class="px-3 py-1.5 rounded border border-slate-300 disabled:opacity-40">Next →</button>
+      </div>
+    </div>
+  </div>
+
+<script src="jl-ui.js"></script>
+<script src="config.js"></script>
+<script src="admin.js"></script>
+<script>
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c)=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+  const $ = (id) => document.getElementById(id);
+  const state = { page: 0, size: 20, totalPages: 1, unreadOnly: false };
+
+  const ICON = { ORDER:"🛒", SERVICE:"🔧", EXCHANGE:"♻️", PAYMENT:"💳", REVIEW:"⭐",
+                 CONTACT:"✉️", EMI:"🧾", ACCOUNT:"👤", PROMOTION:"🏷️", SYSTEM:"⚙️" };
+
+  // Friendly "2 hours ago" style time, falling back to a full date.
+  function timeAgo(iso){
+    try {
+      const d = new Date(iso), s = Math.floor((Date.now()-d.getTime())/1000);
+      if (s < 60) return "just now";
+      if (s < 3600) return Math.floor(s/60) + " min ago";
+      if (s < 86400) return Math.floor(s/3600) + " hr ago";
+      if (s < 604800) return Math.floor(s/86400) + " days ago";
+      return d.toLocaleDateString("en-IN", { dateStyle:"medium" });
+    } catch(_) { return ""; }
+  }
+
+  async function load(){
+    const list = $("list");
+    list.innerHTML = `<div style="text-align:center;padding:24px">${jlSpinnerHTML()}</div>`;
+    try {
+      const page = await jlApi(`/api/v1/notifications?page=${state.page}&size=${state.size}`);
+      state.totalPages = page.totalPages || 1;
+      let items = page.content || [];
+      if (state.unreadOnly) items = items.filter(n => !n.read);
+      list.innerHTML = items.length ? items.map(renderRow).join("")
+        : `<div class="py-8 text-center text-slate-400 text-sm">${state.unreadOnly ? "No unread notifications." : "No notifications yet."}</div>`;
+      $("pageInfo").textContent = `Page ${state.page+1} of ${state.totalPages}`;
+      $("prev").disabled = page.first; $("next").disabled = page.last;
+      refreshUnread();
+    } catch(e){ list.innerHTML = `<div class="py-6 text-red-600 text-sm">Could not load (${esc(e.message)}).</div>`; }
+  }
+
+  function renderRow(n){
+    const unread = !n.read;
+    return `
+      <div data-open="${esc(n.id)}" data-link="${esc(n.link||"")}"
+           class="flex gap-3 rounded-xl border p-3 cursor-pointer transition ${unread ? "bg-brand/5 border-brand/30" : "bg-white border-slate-100 hover:bg-slate-50"}">
+        <div class="text-xl leading-none mt-0.5">${ICON[n.type] || "🔔"}</div>
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-2">
+            ${unread ? '<span class="w-2 h-2 rounded-full bg-orange shrink-0"></span>' : ""}
+            <span class="font-semibold text-navy text-[14px] truncate">${esc(n.title)}</span>
+            ${n.section ? `<span class="text-[11px] text-slate-400 bg-slate-100 rounded px-1.5 py-0.5 shrink-0">${esc(n.section)}</span>` : ""}
+          </div>
+          <div class="text-slate-600 text-[13px] mt-0.5">${esc(n.message||"")}</div>
+          <div class="text-slate-400 text-[11px] mt-1">${timeAgo(n.createdAt)}</div>
+        </div>
+        ${unread ? `<button data-read="${esc(n.id)}" class="self-start text-[12px] text-brand hover:underline shrink-0" title="Mark as read">Mark read</button>` : ""}
+      </div>`;
+  }
+
+  async function refreshUnread(){
+    try {
+      const r = await jlApi("/api/v1/notifications/unread-count", { blocking:false });
+      const n = r.unread || 0;
+      const pill = $("unreadPill");
+      if (n > 0){ pill.textContent = n + " unread"; pill.classList.remove("hidden"); }
+      else pill.classList.add("hidden");
+    } catch(_){}
+  }
+
+  async function markRead(id){
+    try { await jlApi(`/api/v1/notifications/${id}/read`, { method:"PUT", blocking:false }); } catch(_){}
+  }
+
+  // Click a card → mark it read, then open the related section (link opens in the admin shell).
+  $("list").addEventListener("click", async (ev)=>{
+    const readBtn = ev.target.closest("button[data-read]");
+    if (readBtn){ ev.stopPropagation(); await markRead(readBtn.dataset.read); load(); return; }
+    const card = ev.target.closest("[data-open]");
+    if (!card) return;
+    await markRead(card.dataset.open);
+    const link = card.dataset.link;
+    if (link) window.location.href = link;   // the shell picks up the new page
+    else load();
+  });
+
+  $("markAll").addEventListener("click", async (e)=>{
+    try { await jlSubmit(e.target, () => jlApi("/api/v1/notifications/read-all", { method:"PUT" }));
+      jlToast("All notifications marked as read.", { type:"success" }); load();
+    } catch(err){ jlToast(err.message || "Failed", { type:"error" }); }
+  });
+
+  function setFilter(unreadOnly){
+    state.unreadOnly = unreadOnly; state.page = 0;
+    $("fAll").className = "px-3 py-1.5 " + (unreadOnly ? "text-slate-600" : "font-semibold bg-navy text-white");
+    $("fUnread").className = "px-3 py-1.5 " + (unreadOnly ? "font-semibold bg-navy text-white" : "text-slate-600");
+    load();
+  }
+  $("fAll").addEventListener("click", ()=> setFilter(false));
+  $("fUnread").addEventListener("click", ()=> setFilter(true));
+  $("prev").addEventListener("click", ()=>{ if(state.page>0){ state.page--; load(); } });
+  $("next").addEventListener("click", ()=>{ if(state.page<state.totalPages-1){ state.page++; load(); } });
+
+  jlWireLogout("#logoutBtn");
+  jlRequireAdmin().then((a)=>{
+    $("adminBadge").textContent = jlDisplayName(a).split(/[\s@.]+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join("")||"JL";
+    jlWithBusy(load);
+  });
+</script>
+</body>
+</html>

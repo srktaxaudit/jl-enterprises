@@ -4,5 +4,12 @@ public enum NotificationType {
     ORDER,
     PROMOTION,
     ACCOUNT,
-    SYSTEM
+    SYSTEM,
+    // ── Admin-facing activity types ──
+    SERVICE,
+    EXCHANGE,
+    PAYMENT,
+    REVIEW,
+    CONTACT,
+    EMI
 }

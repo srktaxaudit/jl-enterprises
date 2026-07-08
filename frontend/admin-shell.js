@@ -2,7 +2,7 @@
   "use strict";
 
   const NAV = [
-    ["Overview",[["Dashboard","📊","admin.html"],["Orders","📥","admin-orders.html","ORDER_MANAGER,CUSTOMER_SUPPORT"]]],
+    ["Overview",[["Dashboard","📊","admin.html"],["Notifications","🔔","admin-notifications.html"],["Orders","📥","admin-orders.html","ORDER_MANAGER,CUSTOMER_SUPPORT"]]],
     ["Catalog & Sales",[["Products","📦","admin-products.html","PRODUCT_MANAGER"],["Inventory","🗂️","admin-inventory.html","INVENTORY_MANAGER"],["Offers & Deals","🏷️","admin-offers.html","MARKETING_MANAGER"]]],
     ["Engage",[["Customers (CRM)","👥","admin-customers.html","MANAGER"],["Reviews","⭐","admin-reviews.html","MARKETING_MANAGER,CUSTOMER_SUPPORT"],["Service Bookings","🔧","admin-service.html","CUSTOMER_SUPPORT"],["Exchange Requests","♻️","admin-exchanges.html","CUSTOMER_SUPPORT,MANAGER"],["WhatsApp Marketing","💬","admin-whatsapp.html","MARKETING_MANAGER"]]],
     ["Human Resources",[["Employees & Payroll","🧑‍🤝‍🧑","admin-hr.html","@hr"]]],
@@ -143,6 +143,22 @@
   addEventListener("popstate", e => navigate((e.state && e.state.page) || new URLSearchParams(location.search).get("page"), false));
   document.getElementById("shellLogout").addEventListener("click", async () => { await JLAuth.logout(); location.replace(JL_LOGIN_PAGE); });
 
+  // ── Notification bell (header) — opens the notifications page + shows unread count ──
+  const bellBtn = document.getElementById("bellBtn");
+  const bellBadge = document.getElementById("bellBadge");
+  if (bellBtn) bellBtn.addEventListener("click", () => navigate("admin-notifications.html", true));
+  async function refreshBell() {
+    try {
+      const r = await jlApi("/api/v1/notifications/unread-count", { blocking: false });
+      const n = (r && r.unread) || 0;
+      if (n > 0) { bellBadge.textContent = n > 99 ? "99+" : String(n); bellBadge.hidden = false; }
+      else bellBadge.hidden = true;
+    } catch (_) { /* best-effort */ }
+  }
+  window.jlRefreshBell = refreshBell;   // let the notifications page refresh the badge after mark-read
+  setInterval(refreshBell, 45000);
+  addEventListener("focus", refreshBell);
+
   currentPage = cleanPage(new URLSearchParams(location.search).get("page"));
   jlRequireAdmin().then(user => {
     renderNav(user);
@@ -151,5 +167,6 @@
     const badge = document.getElementById("shellBadge"); badge.textContent = initials || "JL"; badge.title = name;
     requestAnimationFrame(() => { nav.scrollTop = Number(sessionStorage.getItem("jl_admin_nav_scroll") || 0); });
     navigate(currentPage, false);
+    refreshBell();
   });
 })();

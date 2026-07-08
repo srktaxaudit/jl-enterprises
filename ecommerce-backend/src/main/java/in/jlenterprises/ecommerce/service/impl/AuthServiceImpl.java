@@ -1,6 +1,7 @@
 package in.jlenterprises.ecommerce.service.impl;
 
 import in.jlenterprises.ecommerce.config.AppProperties;
+import in.jlenterprises.ecommerce.constant.NotificationType;
 import in.jlenterprises.ecommerce.constant.OtpPurpose;
 import in.jlenterprises.ecommerce.constant.RoleName;
 import in.jlenterprises.ecommerce.dto.auth.AuthResponse;
@@ -25,6 +26,7 @@ import in.jlenterprises.ecommerce.request.auth.VerifyOtpRequest;
 import in.jlenterprises.ecommerce.security.LoginAttemptService;
 import in.jlenterprises.ecommerce.security.jwt.JwtService;
 import in.jlenterprises.ecommerce.service.AuthService;
+import in.jlenterprises.ecommerce.service.NotificationService;
 import in.jlenterprises.ecommerce.service.OtpService;
 import in.jlenterprises.ecommerce.service.RefreshTokenService;
 import in.jlenterprises.ecommerce.service.VerificationTokenService;
@@ -74,13 +76,15 @@ public class AuthServiceImpl implements AuthService {
     private final LoginAttemptService loginAttemptService;
     private final UserMapper userMapper;
     private final AppProperties props;
+    private final NotificationService notificationService;
 
     public AuthServiceImpl(UserRepository userRepository, RoleRepository roleRepository,
                            PasswordEncoder passwordEncoder, AuthenticationManager authenticationManager,
                            JwtService jwtService, RefreshTokenService refreshTokenService,
                            OtpService otpService, VerificationTokenService verificationTokenService,
                            EmailService emailService, LoginAttemptService loginAttemptService,
-                           UserMapper userMapper, AppProperties props) {
+                           UserMapper userMapper, AppProperties props,
+                           NotificationService notificationService) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
@@ -93,6 +97,7 @@ public class AuthServiceImpl implements AuthService {
         this.loginAttemptService = loginAttemptService;
         this.userMapper = userMapper;
         this.props = props;
+        this.notificationService = notificationService;
     }
 
     // ── Registration ───────────────────────────────────────────────────
@@ -122,6 +127,12 @@ public class AuthServiceImpl implements AuthService {
         }
         user.getRoles().add(customer);
         user = userRepository.save(user);
+
+        // Let admins know a new customer signed up (best-effort — never blocks signup).
+        String newName = user.getFullName();
+        notificationService.notifyAdmins(NotificationType.ACCOUNT, "New customer registered",
+                "New customer registered: " + (newName == null || newName.isBlank() ? user.getEmail() : newName) + ".",
+                "/admin-customers.html", "Customers", user.getId(), "USER");
 
         // Fire off an email-verification link — best-effort. This uses Redis
         // (token store) + SMTP, which are optional; if either is unavailable,

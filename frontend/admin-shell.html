@@ -39,6 +39,12 @@
         <div class="admin-page-title" id="pageTitle">Dashboard</div>
         <div class="admin-topbar-spacer"></div>
         <span class="admin-status"><i></i> Admin panel</span>
+        <button id="bellBtn" type="button" aria-label="Notifications" title="Notifications"
+          style="position:relative;background:none;border:0;cursor:pointer;font-size:18px;line-height:1;padding:6px;margin-right:2px;">
+          🔔
+          <span id="bellBadge" hidden
+            style="position:absolute;top:-1px;right:-1px;min-width:16px;height:16px;padding:0 4px;background:#f97316;color:#fff;font-size:10px;font-weight:700;border-radius:999px;line-height:16px;text-align:center;">0</span>
+        </button>
         <span class="admin-avatar" id="shellBadge" title="">··</span>
       </header>
       <main class="admin-content" id="adminContent">

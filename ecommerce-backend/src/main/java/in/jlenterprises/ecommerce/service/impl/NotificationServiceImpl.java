@@ -74,15 +74,22 @@ public class NotificationServiceImpl implements NotificationService {
     public void notifyUser(UUID userId, NotificationType type, String title, String message, String link) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> ResourceNotFoundException.of("User", userId));
-        save(user, type, title, message, link);
+        save(user, type, title, message, link, null, null, null);
     }
 
     @Override
     @Transactional
     public void notifyAdmins(NotificationType type, String title, String message, String link) {
+        notifyAdmins(type, title, message, link, null, null, null);
+    }
+
+    @Override
+    @Transactional
+    public void notifyAdmins(NotificationType type, String title, String message, String link,
+                             String section, UUID relatedId, String relatedType) {
         try {
             for (User admin : userRepository.findByRoleNames(ADMIN_ROLES)) {
-                save(admin, type, title, message, link);
+                save(admin, type, title, message, link, section, relatedId, relatedType);
             }
         } catch (Exception e) {
             // Admin alerts are best-effort — never break the triggering business action.
@@ -90,13 +97,17 @@ public class NotificationServiceImpl implements NotificationService {
         }
     }
 
-    private void save(User user, NotificationType type, String title, String message, String link) {
+    private void save(User user, NotificationType type, String title, String message, String link,
+                      String section, UUID relatedId, String relatedType) {
         Notification n = new Notification();
         n.setUser(user);
         n.setType(type);
         n.setTitle(title);
         n.setMessage(message);
         n.setLink(link);
+        n.setSection(section);
+        n.setRelatedId(relatedId);
+        n.setRelatedType(relatedType);
         notificationRepository.save(n);
     }
 }
