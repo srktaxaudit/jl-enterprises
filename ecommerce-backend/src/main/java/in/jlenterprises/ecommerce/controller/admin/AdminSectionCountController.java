@@ -4,6 +4,8 @@ import in.jlenterprises.ecommerce.constant.ExchangeStatus;
 import in.jlenterprises.ecommerce.constant.OrderStatus;
 import in.jlenterprises.ecommerce.constant.ReviewStatus;
 import in.jlenterprises.ecommerce.dto.admin.SectionCountsDto;
+import in.jlenterprises.ecommerce.repository.ContactEnquiryRepository;
+import in.jlenterprises.ecommerce.repository.EmiRequestRepository;
 import in.jlenterprises.ecommerce.repository.ExchangeRequestRepository;
 import in.jlenterprises.ecommerce.repository.InventoryRepository;
 import in.jlenterprises.ecommerce.repository.NotificationRepository;
@@ -39,19 +41,25 @@ public class AdminSectionCountController {
     private final ReviewRepository reviewRepository;
     private final InventoryRepository inventoryRepository;
     private final NotificationRepository notificationRepository;
+    private final ContactEnquiryRepository contactEnquiryRepository;
+    private final EmiRequestRepository emiRequestRepository;
 
     public AdminSectionCountController(OrderRepository orderRepository,
                                        ExchangeRequestRepository exchangeRepository,
                                        ServiceBookingRepository serviceBookingRepository,
                                        ReviewRepository reviewRepository,
                                        InventoryRepository inventoryRepository,
-                                       NotificationRepository notificationRepository) {
+                                       NotificationRepository notificationRepository,
+                                       ContactEnquiryRepository contactEnquiryRepository,
+                                       EmiRequestRepository emiRequestRepository) {
         this.orderRepository = orderRepository;
         this.exchangeRepository = exchangeRepository;
         this.serviceBookingRepository = serviceBookingRepository;
         this.reviewRepository = reviewRepository;
         this.inventoryRepository = inventoryRepository;
         this.notificationRepository = notificationRepository;
+        this.contactEnquiryRepository = contactEnquiryRepository;
+        this.emiRequestRepository = emiRequestRepository;
     }
 
     @GetMapping
@@ -65,8 +73,8 @@ public class AdminSectionCountController {
                 serviceBookingRepository.countByBookingStatus("NEW"),
                 reviewRepository.countByReviewStatus(ReviewStatus.PENDING),
                 inventoryRepository.countLowStock(),
-                0L,   // contactEnquiriesNew — wired in Phase 4
-                0L,   // emiRequestsNew — wired in Phase 4
+                contactEnquiryRepository.countByEnquiryStatus("NEW"),
+                emiRequestRepository.countByEmiStatus("NEW"),
                 unread
         );
         return ApiResponse.success(dto);

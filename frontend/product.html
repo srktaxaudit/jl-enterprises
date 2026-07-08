@@ -83,6 +83,7 @@
               ${p.emiDownPayment != null ? `<div class="text-slate-600">Down Payment: ${inr(p.emiDownPayment)}</div>` : ""}
               ${p.emiProcessingFee != null ? `<div class="text-slate-600">Processing Fee: ${inr(p.emiProcessingFee)}</div>` : ""}
               ${p.emiNote ? `<div class="text-slate-500 mt-1">Note: ${escAttr(p.emiNote)}</div>` : ""}
+              <button id="emiRequestBtn" type="button" class="mt-2 bg-brand hover:bg-navy text-white font-semibold rounded-lg px-4 py-1.5 text-[12px] transition">Request EMI / Callback</button>
             </div>` : ""}
             <div class="text-[13px] text-brand mb-4">Free delivery in Tamil Nadu</div>
             ${p.shortDescription ? `<p class="text-slate-600 text-sm mb-3">${escAttr(p.shortDescription)}</p>` : ""}
@@ -102,9 +103,43 @@
         </div>`;
       loadReviews(p.id);
       renderReviewForm(p.id);
+      const emiBtn = document.getElementById("emiRequestBtn");
+      if (emiBtn) emiBtn.addEventListener("click", () => requestEmi(p));
     } catch (e) {
       box.innerHTML = `<p class="text-red-500">${e.status === 404 ? "Product not found." : "Couldn't load this product."}</p>`;
     }
+  }
+
+  // "Request EMI / Callback" → collects name + phone and POSTs a public EMI request.
+  function requestEmi(p){
+    const el = document.createElement("div");
+    el.className = "bg-white rounded-2xl p-5 md:p-6";
+    el.innerHTML = `
+      <h2 class="text-navy font-bold text-lg mb-1">Request EMI</h2>
+      <p class="text-slate-500 text-sm mb-4">For <b>${escAttr(p.name)}</b>. Leave your details and our team will call you to arrange EMI.</p>
+      <div class="grid gap-3">
+        <input id="emiName" maxlength="120" placeholder="Your name *" class="border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+        <input id="emiPhone" maxlength="20" placeholder="Mobile number *" class="border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+        <input id="emiMonths" type="number" min="1" max="60" placeholder="Preferred months (optional)" class="border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+        <button id="emiSubmit" type="button" class="bg-navy hover:bg-brand text-white font-bold px-6 py-2.5 rounded-lg text-sm transition">Submit request</button>
+      </div>`;
+    const dlg = jlDialog(el, { title: "Request EMI" });
+    el.querySelector("#emiSubmit").addEventListener("click", async () => {
+      const name = el.querySelector("#emiName").value.trim();
+      const phone = el.querySelector("#emiPhone").value.trim();
+      if (!name || !phone) { jlToast("Please enter your name and mobile number.", { type:"warn" }); return; }
+      const months = el.querySelector("#emiMonths").value ? parseInt(el.querySelector("#emiMonths").value, 10) : null;
+      const btn = el.querySelector("#emiSubmit"); btn.disabled = true; btn.textContent = "Sending…";
+      try {
+        const res = await fetch(JL_API_BASE + "/api/v1/emi-requests", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, phone, productId: p.id, productName: p.name, months })
+        });
+        if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.message || "Could not send"); }
+        dlg.close();
+        jlToast("EMI request received — our team will call you.", { type:"success" });
+      } catch (err) { jlToast(err.message || "Could not send your request.", { type:"error" }); btn.disabled = false; btn.textContent = "Submit request"; }
+    });
   }
 
   const fmtDate = (iso) => { try { return new Date(iso).toLocaleDateString("en-IN", { dateStyle: "medium" }); } catch (_) { return ""; } };

@@ -129,6 +129,22 @@
       title="JL Enterprises location on Google Maps"></iframe>
   </div>
 
+  <!-- CONTACT US FORM -->
+  <div id="contactCard" class="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 mb-10">
+    <h2 class="text-lg font-bold text-navy mb-1">Send us a message</h2>
+    <p class="text-slate-400 text-sm mb-4">Have a question? Fill this in and our team will get back to you.</p>
+    <form id="contactForm" class="grid sm:grid-cols-2 gap-3" novalidate>
+      <input id="cName" required maxlength="120" placeholder="Your name *" class="border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+      <input id="cPhone" maxlength="20" placeholder="Phone" class="border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+      <input id="cEmail" type="email" maxlength="160" placeholder="Email" class="border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+      <input id="cSubject" maxlength="160" placeholder="Subject" class="border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+      <textarea id="cMessage" required maxlength="2000" rows="4" placeholder="Your message *" class="sm:col-span-2 border border-slate-300 rounded-lg px-3 py-2 text-sm"></textarea>
+      <div class="sm:col-span-2">
+        <button id="cSend" type="submit" class="bg-navy hover:bg-brand text-white font-bold px-7 py-3 rounded-full text-sm transition">Send message</button>
+      </div>
+    </form>
+  </div>
+
 </div>
 </main>
 
@@ -174,7 +190,38 @@
 </footer>
 
 <script src="jl-ui.js"></script>
+<script src="config.js"></script>
 <script src="script.js"></script>
 <script src="search.js"></script>
+<script>
+  // Contact Us → POST /api/v1/contact (public). Reuses jl-ui.js toasts.
+  (function(){
+    var form = document.getElementById("contactForm");
+    if(!form) return;
+    form.addEventListener("submit", async function(ev){
+      ev.preventDefault();
+      var name = document.getElementById("cName").value.trim();
+      var message = document.getElementById("cMessage").value.trim();
+      if(!name || !message){ jlToast("Please enter your name and a message.", { type:"warn" }); return; }
+      var body = {
+        name: name,
+        phone: document.getElementById("cPhone").value.trim() || null,
+        email: document.getElementById("cEmail").value.trim() || null,
+        subject: document.getElementById("cSubject").value.trim() || null,
+        message: message
+      };
+      var btn = document.getElementById("cSend"); btn.disabled = true; var old = btn.textContent; btn.textContent = "Sending…";
+      try {
+        var res = await fetch(JL_API_BASE + "/api/v1/contact", {
+          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body)
+        });
+        if(!res.ok){ var e = await res.json().catch(function(){return{};}); throw new Error(e.message || "Could not send"); }
+        form.reset();
+        jlToast("Thanks — we'll get back to you shortly.", { type:"success" });
+      } catch(err){ jlToast(err.message || "Could not send your message.", { type:"error" }); }
+      finally { btn.disabled = false; btn.textContent = old; }
+    });
+  })();
+</script>
 </body>
 </html>

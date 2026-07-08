@@ -87,8 +87,9 @@ public class SecurityConfig {
                         "/api/v1/products/**", "/api/v1/categories/**", "/api/v1/brands/**", "/api/v1/banners/**",
                         "/api/v1/orders/track", "/api/v1/coupons/active", "/api/v1/branding")
                     .permitAll()
-                // Public service-request submission (staff GET/PATCH still require auth)
-                .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/v1/service-bookings").permitAll()
+                // Public service-request / contact / EMI-request submission (staff GET/PATCH still require auth)
+                .requestMatchers(org.springframework.http.HttpMethod.POST,
+                        "/api/v1/service-bookings", "/api/v1/contact", "/api/v1/emi-requests").permitAll()
                 .anyRequest().authenticated()
             )
             .exceptionHandling(ex -> ex
