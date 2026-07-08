@@ -3,8 +3,11 @@ package in.jlenterprises.ecommerce.controller.admin;
 import in.jlenterprises.ecommerce.constant.DocumentType;
 import in.jlenterprises.ecommerce.dto.accounting.BackupDto;
 import in.jlenterprises.ecommerce.dto.accounting.ImportResultDto;
+import in.jlenterprises.ecommerce.dto.migration.MigrationResult;
+import in.jlenterprises.ecommerce.request.migration.VyaparPackage;
 import in.jlenterprises.ecommerce.response.ApiResponse;
 import in.jlenterprises.ecommerce.service.ImportExportService;
+import in.jlenterprises.ecommerce.service.VyaparImportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -28,9 +31,11 @@ public class DataController {
     private static final LocalDate ALL_FROM = LocalDate.of(2000, 1, 1);
 
     private final ImportExportService io;
+    private final VyaparImportService vyapar;
 
-    public DataController(ImportExportService io) {
+    public DataController(ImportExportService io, VyaparImportService vyapar) {
         this.io = io;
+        this.vyapar = vyapar;
     }
 
     @GetMapping("/export/accounts")
@@ -81,5 +86,23 @@ public class DataController {
     @Operation(summary = "Import ledger accounts from CSV")
     public ApiResponse<ImportResultDto> importAccounts(@RequestBody Map<String, String> body) {
         return ApiResponse.success("Import complete", io.importAccounts(body.get("csv")));
+    }
+
+    // ── Vyapar migration (opening-balance method) ──────────────────────────
+
+    @PostMapping("/import/vyapar")
+    @Operation(summary = "Migrate a Vyapar backup (products, party ledgers, contacts, opening balances). "
+            + "dryRun=true reconciles without writing.")
+    public ApiResponse<MigrationResult> importVyapar(
+            @RequestParam(defaultValue = "false") boolean dryRun,
+            @RequestBody VyaparPackage pkg) {
+        MigrationResult result = vyapar.run(pkg, dryRun);
+        return ApiResponse.success(dryRun ? "Dry-run complete" : "Vyapar import complete", result);
+    }
+
+    @PostMapping("/import/vyapar/rollback")
+    @Operation(summary = "Undo the Vyapar import — remove all VYP- products/ledgers/contacts and reset opening balances")
+    public ApiResponse<MigrationResult> rollbackVyapar() {
+        return ApiResponse.success("Vyapar import rolled back", vyapar.rollback());
     }
 }

@@ -16,6 +16,9 @@ public interface LedgerAccountRepository extends JpaRepository<LedgerAccount, UU
 
     boolean existsByCode(String code);
 
+    /** Party ledgers imported from Vyapar are coded "VYP-P-*" (for rollback). */
+    List<LedgerAccount> findByCodeStartingWith(String prefix);
+
     List<LedgerAccount> findAllByOrderByCodeAsc();
 
     List<LedgerAccount> findByActiveTrueOrderByCodeAsc();

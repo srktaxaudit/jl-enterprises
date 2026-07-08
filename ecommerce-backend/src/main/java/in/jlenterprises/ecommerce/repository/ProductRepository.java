@@ -19,6 +19,11 @@ public interface ProductRepository extends JpaRepository<Product, UUID>, JpaSpec
 
     Optional<Product> findBySlug(String slug);
 
+    Optional<Product> findBySku(String sku);
+
+    /** Products imported from Vyapar — every migrated SKU is VYP-prefixed (for rollback). */
+    java.util.List<Product> findBySkuStartingWith(String prefix);
+
     boolean existsBySku(String sku);
 
     boolean existsBySlug(String slug);
