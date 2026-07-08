@@ -87,6 +87,27 @@ public class Product extends BaseEntity {
     @Column(name = "meta_description", length = 300)
     private String metaDescription;
 
+    // ── EMI (manually set per product by the admin — NO auto-calculation) ──
+    /** columnDefinition default keeps ddl-auto's ALTER safe on the existing
+        products table on Postgres (the NOT-NULL-with-existing-rows gotcha). */
+    @Column(name = "emi_available", nullable = false, columnDefinition = "boolean not null default false")
+    private boolean emiAvailable = false;
+
+    @Column(name = "emi_months")
+    private Integer emiMonths;
+
+    @Column(name = "emi_amount", precision = 12, scale = 2)
+    private BigDecimal emiAmount;
+
+    @Column(name = "emi_down_payment", precision = 12, scale = 2)
+    private BigDecimal emiDownPayment;
+
+    @Column(name = "emi_processing_fee", precision = 12, scale = 2)
+    private BigDecimal emiProcessingFee;
+
+    @Column(name = "emi_note", columnDefinition = "text")
+    private String emiNote;
+
     // ── Denormalised metrics ──
     @Column(name = "average_rating", precision = 3, scale = 2)
     private BigDecimal averageRating = BigDecimal.ZERO;

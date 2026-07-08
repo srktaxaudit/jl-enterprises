@@ -62,6 +62,20 @@
         <div class="md:col-span-2"><label class="lbl">Description</label><textarea id="description" rows="3" class="inp"></textarea></div>
         <label class="flex items-center gap-2 text-sm"><input id="featured" type="checkbox" /> Featured</label>
 
+        <!-- EMI (manual, per-product — the storefront never auto-calculates) -->
+        <div class="md:col-span-2 border-t border-slate-100 pt-4">
+          <label class="flex items-center gap-2 text-sm font-semibold text-navy">
+            <input id="emiAvailable" type="checkbox" /> EMI Available?
+          </label>
+          <div id="emiFields" class="hidden grid md:grid-cols-2 gap-4 mt-3">
+            <div><label class="lbl">EMI Months</label><input id="emiMonths" type="number" min="0" step="1" class="inp" placeholder="e.g. 12" /></div>
+            <div><label class="lbl">EMI Amount / month (₹)</label><input id="emiAmount" data-jl="decimal" type="number" min="0" step="0.01" class="inp" placeholder="e.g. 2500" /></div>
+            <div><label class="lbl">Down Payment (₹)</label><input id="emiDownPayment" data-jl="decimal" type="number" min="0" step="0.01" class="inp" placeholder="e.g. 5000" /></div>
+            <div><label class="lbl">Processing Fee (₹)</label><input id="emiProcessingFee" data-jl="decimal" type="number" min="0" step="0.01" class="inp" placeholder="e.g. 499" /></div>
+            <div class="md:col-span-2"><label class="lbl">EMI Note</label><input id="emiNote" maxlength="300" class="inp" placeholder="e.g. 0% interest on selected bank cards" /></div>
+          </div>
+        </div>
+
         <!-- Images (only after the product exists — upload needs its id) -->
         <div class="md:col-span-2 border-t border-slate-100 pt-4">
           <label class="lbl">Product images</label>
@@ -181,7 +195,7 @@
       else $("formCard").querySelector("input,select,textarea,button")?.focus();
     } else if(productDlg){ productDlg.close(); productDlg=null; }
   }
-  function resetForm(){ $("form").reset(); $("pid").value=""; $("formTitle").textContent="New product"; jlClearErrors($("form")); reflectImagesSection(); }
+  function resetForm(){ $("form").reset(); $("pid").value=""; $("formTitle").textContent="New product"; jlClearErrors($("form")); syncEmiFields(); reflectImagesSection(); }
 
   // ── Product images ──
   function reflectImagesSection(){
@@ -242,10 +256,19 @@
       $("price").value=p.price??""; $("comparePrice").value=p.comparePrice??"";
       $("categoryId").value=p.categoryId||""; $("brandId").value=p.brandId||"";
       $("shortDescription").value=p.shortDescription||""; $("description").value=p.description||"";
-      $("featured").checked=!!p.featured; $("formTitle").textContent="Edit: "+p.name; showForm(true);
+      $("featured").checked=!!p.featured;
+      $("emiAvailable").checked=!!p.emiAvailable;
+      $("emiMonths").value=p.emiMonths??""; $("emiAmount").value=p.emiAmount??"";
+      $("emiDownPayment").value=p.emiDownPayment??""; $("emiProcessingFee").value=p.emiProcessingFee??"";
+      $("emiNote").value=p.emiNote||""; syncEmiFields();
+      $("formTitle").textContent="Edit: "+p.name; showForm(true);
       reflectImagesSection(); renderImages(p.images||[]);
     } catch(e){ flash(e.message||"Could not load product", false); }
   }
+
+  // Show the EMI detail fields only when "EMI Available?" is ticked.
+  function syncEmiFields(){ $("emiFields").classList.toggle("hidden", !$("emiAvailable").checked); }
+  $("emiAvailable").addEventListener("change", syncEmiFields);
 
   const PRODUCT_RULES = { name:[jlV.required()], sku:[jlV.required()], price:[jlV.required(), jlV.decimal({min:0})] };
   jlField($("name"), PRODUCT_RULES.name);
@@ -261,6 +284,13 @@
       categoryId:$("categoryId").value||null, brandId:$("brandId").value||null,
       shortDescription:$("shortDescription").value.trim()||null, description:$("description").value.trim()||null,
       featured:$("featured").checked, currency:"INR",
+      // EMI — sent exactly as typed; empty fields go as null (not saved).
+      emiAvailable:$("emiAvailable").checked,
+      emiMonths:$("emiMonths").value ? parseInt($("emiMonths").value,10) : null,
+      emiAmount:$("emiAmount").value||null,
+      emiDownPayment:$("emiDownPayment").value||null,
+      emiProcessingFee:$("emiProcessingFee").value||null,
+      emiNote:$("emiNote").value.trim()||null,
     };
     const id = $("pid").value;
     const saveBtn = $("saveBtn");

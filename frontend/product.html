@@ -76,7 +76,15 @@
               <span class="text-3xl font-extrabold text-navy">${inr(price)}</span>
               ${mrp > price ? `<span class="text-slate-400 line-through">${inr(mrp)}</span>` : ""}
             </div>
-            <div class="text-[13px] text-brand mb-4">EMI from ${inr(Math.max(1, Math.round(price / 21)))}/mo · Free delivery in Tamil Nadu</div>
+            ${p.emiAvailable ? `
+            <div class="border border-brand/40 bg-brand/5 rounded-xl p-3 mb-4 text-[13px]">
+              <div class="font-semibold text-brand mb-1">💳 EMI Available</div>
+              ${(p.emiAmount != null && p.emiMonths) ? `<div class="text-navy font-bold text-[14px]">${inr(p.emiAmount)} per month for ${p.emiMonths} months</div>` : ""}
+              ${p.emiDownPayment != null ? `<div class="text-slate-600">Down Payment: ${inr(p.emiDownPayment)}</div>` : ""}
+              ${p.emiProcessingFee != null ? `<div class="text-slate-600">Processing Fee: ${inr(p.emiProcessingFee)}</div>` : ""}
+              ${p.emiNote ? `<div class="text-slate-500 mt-1">Note: ${escAttr(p.emiNote)}</div>` : ""}
+            </div>` : ""}
+            <div class="text-[13px] text-brand mb-4">Free delivery in Tamil Nadu</div>
             ${p.shortDescription ? `<p class="text-slate-600 text-sm mb-3">${escAttr(p.shortDescription)}</p>` : ""}
             ${(p.availableStock != null && p.availableStock <= 0)
               ? `<button disabled class="bg-slate-300 text-white font-bold px-6 py-3 rounded-lg text-sm cursor-not-allowed">❌ Out of Stock</button>`

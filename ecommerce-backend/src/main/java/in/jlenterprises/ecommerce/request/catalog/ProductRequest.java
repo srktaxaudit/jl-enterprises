@@ -24,5 +24,12 @@ public record ProductRequest(
         @Size(min = 3, max = 3) String currency,
         Boolean featured,
         @Size(max = 200) String metaTitle,
-        @Size(max = 300) String metaDescription
+        @Size(max = 300) String metaDescription,
+        // ── EMI (all optional; only used when emiAvailable is true) ──
+        Boolean emiAvailable,
+        @PositiveOrZero Integer emiMonths,
+        @PositiveOrZero BigDecimal emiAmount,
+        @PositiveOrZero BigDecimal emiDownPayment,
+        @PositiveOrZero BigDecimal emiProcessingFee,
+        @Size(max = 300) String emiNote
 ) {}

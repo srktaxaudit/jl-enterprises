@@ -18,5 +18,9 @@ public record ProductSummaryDto(
         int reviewCount,
         String primaryImageUrl,
         String brandName,
-        String categorySlug
+        String categorySlug,
+        // ── EMI (for list/grid cards; manual only) ──
+        boolean emiAvailable,
+        BigDecimal emiAmount,
+        Integer emiMonths
 ) {}

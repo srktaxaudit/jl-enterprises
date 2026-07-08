@@ -255,6 +255,13 @@ public class ProductServiceImpl implements ProductService {
         p.setMetaDescription(r.metaDescription());
         p.setCategory(r.categoryId() == null ? null : findCategory(r.categoryId()));
         p.setBrand(r.brandId() == null ? null : findBrand(r.brandId()));
+        // EMI — stored exactly as the admin enters it; the storefront never auto-calculates.
+        p.setEmiAvailable(r.emiAvailable() != null && r.emiAvailable());
+        p.setEmiMonths(r.emiMonths());
+        p.setEmiAmount(r.emiAmount());
+        p.setEmiDownPayment(r.emiDownPayment());
+        p.setEmiProcessingFee(r.emiProcessingFee());
+        p.setEmiNote(r.emiNote());
     }
 
     private String resolveSlug(ProductRequest request) {

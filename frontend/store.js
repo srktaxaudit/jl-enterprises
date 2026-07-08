@@ -235,7 +235,6 @@ function jlProductCard(p) {
   const mrp = Number(p.comparePrice || 0);
   const off = jlPctOff(mrp, price);
   const rating = Math.round(Number(p.averageRating || 0));
-  const emi = Math.max(1, Math.round(price / 21));
   const emoji = JL_CAT_EMOJI[p.categorySlug] || "📦";
   const searchText = jlEsc(((p.name || "") + " " + (p.brandName || "") + " " + (p.categorySlug || "")).toLowerCase());
   const media = p.primaryImageUrl
@@ -253,7 +252,7 @@ function jlProductCard(p) {
           <span class="text-xl font-extrabold text-navy">${jlInr(price)}</span>
           ${mrp > price ? `<span class="text-[13px] text-slate-400 line-through">${jlInr(mrp)}</span>` : ""}
         </div>
-        <div class="text-[12px] text-brand mb-2.5">EMI from ${jlInr(emi)}/mo</div>
+        ${(p.emiAvailable && p.emiAmount) ? `<div class="text-[12px] text-brand mb-2.5">EMI ${jlInr(p.emiAmount)}/mo${p.emiMonths ? ` for ${p.emiMonths} months` : ""}</div>` : `<div class="mb-2.5"></div>`}
         ${jlCartControl({ id: p.id, name: p.name, brand: p.brandName || "", emoji, price, stock: (p.availableStock == null ? "" : p.availableStock) }, { variant: "card" })}
       </div>
     </div>`;

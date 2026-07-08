@@ -30,5 +30,12 @@ public record ProductDetailDto(
         UUID brandId,
         String brandName,
         List<ProductImageDto> images,
-        List<ProductVariantDto> variants
+        List<ProductVariantDto> variants,
+        // ── EMI (manually set by admin; storefront shows these as-is) ──
+        boolean emiAvailable,
+        Integer emiMonths,
+        BigDecimal emiAmount,
+        BigDecimal emiDownPayment,
+        BigDecimal emiProcessingFee,
+        String emiNote
 ) {}
