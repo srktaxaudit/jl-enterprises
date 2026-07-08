@@ -17,6 +17,9 @@ public interface InventoryRepository extends JpaRepository<Inventory, UUID> {
 
     Optional<Inventory> findByProductId(UUID productId);
 
+    /** Batch lookup for product list pages — one query per page, not per product. */
+    List<Inventory> findByProductIdIn(java.util.Collection<UUID> productIds);
+
     /**
      * Fetch the inventory row with a pessimistic write lock (SELECT ... FOR UPDATE),
      * so concurrent checkouts serialize on it and cannot oversell. Use only inside
