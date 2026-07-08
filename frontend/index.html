@@ -291,8 +291,9 @@
           <span class="text-xl font-extrabold text-navy">${inr(price)}</span>
           ${mrp>price ? `<span class="text-[13px] text-slate-400 line-through">${inr(mrp)}</span>`:""}
         </div>
-        <div class="text-[12px] text-brand mb-2.5">EMI from ${inr(emi)}/mo</div>
-        ${jlCartControl({ id: p.id, name: p.name, brand: p.brandName || "", emoji, price, stock: (p.availableStock == null ? "" : p.availableStock) }, { variant: "card" })}
+        <div class="text-[12px] text-brand mb-1.5">EMI from ${inr(emi)}/mo</div>
+        ${jlStockLine(p.availableStock == null ? null : Number(p.availableStock))}
+        ${jlCardCartOrOOS(p, emoji, p.availableStock == null ? null : Number(p.availableStock))}
       </div>
     </div>`;
   }

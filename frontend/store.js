@@ -229,6 +229,27 @@ function jlEsc(s) {
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
+/** Closing-stock status line for a card. Mirrors product.html's states:
+ *  0 → red "Out of stock", 1–5 → orange "Only X left", else green "In stock".
+ *  Returns "" when the API didn't send availableStock (e.g. wishlist rows). */
+function jlStockLine(stock) {
+  if (stock == null) return "";
+  if (stock <= 0) return `<div class="text-[12px] font-bold text-red-600 mb-1.5">Out of stock</div>`;
+  if (stock <= 5) return `<div class="text-[12px] font-semibold text-orange-600 mb-1.5">Only ${stock} left in stock</div>`;
+  return `<div class="text-[12px] font-semibold text-emerald-600 mb-1.5">✔ In stock</div>`;
+}
+
+/** Card footer: the cart control, or a disabled button when closing stock is 0. */
+function jlCardCartOrOOS(p, emoji, stock) {
+  if (stock != null && stock <= 0) {
+    return `<button disabled class="w-full bg-slate-300 text-white font-bold py-2.5 rounded-lg text-sm cursor-not-allowed">❌ Out of Stock</button>`;
+  }
+  return jlCartControl(
+    { id: p.id, name: p.name, brand: p.brandName || "", emoji, price: Number(p.price || 0), stock: (stock == null ? "" : stock) },
+    { variant: "card" }
+  );
+}
+
 /** Render one storefront card from a ProductSummaryDto (API shape). */
 function jlProductCard(p) {
   const price = Number(p.price || 0);
@@ -252,8 +273,9 @@ function jlProductCard(p) {
           <span class="text-xl font-extrabold text-navy">${jlInr(price)}</span>
           ${mrp > price ? `<span class="text-[13px] text-slate-400 line-through">${jlInr(mrp)}</span>` : ""}
         </div>
-        ${(p.emiAvailable && p.emiAmount) ? `<div class="text-[12px] text-brand mb-2.5">EMI ${jlInr(p.emiAmount)}/mo${p.emiMonths ? ` for ${p.emiMonths} months` : ""}</div>` : `<div class="mb-2.5"></div>`}
-        ${jlCartControl({ id: p.id, name: p.name, brand: p.brandName || "", emoji, price, stock: (p.availableStock == null ? "" : p.availableStock) }, { variant: "card" })}
+        ${(p.emiAvailable && p.emiAmount) ? `<div class="text-[12px] text-brand mb-1.5">EMI ${jlInr(p.emiAmount)}/mo${p.emiMonths ? ` for ${p.emiMonths} months` : ""}</div>` : `<div class="mb-1.5"></div>`}
+        ${jlStockLine(p.availableStock == null ? null : Number(p.availableStock))}
+        ${jlCardCartOrOOS(p, emoji, p.availableStock == null ? null : Number(p.availableStock))}
       </div>
     </div>`;
 }

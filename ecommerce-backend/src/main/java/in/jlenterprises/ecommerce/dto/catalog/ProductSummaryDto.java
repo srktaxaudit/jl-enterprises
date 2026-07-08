@@ -19,6 +19,8 @@ public record ProductSummaryDto(
         String primaryImageUrl,
         String brandName,
         String categorySlug,
+        /** Closing stock (quantity − reserved) so grid cards can show stock status. */
+        Integer availableStock,
         // ── EMI (for list/grid cards; manual only) ──
         boolean emiAvailable,
         BigDecimal emiAmount,

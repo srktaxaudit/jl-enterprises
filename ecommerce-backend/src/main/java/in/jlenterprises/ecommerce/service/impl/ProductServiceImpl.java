@@ -31,7 +31,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class ProductServiceImpl implements ProductService {
@@ -66,7 +68,9 @@ public class ProductServiceImpl implements ProductService {
                 .and(ProductSpecifications.minRating(c.minRating()))
                 .and(ProductSpecifications.inStock(c.inStock()))
                 .and(ProductSpecifications.emiAvailable(c.emiAvailable()));
-        return productRepository.findAll(spec, pageable).map(productMapper::toSummary);
+        Page<Product> page = productRepository.findAll(spec, pageable);
+        applyAvailableStock(page);
+        return page.map(productMapper::toSummary);
     }
 
     @Override
@@ -81,7 +85,24 @@ public class ProductServiceImpl implements ProductService {
                 .and(ProductSpecifications.priceLoe(c.maxPrice()))
                 .and(ProductSpecifications.featured(c.featured()))
                 .and(ProductSpecifications.minRating(c.minRating()));
-        return productRepository.findAll(spec, pageable).map(productMapper::toSummary);
+        Page<Product> page = productRepository.findAll(spec, pageable);
+        applyAvailableStock(page);
+        return page.map(productMapper::toSummary);
+    }
+
+    /**
+     * Set the transient availableStock (closing stock = quantity − reserved) on
+     * each product of a list page from ONE batch inventory query, so grid cards
+     * can show live stock status. Products without an inventory row read as 0.
+     */
+    private void applyAvailableStock(Page<Product> page) {
+        List<UUID> ids = page.getContent().stream().map(Product::getId).toList();
+        if (ids.isEmpty()) {
+            return;
+        }
+        Map<UUID, Integer> available = inventoryRepository.findByProductIdIn(ids).stream()
+                .collect(Collectors.toMap(i -> i.getProduct().getId(), Inventory::getAvailable));
+        page.getContent().forEach(p -> p.setAvailableStock(available.getOrDefault(p.getId(), 0)));
     }
 
     @Override
