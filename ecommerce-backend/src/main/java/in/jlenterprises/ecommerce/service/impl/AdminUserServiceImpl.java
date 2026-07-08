@@ -61,8 +61,11 @@ public class AdminUserServiceImpl implements AdminUserService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<UserDto> listUsers(String search, Pageable pageable) {
+    public Page<UserDto> listUsers(String search, Boolean active, Pageable pageable) {
         Specification<User> spec = buildSearch(search);
+        if (active != null) {
+            spec = Specification.where(spec).and((root, query, cb) -> cb.equal(root.get("enabled"), active));
+        }
         return userRepository.findAll(spec, pageable).map(userMapper::toDto);
     }
 

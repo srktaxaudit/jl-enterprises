@@ -130,8 +130,11 @@ public class ExchangeServiceImpl implements ExchangeService {
     // ── Admin ──
     @Override
     @Transactional(readOnly = true)
-    public Page<ExchangeRequestDto> list(Pageable pageable) {
-        return repository.findAll(pageable).map(this::toDto);
+    public Page<ExchangeRequestDto> list(ExchangeStatus status, Pageable pageable) {
+        Page<ExchangeRequest> page = status == null
+                ? repository.findAll(pageable)
+                : repository.findByExchangeStatus(status, pageable);
+        return page.map(this::toDto);
     }
 
     @Override

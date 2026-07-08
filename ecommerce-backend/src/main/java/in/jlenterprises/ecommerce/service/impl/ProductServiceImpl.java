@@ -63,7 +63,9 @@ public class ProductServiceImpl implements ProductService {
                 .and(ProductSpecifications.priceGoe(c.minPrice()))
                 .and(ProductSpecifications.priceLoe(c.maxPrice()))
                 .and(ProductSpecifications.featured(c.featured()))
-                .and(ProductSpecifications.minRating(c.minRating()));
+                .and(ProductSpecifications.minRating(c.minRating()))
+                .and(ProductSpecifications.inStock(c.inStock()))
+                .and(ProductSpecifications.emiAvailable(c.emiAvailable()));
         return productRepository.findAll(spec, pageable).map(productMapper::toSummary);
     }
 

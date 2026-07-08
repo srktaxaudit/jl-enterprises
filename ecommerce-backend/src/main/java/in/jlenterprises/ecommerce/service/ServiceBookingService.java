@@ -12,8 +12,8 @@ public interface ServiceBookingService {
     /** Public: record a new service request. */
     ServiceBookingDto create(ServiceBookingRequest request);
 
-    /** Admin: list bookings (newest first). */
-    Page<ServiceBookingDto> list(Pageable pageable);
+    /** Admin: list bookings (newest first), optionally filtered by status. */
+    Page<ServiceBookingDto> list(String status, Pageable pageable);
 
     /** Admin: update the workflow status (NEW/CONTACTED/SCHEDULED/DONE/CANCELLED). */
     ServiceBookingDto updateStatus(UUID id, String status);

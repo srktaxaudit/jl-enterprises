@@ -1,6 +1,8 @@
 package in.jlenterprises.ecommerce.repository;
 
 import in.jlenterprises.ecommerce.entity.ServiceBooking;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -11,4 +13,7 @@ public interface ServiceBookingRepository extends JpaRepository<ServiceBooking, 
 
     /** New (unhandled) bookings — for the sidebar count badge. */
     long countByBookingStatus(String bookingStatus);
+
+    /** Admin filter by workflow status (NEW/CONTACTED/SCHEDULED/DONE/CANCELLED). */
+    Page<ServiceBooking> findByBookingStatus(String bookingStatus, Pageable pageable);
 }

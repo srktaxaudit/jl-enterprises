@@ -47,10 +47,11 @@ public class ServiceBookingController {
 
     @GetMapping
     @PreAuthorize(STAFF)
-    @Operation(summary = "List service bookings (newest first)")
+    @Operation(summary = "List service bookings (newest first), optionally by status")
     public ApiResponse<PageResponse<ServiceBookingDto>> list(
+            @RequestParam(required = false) String status,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        return ApiResponse.success(PageResponse.of(service.list(pageable)));
+        return ApiResponse.success(PageResponse.of(service.list(status, pageable)));
     }
 
     @PatchMapping("/{id}/status")

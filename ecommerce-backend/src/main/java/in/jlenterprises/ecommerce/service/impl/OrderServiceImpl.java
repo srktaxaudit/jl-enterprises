@@ -276,9 +276,21 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<OrderSummaryDto> listAll(OrderStatus status, Pageable pageable) {
-        Specification<Order> spec = status == null ? null
-                : (root, query, cb) -> cb.equal(root.get("orderStatus"), status);
+    public Page<OrderSummaryDto> listAll(OrderStatus status, PaymentStatus paymentStatus,
+                                         Instant from, Instant to, Pageable pageable) {
+        Specification<Order> spec = Specification.where(null);
+        if (status != null) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("orderStatus"), status));
+        }
+        if (paymentStatus != null) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.join("payment").get("paymentStatus"), paymentStatus));
+        }
+        if (from != null) {
+            spec = spec.and((root, query, cb) -> cb.greaterThanOrEqualTo(root.get("placedAt"), from));
+        }
+        if (to != null) {
+            spec = spec.and((root, query, cb) -> cb.lessThanOrEqualTo(root.get("placedAt"), to));
+        }
         return orderRepository.findAll(spec, pageable).map(orderMapper::toSummary);
     }
 

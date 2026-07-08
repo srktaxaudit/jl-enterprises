@@ -51,8 +51,11 @@ public class ServiceBookingServiceImpl implements ServiceBookingService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<ServiceBookingDto> list(Pageable pageable) {
-        return repository.findAll(pageable).map(this::toDto);
+    public Page<ServiceBookingDto> list(String status, Pageable pageable) {
+        Page<ServiceBooking> page = (status == null || status.isBlank())
+                ? repository.findAll(pageable)
+                : repository.findByBookingStatus(status.trim().toUpperCase(), pageable);
+        return page.map(this::toDto);
     }
 
     @Override

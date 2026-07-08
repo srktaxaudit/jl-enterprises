@@ -25,7 +25,7 @@ public interface ExchangeService {
     String uploadImage(UUID userId, MultipartFile file);
 
     // ── Admin ──
-    Page<ExchangeRequestDto> list(Pageable pageable);
+    Page<ExchangeRequestDto> list(ExchangeStatus status, Pageable pageable);
 
     ExchangeRequestDto get(UUID id);
 

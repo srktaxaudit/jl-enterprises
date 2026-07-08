@@ -63,7 +63,7 @@ public class ProductController {
             @RequestParam(required = false) Boolean featured,
             @RequestParam(required = false) BigDecimal minRating,
             @PageableDefault(size = 20) Pageable pageable) {
-        var criteria = new ProductSearchCriteria(search, category, brand, minPrice, maxPrice, featured, minRating);
+        var criteria = new ProductSearchCriteria(search, category, brand, minPrice, maxPrice, featured, minRating, null, null);
         // Storefront: only ACTIVE, in-stock products are listed.
         return ApiResponse.success(PageResponse.of(productService.searchPublic(criteria, pageable)));
     }

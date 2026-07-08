@@ -39,8 +39,9 @@ public class AdminUserController {
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MANAGER')")
     @Operation(summary = "List users (paged, optional search)")
     public ApiResponse<PageResponse<UserDto>> listUsers(@RequestParam(required = false) String search,
+                                                        @RequestParam(required = false) Boolean active,
                                                         @PageableDefault(size = 20) Pageable pageable) {
-        return ApiResponse.success(PageResponse.of(adminUserService.listUsers(search, pageable)));
+        return ApiResponse.success(PageResponse.of(adminUserService.listUsers(search, active, pageable)));
     }
 
     @GetMapping("/users/{id}")
