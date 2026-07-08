@@ -225,6 +225,9 @@ public class OrderServiceImpl implements OrderService {
         doCancel(order, reason);
         notificationService.notifyUser(userId, NotificationType.ORDER, "Order cancelled",
                 "Your order " + order.getOrderNumber() + " has been cancelled.", "/orders/" + order.getId());
+        notificationService.notifyAdmins(NotificationType.ORDER, "Product order cancelled",
+                "Product order " + order.getOrderNumber() + " was cancelled by " + who(order.getUser()) + ".",
+                "/admin-orders.html", "Orders", order.getId(), "ORDER");
         return orderMapper.toDto(orderRepository.save(order));
     }
 
@@ -240,6 +243,9 @@ public class OrderServiceImpl implements OrderService {
         order.setReturnRequestedAt(Instant.now());
         notificationService.notifyUser(userId, NotificationType.ORDER, "Return requested",
                 "We've received your return request for order " + order.getOrderNumber() + ".", "/orders/" + order.getId());
+        notificationService.notifyAdmins(NotificationType.ORDER, "Return requested",
+                who(order.getUser()) + " requested a return for order " + order.getOrderNumber() + ".",
+                "/admin-orders.html", "Orders", order.getId(), "ORDER");
         return orderMapper.toDto(orderRepository.save(order));
     }
 
@@ -425,5 +431,12 @@ public class OrderServiceImpl implements OrderService {
     private Order getEntity(UUID orderId) {
         return orderRepository.findById(orderId)
                 .orElseThrow(() -> ResourceNotFoundException.of("Order", orderId));
+    }
+
+    /** Display name for admin notifications — full name if present, else email. */
+    private static String who(User u) {
+        if (u == null) return "a customer";
+        String name = u.getFullName();
+        return (name == null || name.isBlank()) ? u.getEmail() : name;
     }
 }

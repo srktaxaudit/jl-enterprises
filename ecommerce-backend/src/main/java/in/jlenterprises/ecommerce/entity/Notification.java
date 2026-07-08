@@ -16,6 +16,7 @@ import lombok.Setter;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.time.Instant;
+import java.util.UUID;
 
 /** An in-app notification for a user. */
 @Entity
@@ -45,6 +46,19 @@ public class Notification extends BaseEntity {
 
     @Column(name = "link", length = 500)
     private String link;
+
+    // ── Optional context for admin notifications (which section/record it refers to) ──
+    /** Human-readable section name, e.g. "Orders", "Service Bookings". */
+    @Column(name = "section", length = 60)
+    private String section;
+
+    /** Id of the related record (order/booking/etc.) so the UI can deep-link. */
+    @Column(name = "related_id")
+    private UUID relatedId;
+
+    /** Type of the related record, e.g. "ORDER", "SERVICE_BOOKING". */
+    @Column(name = "related_type", length = 40)
+    private String relatedType;
 
     @Column(name = "is_read", nullable = false)
     private boolean read = false;

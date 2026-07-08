@@ -22,4 +22,11 @@ public interface NotificationService {
 
     /** Notify every admin / super-admin (e.g. new order, low stock). Best-effort; never throws. */
     void notifyAdmins(NotificationType type, String title, String message, String link);
+
+    /**
+     * Notify every admin / super-admin, with extra context so the admin UI can show the
+     * section and deep-link to the related record. Best-effort; never throws.
+     */
+    void notifyAdmins(NotificationType type, String title, String message, String link,
+                      String section, UUID relatedId, String relatedType);
 }

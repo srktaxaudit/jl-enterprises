@@ -106,6 +106,11 @@ public class PaymentServiceImpl implements PaymentService {
             }
             notificationService.notifyUser(order.getUser().getId(), NotificationType.ORDER, "Payment received",
                     "Payment for order " + order.getOrderNumber() + " was successful.", "/orders/" + order.getId());
+            String payerName = order.getUser().getFullName();
+            notificationService.notifyAdmins(NotificationType.PAYMENT, "Payment received",
+                    "Payment received from " + (payerName == null || payerName.isBlank() ? order.getUser().getEmail() : payerName)
+                            + " for order " + order.getOrderNumber() + " (" + order.getCurrency() + " " + payment.getAmount() + ").",
+                    "/admin-orders.html", "Orders", order.getId(), "ORDER");
             postSaleAfterCommit(order.getId());
         } else {
             payment.setPaymentStatus(PaymentStatus.FAILED);

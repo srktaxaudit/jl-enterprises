@@ -11,6 +11,9 @@ public record NotificationDto(
         String title,
         String message,
         String link,
+        String section,
+        UUID relatedId,
+        String relatedType,
         boolean read,
         Instant createdAt
 ) {}

@@ -1,10 +1,12 @@
 package in.jlenterprises.ecommerce.service.impl;
 
+import in.jlenterprises.ecommerce.constant.NotificationType;
 import in.jlenterprises.ecommerce.dto.service.ServiceBookingDto;
 import in.jlenterprises.ecommerce.entity.ServiceBooking;
 import in.jlenterprises.ecommerce.exception.ResourceNotFoundException;
 import in.jlenterprises.ecommerce.repository.ServiceBookingRepository;
 import in.jlenterprises.ecommerce.request.service.ServiceBookingRequest;
+import in.jlenterprises.ecommerce.service.NotificationService;
 import in.jlenterprises.ecommerce.service.ServiceBookingService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -21,9 +23,12 @@ public class ServiceBookingServiceImpl implements ServiceBookingService {
             Set.of("NEW", "CONTACTED", "SCHEDULED", "DONE", "CANCELLED");
 
     private final ServiceBookingRepository repository;
+    private final NotificationService notificationService;
 
-    public ServiceBookingServiceImpl(ServiceBookingRepository repository) {
+    public ServiceBookingServiceImpl(ServiceBookingRepository repository,
+                                     NotificationService notificationService) {
         this.repository = repository;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -36,7 +41,12 @@ public class ServiceBookingServiceImpl implements ServiceBookingService {
         b.setMessage(request.message());
         b.setPreferredDate(request.preferredDate());
         b.setBookingStatus("NEW");
-        return toDto(repository.save(b));
+        ServiceBooking saved = repository.save(b);
+        notificationService.notifyAdmins(NotificationType.SERVICE, "New service booking",
+                "New service booking request received from " + saved.getCustomerName()
+                        + (saved.getServiceType() != null ? " (" + saved.getServiceType() + ")" : "") + ".",
+                "/admin-service.html", "Service Bookings", saved.getId(), "SERVICE_BOOKING");
+        return toDto(saved);
     }
 
     @Override
