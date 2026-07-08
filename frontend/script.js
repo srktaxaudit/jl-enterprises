@@ -461,6 +461,33 @@ function initEmiCalculator() {
   });
 }
 
+/* ── Footer "Contact Us": social + maps links, injected on every page that has the
+      site footer (no-ops elsewhere). Kept here so the footer markup stays in one place. */
+function initFooterSocials() {
+  const container = document.querySelector(".footer-container");
+  if (!container || container.querySelector("[data-jl-socials]")) return;
+
+  // Widen the footer grid so the extra column fits (overrides Tailwind's md:grid-cols-4).
+  if (!document.getElementById("jl-footer-socials-style")) {
+    const st = document.createElement("style");
+    st.id = "jl-footer-socials-style";
+    st.textContent =
+      "@media(min-width:768px){footer .footer-container{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}}";
+    document.head.appendChild(st);
+  }
+
+  const col = document.createElement("div");
+  col.className = "footer-column";
+  col.setAttribute("data-jl-socials", "");
+  col.innerHTML =
+    "<h3>Contact Us</h3>" +
+    '<a href="https://wa.me/919514970111" target="_blank" rel="noopener">💬 WhatsApp</a>' +
+    '<a href="https://www.instagram.com/jl_enterprises_tut" target="_blank" rel="noopener">📸 Instagram</a>' +
+    '<a href="https://www.facebook.com/people/JL-Enterprisess-Thoothukudi/61557628604440/" target="_blank" rel="noopener">👍 Facebook</a>' +
+    '<a href="https://share.google/tUlE8yNjaUiIqf05m" target="_blank" rel="noopener">📍 Find us on Maps</a>';
+  container.appendChild(col);
+}
+
 /* ── Boot: run once the page is ready ────────────────────────────── */
 document.addEventListener("DOMContentLoaded", () => {
   updateCartWidgets();  // badge reflects the stored cart on every page
@@ -470,4 +497,5 @@ document.addEventListener("DOMContentLoaded", () => {
   initForms();          // only does something where a form exists
   initTrackOrder();     // only does something on track-order.html
   initEmiCalculator();  // only does something on emi-payment.html
+  initFooterSocials();  // adds the "Contact Us" (social) footer column
 });
