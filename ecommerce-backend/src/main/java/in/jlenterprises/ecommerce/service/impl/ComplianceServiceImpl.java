@@ -192,6 +192,23 @@ public class ComplianceServiceImpl implements ComplianceService {
             arr[b] = arr[b].add(amt);
             if (sign > 0 && age > arr[4].longValue()) arr[4] = BigDecimal.valueOf(age);
         }
+
+        // Carried-forward party opening balances (e.g. migrated from Vyapar) have no
+        // invoice date, so they don't appear as documents above. Add them here as
+        // brought-forward dues in the oldest (90+) bucket so this report reflects the
+        // real outstanding. Uses the Sundry Debtors/Creditors group + opening side.
+        String group = receivable ? "Sundry Debtors" : "Sundry Creditors";
+        DrCr side = receivable ? DrCr.DR : DrCr.CR;
+        for (LedgerAccount a : accountRepo.findAll()) {
+            BigDecimal ob = nz(a.getOpeningBalance());
+            if (ob.signum() <= 0 || a.getOpeningSide() != side) continue;
+            if (!group.equalsIgnoreCase(a.getAccountGroup())) continue;
+            BigDecimal[] arr = buckets.computeIfAbsent(a.getName(), k ->
+                    new BigDecimal[]{BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO});
+            arr[3] = arr[3].add(ob);                       // 90+ (opening / brought forward)
+            arr[4] = arr[4].max(BigDecimal.valueOf(90));
+        }
+
         List<AgingReportDto.PartyRow> rows = new ArrayList<>();
         BigDecimal c0 = BigDecimal.ZERO, c1 = BigDecimal.ZERO, c2 = BigDecimal.ZERO, c3 = BigDecimal.ZERO, tot = BigDecimal.ZERO;
         for (Map.Entry<String, BigDecimal[]> e : buckets.entrySet()) {
