@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Human Resources — JL Admin</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = { theme: { extend: { colors: {
+    navy: { DEFAULT: "#0b2447", 600: "#19376d" }, brand: { DEFAULT: "#576cbc", sky: "#a5d7e8" },
+    orange: { DEFAULT: "#f97316" } } } } };
+</script>
+<style>
+  body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  .inp{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:9px 12px;font-size:14px;outline:none;background:#fff}
+  .inp:focus{border-color:#576cbc}
+  .tab{padding:8px 14px;border-radius:9px;font-size:14px;font-weight:600;color:#64748b;cursor:pointer}
+  .tab.active{background:#0b2447;color:#fff}
+  .chip{display:inline-flex;align-items:center;font-size:11px;font-weight:700;border-radius:999px;padding:2px 9px}
+  label.fld{display:block;font-size:12px;font-weight:600;color:#475569;margin:0 0 4px}
+</style>
+</head>
+<body class="bg-[#eef1f6] min-h-screen text-slate-800">
+
+  <div class="bg-white border-b border-slate-200 px-4 md:px-7 py-3 flex items-center gap-3 sticky top-0 z-10">
+    <a href="admin.html" class="flex items-center gap-2 text-navy">
+      <div class="w-9 h-7 rounded bg-navy text-white text-[11px] font-extrabold flex items-center justify-center">JL</div>
+      <span class="font-bold text-sm">← Dashboard</span>
+    </a>
+    <div class="ml-auto flex items-center gap-3">
+      <span id="adminBadge" class="w-9 h-9 rounded-full bg-gradient-to-br from-navy-600 to-brand text-white flex items-center justify-center font-bold text-[13px]">··</span>
+      <a href="#" id="logoutBtn" class="text-[13px] text-slate-500 hover:text-navy">⎋ Logout</a>
+    </div>
+  </div>
+
+  <div class="max-w-[960px] mx-auto p-4 md:p-7">
+    <h1 class="text-2xl text-navy font-bold mb-1">Human Resources</h1>
+    <p class="text-slate-400 text-sm mb-4">Employees, attendance and payroll.</p>
+
+    <div class="flex gap-2 mb-5 bg-white rounded-xl p-1 border border-slate-200 w-max flex-wrap">
+      <div class="tab active" data-tab="employees">Employees</div>
+      <div class="tab" data-tab="attendance">Attendance</div>
+      <div class="tab" data-tab="payroll">Payroll</div>
+      <div class="tab" data-tab="overview">Overview</div>
+    </div>
+
+    <!-- EMPLOYEES -->
+    <section id="tab-employees">
+      <div class="flex gap-2 mb-3">
+        <input id="empSearch" class="inp" placeholder="Search name, code, designation…" />
+        <button id="newEmpBtn" class="bg-navy hover:bg-navy-600 text-white font-semibold rounded-lg px-4 py-2 text-sm whitespace-nowrap">+ New</button>
+      </div>
+      <div id="empList" class="space-y-2"></div>
+    </section>
+
+    <!-- ATTENDANCE -->
+    <section id="tab-attendance" class="hidden">
+      <div class="bg-white border border-slate-200 rounded-2xl p-4 grid sm:grid-cols-3 gap-3 mb-3">
+        <div><label class="fld">Employee</label><select id="attEmp" class="inp"></select></div>
+        <div><label class="fld">Month</label><input id="attMonth" type="month" class="inp" /></div>
+        <div class="flex items-end"><button id="attLoad" class="bg-navy text-white font-semibold rounded-lg px-4 py-2 text-sm w-full">Load</button></div>
+      </div>
+      <div id="attSummary" class="mb-3"></div>
+      <div class="bg-white border border-slate-200 rounded-2xl p-4 mb-3">
+        <div class="font-semibold text-navy mb-2 text-sm">Mark a day</div>
+        <div class="grid sm:grid-cols-4 gap-3">
+          <div><label class="fld">Date</label><input id="mkDate" type="date" class="inp" /></div>
+          <div><label class="fld">Status</label><select id="mkStatus" class="inp"></select></div>
+          <div><label class="fld">Service units</label><input id="mkUnits" type="number" min="0" class="inp" value="0" /></div>
+          <div class="flex items-end"><button id="mkSave" class="bg-brand text-white font-semibold rounded-lg px-4 py-2 text-sm w-full">Save</button></div>
+        </div>
+      </div>
+      <div id="attRows" class="space-y-1"></div>
+    </section>
+
+    <!-- PAYROLL -->
+    <section id="tab-payroll" class="hidden">
+      <div class="bg-white border border-slate-200 rounded-2xl p-4 grid sm:grid-cols-5 gap-3 mb-3 items-end">
+        <div class="sm:col-span-2"><label class="fld">Employee</label><select id="payEmp" class="inp"></select></div>
+        <div><label class="fld">Month</label><input id="payMonth" type="month" class="inp" /></div>
+        <div><label class="fld">Incentive (₹)</label><input id="payIncentive" type="number" min="0" class="inp" value="0" /></div>
+        <div><button id="payGen" class="bg-navy text-white font-semibold rounded-lg px-4 py-2 text-sm w-full">Generate</button></div>
+      </div>
+      <div id="paySlips" class="space-y-2"></div>
+    </section>
+
+    <!-- OVERVIEW -->
+    <section id="tab-overview" class="hidden">
+      <div id="ovCards" class="grid grid-cols-2 sm:grid-cols-3 gap-3"></div>
+    </section>
+  </div>
+
+  <!-- employee modal -->
+  <div id="empModal" class="hidden fixed inset-0 z-30 bg-black/40 flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-white w-full sm:max-w-[680px] sm:rounded-2xl rounded-t-2xl max-h-[92vh] overflow-auto">
+      <div id="empModalBody" class="p-5"></div>
+    </div>
+  </div>
+
+<script src="jl-ui.js"></script>
+<script src="config.js"></script>
+<script src="admin.js"></script>
+<script>
+  const esc = (s)=>String(s??"").replace(/[&<>"']/g,(c)=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+  const $ = (id)=>document.getElementById(id);
+  const API = "/api/v1/admin/hr";
+  const inr = (n)=>"₹"+Math.round(Number(n||0)).toLocaleString("en-IN");
+  const TYPES = ["FULL_TIME","PART_TIME","DAILY_WAGE","SERVICE_BASED"];
+  const STATUSES = ["ACTIVE","ON_LEAVE","RESIGNED","TERMINATED"];
+  const ATT = ["PRESENT","HALF_DAY","ABSENT","PAID_LEAVE","UNPAID_LEAVE","WEEK_OFF","HOLIDAY"];
+  let EMPLOYEES = [];
+
+  const stTone = (s)=>({ACTIVE:"bg-green-100 text-green-700",ON_LEAVE:"bg-amber-100 text-amber-700",RESIGNED:"bg-slate-100 text-slate-500",TERMINATED:"bg-red-100 text-red-700"}[s]||"bg-slate-100 text-slate-600");
+  const attTone = (s)=>({PRESENT:"bg-green-100 text-green-700",HALF_DAY:"bg-lime-100 text-lime-700",ABSENT:"bg-red-100 text-red-700",PAID_LEAVE:"bg-blue-100 text-blue-700",UNPAID_LEAVE:"bg-orange-100 text-orange-700",WEEK_OFF:"bg-slate-100 text-slate-500",HOLIDAY:"bg-indigo-100 text-indigo-600"}[s]||"bg-slate-100");
+  function ymNow(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"); }
+  function splitYm(v){ const [y,m]=(v||ymNow()).split("-"); return {year:+y, month:+m}; }
+
+  // tabs
+  document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>{
+    document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active")); t.classList.add("active");
+    ["employees","attendance","payroll","overview"].forEach(n=>$("tab-"+n).classList.toggle("hidden",n!==t.dataset.tab));
+    if(t.dataset.tab==="attendance"){ fillEmpSelect($("attEmp")); }
+    if(t.dataset.tab==="payroll"){ fillEmpSelect($("payEmp")); loadSlips(); }
+    if(t.dataset.tab==="overview"){ loadOverview(); }
+  }));
+
+  // ── employees ──
+  async function loadEmployees(){
+    try {
+      const page = await jlApi(API+"/employees?size=100" + ($("empSearch").value.trim()?("&search="+encodeURIComponent($("empSearch").value.trim())):""));
+      EMPLOYEES = page.content||[];
+      $("empList").innerHTML = EMPLOYEES.length ? EMPLOYEES.map(e=>`
+        <button data-id="${e.id}" class="empRow w-full text-left bg-white border border-slate-200 rounded-xl p-3 hover:border-brand flex items-center gap-3">
+          <div class="w-9 h-9 rounded-full bg-navy text-white flex items-center justify-center text-[12px] font-bold">${esc((e.firstName||"?")[0])}</div>
+          <div class="flex-1 min-w-0">
+            <div class="font-semibold text-navy text-sm truncate">${esc(e.firstName)} ${esc(e.lastName||"")} <span class="text-slate-400 font-normal">· ${esc(e.employeeCode)}</span></div>
+            <div class="text-[12px] text-slate-500 truncate">${esc(e.designation||"—")} · ${e.employmentType.replace(/_/g," ")}</div>
+          </div>
+          <span class="chip ${stTone(e.employmentStatus)}">${e.employmentStatus.replace(/_/g," ")}</span>
+        </button>`).join("") : `<div class="bg-white border border-slate-200 rounded-2xl p-8 text-center text-slate-400">No employees yet. Add one to begin.</div>`;
+      document.querySelectorAll(".empRow").forEach(b=>b.addEventListener("click",()=>openEmp(b.dataset.id)));
+    } catch(e){ $("empList").innerHTML = `<div class="text-red-600 text-sm">${esc(e.message||"Failed")}</div>`; }
+  }
+  let empTimer; $("empSearch").addEventListener("input",()=>{ clearTimeout(empTimer); empTimer=setTimeout(loadEmployees,300); });
+  $("newEmpBtn").addEventListener("click",()=>openEmp(null));
+
+  function field(id,label,val,type){ return `<div><label class="fld">${label}</label><input id="${id}" ${type||'type="text"'} class="inp" value="${esc(val??"")}" /></div>`; }
+  function selField(id,label,val,opts){ return `<div><label class="fld">${label}</label><select id="${id}" class="inp">${opts.map(o=>`<option value="${o}" ${o===val?"selected":""}>${o.replace(/_/g," ")}</option>`).join("")}</select></div>`; }
+
+  async function openEmp(id){
+    const e = id ? (await jlApi(API+"/employees/"+id)) : { employmentType:"FULL_TIME", employmentStatus:"ACTIVE", annualPaidLeave:12, components:[] };
+    $("empModal").classList.remove("hidden");
+    $("empModalBody").innerHTML = `
+      <div class="flex items-center justify-between mb-3"><div class="text-lg font-bold text-navy">${id?"Edit employee":"New employee"}</div><button id="empClose" class="text-slate-400 hover:text-navy text-xl">✕</button></div>
+      <div class="grid sm:grid-cols-2 gap-3">
+        ${field("f_code","Employee code *",e.employeeCode)}
+        ${selField("f_type","Employment type",e.employmentType,TYPES)}
+        ${field("f_first","First name *",e.firstName)}
+        ${field("f_last","Last name",e.lastName)}
+        ${field("f_phone","Phone",e.phone)}
+        ${field("f_email","Email",e.email)}
+        ${field("f_desig","Designation",e.designation)}
+        ${field("f_dept","Department",e.department)}
+        ${field("f_doj","Date of joining",e.dateOfJoining,'type="date"')}
+        ${selField("f_status","Status",e.employmentStatus,STATUSES)}
+        ${field("f_basic","Monthly basic (₹)",e.monthlyBasic,'type="number" min="0"')}
+        ${field("f_daily","Daily rate (₹)",e.dailyRate,'type="number" min="0"')}
+        ${field("f_service","Per-service rate (₹)",e.perServiceRate,'type="number" min="0"')}
+        ${field("f_leave","Annual paid leave",e.annualPaidLeave,'type="number" min="0"')}
+        ${field("f_bankname","Bank a/c name",e.bankAccountName)}
+        ${field("f_bankno","Bank a/c number",e.bankAccountNumber)}
+        ${field("f_ifsc","IFSC",e.ifsc)}
+        ${field("f_pan","PAN",e.pan)}
+      </div>
+      <div class="mt-2">${field("f_addr","Address",e.address)}</div>
+      <div class="flex gap-2 mt-4">
+        <button id="empSave" class="bg-navy text-white font-semibold rounded-lg px-5 py-2 text-sm">${id?"Save changes":"Create"}</button>
+        ${id?`<button id="empDel" class="ml-auto text-red-500 text-[13px] hover:underline">Delete</button>`:""}
+      </div>
+      ${id?`
+      <div class="mt-5 border-t border-slate-100 pt-4">
+        <div class="font-semibold text-navy text-sm mb-2">Salary components</div>
+        <div id="compList" class="space-y-1 mb-2">${(e.components||[]).map(c=>compRow(c)).join("")||`<div class="text-[13px] text-slate-400">None yet.</div>`}</div>
+        <div class="grid grid-cols-4 gap-2">
+          <input id="cLabel" class="inp col-span-2" placeholder="Label e.g. HRA" />
+          <select id="cType" class="inp"><option value="EARNING">Earning</option><option value="DEDUCTION">Deduction</option></select>
+          <div class="flex gap-1"><input id="cAmt" type="number" min="0" class="inp" placeholder="₹" /><button id="cAdd" class="bg-brand text-white rounded-lg px-3 text-sm">+</button></div>
+        </div>
+      </div>`:""}`;
+    $("empClose").addEventListener("click",()=>$("empModal").classList.add("hidden"));
+    $("empSave").addEventListener("click",()=>saveEmp(id));
+    if(id){
+      $("empDel").addEventListener("click",async()=>{ if(!(await jlConfirm("Delete this employee?",{confirmText:"Delete",danger:true})))return; try{ await jlApi(API+"/employees/"+id,{method:"DELETE"}); jlToast("Deleted."); $("empModal").classList.add("hidden"); loadEmployees(); }catch(x){ jlToast(x.message,{type:"error"}); } });
+      $("cAdd").addEventListener("click",()=>addComp(id));
+      document.querySelectorAll(".compDel").forEach(b=>b.addEventListener("click",()=>delComp(id,b.dataset.id)));
+    }
+  }
+  function compRow(c){ return `<div class="flex items-center gap-2 text-[13px]"><span class="chip ${c.componentType==="DEDUCTION"?"bg-red-100 text-red-700":"bg-green-100 text-green-700"}">${c.componentType==="DEDUCTION"?"−":"+"}</span><span class="flex-1">${esc(c.label)}</span><span class="font-semibold">${inr(c.amount)}</span><button data-id="${c.id}" class="compDel text-red-400 hover:text-red-600">✕</button></div>`; }
+  async function addComp(empId){
+    const label=$("cLabel").value.trim(), amount=$("cAmt").value;
+    if(!label||amount===""){ jlToast("Label and amount required.",{type:"error"}); return; }
+    try{ await jlApi(API+`/employees/${empId}/components`,{method:"POST",body:{componentType:$("cType").value,label,amount:Number(amount)}}); openEmp(empId); }catch(e){ jlToast(e.message,{type:"error"}); }
+  }
+  async function delComp(empId,cid){ try{ await jlApi(API+"/components/"+cid,{method:"DELETE"}); openEmp(empId); }catch(e){ jlToast(e.message,{type:"error"}); } }
+
+  async function saveEmp(id){
+    const body = {
+      employeeCode:$("f_code").value.trim(), firstName:$("f_first").value.trim(), lastName:$("f_last").value.trim()||null,
+      phone:$("f_phone").value.trim()||null, email:$("f_email").value.trim()||null, designation:$("f_desig").value.trim()||null,
+      department:$("f_dept").value.trim()||null, dateOfJoining:$("f_doj").value||null, employmentType:$("f_type").value,
+      employmentStatus:$("f_status").value, monthlyBasic:num("f_basic"), dailyRate:num("f_daily"), perServiceRate:num("f_service"),
+      hourlyRate:0, annualPaidLeave:Number($("f_leave").value||12), bankAccountName:$("f_bankname").value.trim()||null,
+      bankAccountNumber:$("f_bankno").value.trim()||null, ifsc:$("f_ifsc").value.trim()||null, pan:$("f_pan").value.trim()||null,
+      address:$("f_addr").value.trim()||null
+    };
+    if(!body.employeeCode||!body.firstName){ jlToast("Code and first name are required.",{type:"error"}); return; }
+    jlBtn($("empSave"),true,"Saving…");
+    try{
+      if(id){ await jlApi(API+"/employees/"+id,{method:"PUT",body}); jlToast("Saved."); }
+      else{ const e=await jlApi(API+"/employees",{method:"POST",body}); jlToast("Created — add salary components next."); openEmp(e.id); }
+      loadEmployees();
+      if(id) $("empModal").classList.add("hidden");
+    }catch(e){ jlToast(e.message||"Save failed",{type:"error"}); } finally { jlBtn($("empSave"),false); }
+  }
+  const num=(id)=>{ const v=$(id).value; return v===""?0:Number(v); };
+
+  // ── shared employee select ──
+  async function ensureEmployees(){ if(!EMPLOYEES.length){ try{ const p=await jlApi(API+"/employees?size=100"); EMPLOYEES=p.content||[]; }catch(_){} } }
+  async function fillEmpSelect(sel){ await ensureEmployees(); const cur=sel.value; sel.innerHTML=EMPLOYEES.map(e=>`<option value="${e.id}">${esc(e.firstName)} ${esc(e.lastName||"")} (${esc(e.employeeCode)})</option>`).join(""); if(cur) sel.value=cur; }
+
+  // ── attendance ──
+  ATT.forEach(s=>{ const o=document.createElement("option"); o.value=s; o.textContent=s.replace(/_/g," "); $("mkStatus").appendChild(o); });
+  $("attMonth").value=ymNow(); $("mkDate").value=new Date().toISOString().slice(0,10);
+  $("attLoad").addEventListener("click",loadAttendance);
+  async function loadAttendance(){
+    const empId=$("attEmp").value; if(!empId){ jlToast("Pick an employee.",{type:"error"}); return; }
+    const {year,month}=splitYm($("attMonth").value);
+    try{
+      const [sum,rows]=await Promise.all([ jlApi(API+`/attendance/summary?employeeId=${empId}&year=${year}&month=${month}`), jlApi(API+`/attendance?employeeId=${empId}&year=${year}&month=${month}`) ]);
+      $("attSummary").innerHTML = `<div class="bg-white border border-slate-200 rounded-2xl p-4 grid grid-cols-3 sm:grid-cols-6 gap-2 text-center">
+        ${[["Present",sum.present],["Half",sum.halfDay],["Absent",sum.absent],["Paid leave",sum.paidLeave],["Payable days",sum.payableDays],["Leave left",sum.leaveRemaining]].map(([k,v])=>`<div><div class="text-lg font-extrabold text-navy">${esc(v)}</div><div class="text-[11px] text-slate-400">${k}</div></div>`).join("")}
+      </div>`;
+      $("attRows").innerHTML = rows.length ? rows.map(r=>`<div class="bg-white border border-slate-200 rounded-lg px-3 py-2 flex items-center gap-2 text-[13px]"><span class="text-slate-500">${esc(r.workDate)}</span><span class="chip ${attTone(r.attendanceStatus)}">${r.attendanceStatus.replace(/_/g," ")}</span>${r.serviceUnits?`<span class="text-slate-400">${r.serviceUnits} units</span>`:""}</div>`).join("") : `<div class="text-slate-400 text-sm">No attendance marked this month.</div>`;
+    }catch(e){ jlToast(e.message,{type:"error"}); }
+  }
+  $("mkSave").addEventListener("click",async()=>{
+    const empId=$("attEmp").value; if(!empId){ jlToast("Pick an employee.",{type:"error"}); return; }
+    try{ await jlApi(API+"/attendance",{method:"POST",body:{employeeId:empId,workDate:$("mkDate").value,attendanceStatus:$("mkStatus").value,serviceUnits:Number($("mkUnits").value||0)}}); jlToast("Saved."); loadAttendance(); }catch(e){ jlToast(e.message,{type:"error"}); }
+  });
+
+  // ── payroll ──
+  $("payMonth").value=ymNow();
+  $("payGen").addEventListener("click",async()=>{
+    const empId=$("payEmp").value; if(!empId){ jlToast("Pick an employee.",{type:"error"}); return; }
+    const {year,month}=splitYm($("payMonth").value);
+    jlBtn($("payGen"),true,"Generating…");
+    try{ await jlApi(API+"/payslips",{method:"POST",body:{employeeId:empId,year,month,incentiveAmount:Number($("payIncentive").value||0)}}); jlToast("Salary slip generated."); loadSlips(); }
+    catch(e){ jlToast(e.message||"Failed",{type:"error"}); } finally { jlBtn($("payGen"),false); }
+  });
+  async function loadSlips(){
+    try{
+      const slips = await jlApi(API+"/payslips");
+      $("paySlips").innerHTML = slips.length ? slips.map(s=>`
+        <div class="bg-white border border-slate-200 rounded-xl p-3 flex items-center gap-3">
+          <div class="flex-1 min-w-0"><div class="font-semibold text-navy text-sm truncate">${esc(s.employeeName)} <span class="text-slate-400 font-normal">· ${String(s.periodMonth).padStart(2,"0")}/${s.periodYear}</span></div>
+          <div class="text-[12px] text-slate-500">Gross ${inr(s.grossEarnings)} · Deduct ${inr(s.totalDeductions)} · <b class="text-navy">Net ${inr(s.netPay)}</b></div></div>
+          <button data-id="${s.id}" data-code="${esc(s.employeeCode)}" data-p="${String(s.periodMonth).padStart(2,"0")}-${s.periodYear}" class="pdfBtn border border-slate-300 rounded-lg px-3 py-1.5 text-[13px] font-semibold hover:bg-slate-50">Download PDF</button>
+        </div>`).join("") : `<div class="bg-white border border-slate-200 rounded-2xl p-8 text-center text-slate-400">No salary slips yet.</div>`;
+      document.querySelectorAll(".pdfBtn").forEach(b=>b.addEventListener("click",()=>downloadPdf(b.dataset.id, `payslip-${b.dataset.code}-${b.dataset.p}.pdf`, b)));
+    }catch(e){ $("paySlips").innerHTML=`<div class="text-red-600 text-sm">${esc(e.message||"Failed")}</div>`; }
+  }
+  async function downloadPdf(id, filename, btn){
+    jlBtn(btn,true,"…");
+    try{
+      const res = await fetch(JL_API_BASE+API+`/payslips/${id}/pdf`, { headers:{ Authorization:"Bearer "+(localStorage.getItem("jl_access")||"") }});
+      if(!res.ok) throw new Error("Download failed ("+res.status+")");
+      const blob = await res.blob(); const url=URL.createObjectURL(blob);
+      const a=document.createElement("a"); a.href=url; a.download=filename; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    }catch(e){ jlToast(e.message||"Download failed",{type:"error"}); } finally { jlBtn(btn,false); }
+  }
+
+  // ── overview ──
+  async function loadOverview(){
+    try{
+      const o = await jlApi(API+"/overview");
+      const cards=[["Employees",o.totalEmployees],["Active",o.activeEmployees],["On leave",o.onLeave],["Present today",o.presentToday],["Payroll ("+String(o.month).padStart(2,"0")+"/"+o.year+")",inr(o.monthPayrollTotal)]];
+      $("ovCards").innerHTML = cards.map(([k,v])=>`<div class="bg-white border border-slate-200 rounded-xl p-4"><div class="text-[11px] font-semibold text-slate-400 uppercase">${k}</div><div class="text-2xl font-extrabold text-navy mt-1">${esc(v)}</div></div>`).join("");
+    }catch(e){ $("ovCards").innerHTML=`<div class="text-red-600 text-sm">${esc(e.message||"Failed")}</div>`; }
+  }
+
+  $("empModal").addEventListener("click",(e)=>{ if(e.target===$("empModal")) $("empModal").classList.add("hidden"); });
+  jlWireLogout("#logoutBtn");
+  jlRequireAdmin().then((a)=>{
+    $("adminBadge").textContent = jlDisplayName(a).split(/[\s@.]+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join("")||"JL";
+    loadEmployees();
+  });
+</script>
+</body>
+</html>

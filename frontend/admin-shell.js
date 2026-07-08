@@ -5,6 +5,7 @@
     ["Overview",[["Dashboard","📊","admin.html"],["Orders","📥","admin-orders.html","ORDER_MANAGER,CUSTOMER_SUPPORT"]]],
     ["Catalog & Sales",[["Products","📦","admin-products.html","PRODUCT_MANAGER"],["Inventory","🗂️","admin-inventory.html","INVENTORY_MANAGER"],["Offers & Deals","🏷️","admin-offers.html","MARKETING_MANAGER"]]],
     ["Engage",[["Customers (CRM)","👥","admin-customers.html","MANAGER"],["Reviews","⭐","admin-reviews.html","MARKETING_MANAGER,CUSTOMER_SUPPORT"],["Service Bookings","🔧","admin-service.html","CUSTOMER_SUPPORT"],["Exchange Requests","♻️","admin-exchanges.html","CUSTOMER_SUPPORT,MANAGER"],["WhatsApp Marketing","💬","admin-whatsapp.html","MARKETING_MANAGER"]]],
+    ["Human Resources",[["Employees & Payroll","🧑‍🤝‍🧑","admin-hr.html","@hr"]]],
     ["Accounting",[["Billing","🧾","admin-billing.html","@admin"],["Chart of Accounts","📒","admin-accounts.html","ACCOUNTANT"],["Invoices & Bills","🧾","admin-vouchers.html","ACCOUNTANT"],["Journal / Vouchers","✍️","admin-journal.html","ACCOUNTANT"],["Ledgers","📚","admin-ledgers.html","ACCOUNTANT"],["Financial Reports","📈","admin-reports.html","ACCOUNTANT"],["GST Returns","🧮","admin-gst.html","ACCOUNTANT"],["Outstanding & Cashflow","📆","admin-outstanding.html","ACCOUNTANT"]]],
     ["Control",[["Staff","🧑‍💼","admin-staff.html","@admin"],["Team & Roles","👤","admin-team.html","@admin"],["Activity Logs","📜","admin-logs.html","@admin"],["Import / Export","🔄","admin-data.html","ACCOUNTANT"],["Logo & Branding","🖼️","admin-branding.html","@admin"],["Settings","⚙️","admin-settings.html","@admin"]]]
   ];
@@ -33,6 +34,7 @@
   function visible(user, rule) {
     if (!rule) return true;
     if (rule === "@admin") return jlIsSuper(user);
+    if (rule === "@hr") return jlIsSuper(user) || jlHasRole(user, "HR");
     return jlIsSuper(user) || jlHasRole(user, "MANAGER", ...rule.split(","));
   }
   function renderNav(user) {
