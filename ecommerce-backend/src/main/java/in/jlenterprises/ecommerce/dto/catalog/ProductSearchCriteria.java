@@ -10,5 +10,7 @@ public record ProductSearchCriteria(
         BigDecimal minPrice,
         BigDecimal maxPrice,
         Boolean featured,
-        BigDecimal minRating
+        BigDecimal minRating,
+        Boolean inStock,
+        Boolean emiAvailable
 ) {}

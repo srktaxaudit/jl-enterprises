@@ -99,9 +99,24 @@
     </div>
 
     <div class="bg-white border border-slate-200 rounded-2xl p-5">
-      <div class="flex items-center gap-3 mb-4">
-        <h2 class="text-navy font-semibold">Catalog</h2>
-        <input id="search" placeholder="Search name/SKU…" class="ml-auto w-64 rounded-lg border border-slate-300 px-3 py-1.5 text-sm" />
+      <div class="flex flex-wrap items-end gap-3 mb-4">
+        <h2 class="text-navy font-semibold w-full">Catalog</h2>
+        <label class="text-[11px] text-slate-500">Category<br>
+          <select id="catFilter" class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm"><option value="">All categories</option></select></label>
+        <label class="text-[11px] text-slate-500">Stock<br>
+          <select id="stockFilter" class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm">
+            <option value="">All</option><option value="true">In stock</option><option value="false">Out of stock</option>
+          </select></label>
+        <label class="text-[11px] text-slate-500">EMI<br>
+          <select id="emiFilter" class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm">
+            <option value="">All</option><option value="true">EMI available</option><option value="false">No EMI</option>
+          </select></label>
+        <label class="text-[11px] text-slate-500">Sort<br>
+          <select id="sortSel" class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm">
+            <option value="">Default</option><option value="name,asc">Name A to Z</option><option value="name,desc">Name Z to A</option>
+            <option value="price,desc">Price: high to low</option><option value="price,asc">Price: low to high</option>
+          </select></label>
+        <input id="search" placeholder="Search name/SKU…" class="ml-auto w-56 rounded-lg border border-slate-300 px-3 py-1.5 text-sm" />
       </div>
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
@@ -132,6 +147,7 @@
   async function loadRefs(){
     [CATEGORIES, BRANDS] = await Promise.all([ jlApi("/api/v1/categories"), jlApi("/api/v1/brands") ]);
     $("categoryId").innerHTML = '<option value="">— none —</option>' + CATEGORIES.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join("");
+    $("catFilter").innerHTML = '<option value="">All categories</option>' + CATEGORIES.map(c=>`<option value="${esc(c.slug)}">${esc(c.name)}</option>`).join("");
     fillBrands();
   }
 
@@ -166,11 +182,18 @@
     } catch(e){ flash(e.message || "Could not delete brand", false); }
   });
 
-  async function load(search=""){
+  async function load(){
     const body = $("rows");
+    const search = $("search").value.trim();
+    const cat = $("catFilter").value, stock = $("stockFilter").value, emi = $("emiFilter").value, sort = $("sortSel").value;
     body.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:20px">${jlSpinnerHTML()}</td></tr>`;
     try {
-      const page = await jlApi("/api/v1/admin/products?size=50" + (search?`&search=${encodeURIComponent(search)}`:""));
+      const page = await jlApi("/api/v1/admin/products?size=50"
+        + (search?`&search=${encodeURIComponent(search)}`:"")
+        + (cat?`&category=${encodeURIComponent(cat)}`:"")
+        + (stock?`&inStock=${stock}`:"")
+        + (emi?`&emiAvailable=${emi}`:"")
+        + (sort?`&sort=${sort}`:""));
       const rows = page.content || [];
       body.innerHTML = rows.length ? rows.map(p=>`
         <tr class="border-t border-slate-100">
@@ -320,6 +343,7 @@
   });
 
   let timer; $("search").addEventListener("input", (e)=>{ clearTimeout(timer); const v=e.target.value.trim(); timer=setTimeout(()=>load(v),300); });
+  ["catFilter","stockFilter","emiFilter","sortSel"].forEach(id => $(id).addEventListener("change", ()=>load()));
 
   jlWireLogout("#logoutBtn");
   jlRequireAdmin().then(async (a)=>{

@@ -77,10 +77,11 @@ public class ExchangeController {
     // ── Admin / staff ──
     @GetMapping("/api/v1/admin/exchanges")
     @PreAuthorize(STAFF)
-    @Operation(summary = "List all exchange requests (newest first)")
+    @Operation(summary = "List all exchange requests (newest first), optionally by status")
     public ApiResponse<PageResponse<ExchangeRequestDto>> list(
+            @RequestParam(required = false) ExchangeStatus status,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        return ApiResponse.success(PageResponse.of(service.list(pageable)));
+        return ApiResponse.success(PageResponse.of(service.list(status, pageable)));
     }
 
     @GetMapping("/api/v1/admin/exchanges/{id}")

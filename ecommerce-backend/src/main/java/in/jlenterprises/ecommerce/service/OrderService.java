@@ -1,6 +1,7 @@
 package in.jlenterprises.ecommerce.service;
 
 import in.jlenterprises.ecommerce.constant.OrderStatus;
+import in.jlenterprises.ecommerce.constant.PaymentStatus;
 import in.jlenterprises.ecommerce.dto.order.InvoiceDto;
 import in.jlenterprises.ecommerce.dto.order.OrderDto;
 import in.jlenterprises.ecommerce.dto.order.OrderSummaryDto;
@@ -9,6 +10,7 @@ import in.jlenterprises.ecommerce.request.order.PlaceOrderRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.time.Instant;
 import java.util.UUID;
 
 public interface OrderService {
@@ -32,7 +34,7 @@ public interface OrderService {
     OrderTrackingDto track(String orderNumber, String phone);
 
     // ── Admin ──
-    Page<OrderSummaryDto> listAll(OrderStatus status, Pageable pageable);
+    Page<OrderSummaryDto> listAll(OrderStatus status, PaymentStatus paymentStatus, Instant from, Instant to, Pageable pageable);
 
     Page<OrderSummaryDto> userOrders(UUID userId, Pageable pageable);
 

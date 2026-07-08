@@ -57,6 +57,13 @@
           <button id="recCsv" class="btn-o">Export CSV</button>
           <button id="recPrint" class="btn-o">🖨 Print</button>
         </div>
+        <div class="flex flex-wrap items-end gap-2 mb-3">
+          <label class="text-[11px] text-slate-500">Sort<br><select id="recSort" class="inp">
+            <option value="amt-desc">Amount: high to low</option><option value="amt-asc">Amount: low to high</option>
+            <option value="name-asc">Party A to Z</option><option value="name-desc">Party Z to A</option>
+            <option value="old-desc">Oldest first</option></select></label>
+          <input id="recSearch" class="inp" placeholder="Search party name…" />
+        </div>
         <div id="recWrap" class="overflow-x-auto"></div>
       </div>
     </section>
@@ -69,6 +76,13 @@
           <button id="payApply" class="bg-navy hover:bg-navy-600 text-white font-semibold rounded-lg px-4 py-2 text-sm">Apply</button>
           <button id="payCsv" class="btn-o">Export CSV</button>
           <button id="payPrint" class="btn-o">🖨 Print</button>
+        </div>
+        <div class="flex flex-wrap items-end gap-2 mb-3">
+          <label class="text-[11px] text-slate-500">Sort<br><select id="paySort" class="inp">
+            <option value="amt-desc">Amount: high to low</option><option value="amt-asc">Amount: low to high</option>
+            <option value="name-asc">Party A to Z</option><option value="name-desc">Party Z to A</option>
+            <option value="old-desc">Oldest first</option></select></label>
+          <input id="paySearch" class="inp" placeholder="Search party name…" />
         </div>
         <div id="payWrap" class="overflow-x-auto"></div>
       </div>
@@ -211,7 +225,7 @@
     try {
       const d = await jlApi(`${CFG_BASE}/aging?kind=${kind}&asOf=${encodeURIComponent(asOf)}`);
       agingData[kind] = d;
-      wrap.innerHTML = agingTableHTML(d, false);
+      renderAging(kind);
     } catch(e){
       agingData[kind] = null;
       wrap.innerHTML = `<div class="py-4 text-red-600 text-sm">Could not load aging (${esc(e.message)}).</div>`;
@@ -231,6 +245,31 @@
     printReport(AGING[kind].label,
       `<h1>${esc(AGING[kind].label)}</h1><div class="sub">As of ${fmtDate(d.asOf)}</div>${agingTableHTML(d, true)}`);
   }
+
+  // Client-side sort + party-name search over the cached aging rows.
+  const AGING_CTRL = { RECEIVABLE: { sort:"recSort", search:"recSearch" }, PAYABLE: { sort:"paySort", search:"paySearch" } };
+  function sortFilterParties(kind){
+    const d = agingData[kind];
+    const sort = $(AGING_CTRL[kind].sort).value;
+    const term = ($(AGING_CTRL[kind].search).value || "").trim().toLowerCase();
+    let parties = (d.parties || []).slice();
+    if (term) parties = parties.filter(p => String(p.partyName||"").toLowerCase().includes(term));
+    const cmp = {
+      "name-asc": (a,b)=>String(a.partyName||"").localeCompare(String(b.partyName||"")),
+      "name-desc": (a,b)=>String(b.partyName||"").localeCompare(String(a.partyName||"")),
+      "amt-desc": (a,b)=>Number(b.total)-Number(a.total),
+      "amt-asc": (a,b)=>Number(a.total)-Number(b.total),
+      "old-desc": (a,b)=>Number(b.oldestDays||0)-Number(a.oldestDays||0)
+    }[sort];
+    if (cmp) parties.sort(cmp);
+    return Object.assign({}, d, { parties });
+  }
+  function renderAging(kind){
+    if (!agingData[kind]) return;
+    $(AGING[kind].wrap).innerHTML = agingTableHTML(sortFilterParties(kind), false);
+  }
+  ["recSort","recSearch"].forEach(id => $(id).addEventListener("input", ()=>renderAging("RECEIVABLE")));
+  ["paySort","paySearch"].forEach(id => $(id).addEventListener("input", ()=>renderAging("PAYABLE")));
 
   $("recApply").addEventListener("click", ()=>loadAging("RECEIVABLE"));
   $("payApply").addEventListener("click", ()=>loadAging("PAYABLE"));

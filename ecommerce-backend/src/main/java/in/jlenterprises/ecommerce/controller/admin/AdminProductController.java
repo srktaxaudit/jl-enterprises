@@ -33,11 +33,14 @@ public class AdminProductController {
     }
 
     @GetMapping
-    @Operation(summary = "List all products (admin) — includes inactive and out-of-stock")
+    @Operation(summary = "List all products (admin) — includes inactive and out-of-stock; optional filters")
     public ApiResponse<PageResponse<ProductSummaryDto>> list(
             @RequestParam(required = false) String search,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) Boolean inStock,
+            @RequestParam(required = false) Boolean emiAvailable,
             @PageableDefault(size = 50) Pageable pageable) {
-        var criteria = new ProductSearchCriteria(search, null, null, null, null, null, null);
+        var criteria = new ProductSearchCriteria(search, category, null, null, null, null, null, inStock, emiAvailable);
         return ApiResponse.success(PageResponse.of(productService.search(criteria, pageable)));
     }
 }

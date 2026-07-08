@@ -32,6 +32,17 @@
     <div id="msg" class="hidden mb-4 text-[13px] rounded-lg px-3 py-2"></div>
 
     <div class="bg-white border border-slate-200 rounded-2xl p-5">
+      <div class="flex flex-wrap items-end gap-3 mb-4">
+        <label class="text-[11px] text-slate-500">Status<br>
+          <select id="statusFilter" class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm">
+            <option value="">All statuses</option><option value="NEW">New</option><option value="CONTACTED">Contacted</option><option value="SCHEDULED">Scheduled</option><option value="DONE">Done</option><option value="CANCELLED">Cancelled</option>
+          </select></label>
+        <label class="text-[11px] text-slate-500">Sort<br>
+          <select id="sortSel" class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm">
+            <option value="createdAt,desc">Latest first</option><option value="createdAt,asc">Oldest first</option>
+          </select></label>
+        <input id="search" placeholder="Search name…" class="ml-auto w-52 rounded-lg border border-slate-300 px-3 py-1.5 text-sm" />
+      </div>
       <div id="rows" class="space-y-3"></div>
     </div>
   </div>
@@ -52,10 +63,12 @@
 
   async function load(){
     const box = $("rows");
+    const status = $("statusFilter").value, sort = $("sortSel").value, search = ($("search").value||"").trim().toLowerCase();
     box.innerHTML = `<div class="py-6 text-center">${jlSpinnerHTML({label:"Loading bookings"})}</div>`;
     try {
-      const page = await jlApi("/api/v1/service-bookings?size=100");
-      const rows = page.content || [];
+      const page = await jlApi(`/api/v1/service-bookings?size=100&sort=${sort}` + (status?`&status=${status}`:""));
+      let rows = page.content || [];
+      if (search) rows = rows.filter(b => (b.customerName||"").toLowerCase().includes(search) || String(b.phone||"").includes(search));
       box.innerHTML = rows.length ? rows.map(b=>`
         <div class="border border-slate-200 rounded-xl p-4">
           <div class="flex items-center gap-2 flex-wrap">
@@ -81,6 +94,10 @@
     try { await jlApi(`/api/v1/service-bookings/${sel.dataset.id}/status?status=${sel.value}`, {method:"PATCH"}); jlToast("Status updated.", {type:"success"}); load(); }
     catch(e){ flash(e.message||"Update failed", false); }
   });
+
+  $("statusFilter").addEventListener("change", load);
+  $("sortSel").addEventListener("change", load);
+  let t; $("search").addEventListener("input", ()=>{ clearTimeout(t); t=setTimeout(load, 250); });
 
   jlWireLogout("#logoutBtn");
   jlRequireAdmin().then((a)=>{

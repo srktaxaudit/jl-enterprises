@@ -62,6 +62,30 @@ public final class ProductSpecifications {
         return (root, query, cb) -> cb.greaterThanOrEqualTo(root.get("averageRating"), rating);
     }
 
+    /** Filter by "EMI available" flag (admin catalog filter). */
+    public static Specification<Product> emiAvailable(Boolean emiAvailable) {
+        if (emiAvailable == null) return null;
+        return (root, query, cb) -> cb.equal(root.get("emiAvailable"), emiAvailable);
+    }
+
+    /**
+     * Stock filter: inStock=true → has an inventory record with available (quantity − reserved)
+     * &gt; 0; inStock=false → out of stock (no record, or available ≤ 0). Mirrors {@link #visible()}'s
+     * stock sub-query but without the ACTIVE requirement, so admins can filter the full catalogue.
+     */
+    public static Specification<Product> inStock(Boolean inStock) {
+        if (inStock == null) return null;
+        return (root, query, cb) -> {
+            Subquery<UUID> sub = query.subquery(UUID.class);
+            Root<Inventory> inv = sub.from(Inventory.class);
+            sub.select(inv.get("id"));
+            sub.where(
+                    cb.equal(inv.get("product"), root),
+                    cb.greaterThan(cb.diff(inv.<Integer>get("quantity"), inv.<Integer>get("reserved")), 0));
+            return inStock ? cb.exists(sub) : cb.not(cb.exists(sub));
+        };
+    }
+
     /**
      * Storefront visibility: the product is ACTIVE and has an inventory record with
      * available stock (quantity − reserved) &gt; 0. Products that are inactive, have

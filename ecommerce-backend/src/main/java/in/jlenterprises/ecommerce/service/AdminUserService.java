@@ -13,7 +13,7 @@ import java.util.UUID;
 /** Admin operations over users, roles and staff accounts. */
 public interface AdminUserService {
 
-    Page<UserDto> listUsers(String search, Pageable pageable);
+    Page<UserDto> listUsers(String search, Boolean active, Pageable pageable);
 
     UserDto getUser(UUID userId);
 

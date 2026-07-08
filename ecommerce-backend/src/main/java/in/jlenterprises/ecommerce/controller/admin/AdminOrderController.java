@@ -1,6 +1,7 @@
 package in.jlenterprises.ecommerce.controller.admin;
 
 import in.jlenterprises.ecommerce.constant.OrderStatus;
+import in.jlenterprises.ecommerce.constant.PaymentStatus;
 import in.jlenterprises.ecommerce.dto.order.OrderDto;
 import in.jlenterprises.ecommerce.dto.order.OrderSummaryDto;
 import in.jlenterprises.ecommerce.response.ApiResponse;
@@ -11,6 +12,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -20,6 +22,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.UUID;
 
 @RestController
@@ -35,11 +40,17 @@ public class AdminOrderController {
     }
 
     @GetMapping
-    @Operation(summary = "List all orders, optionally filtered by status")
+    @Operation(summary = "List all orders — optional status, payment status and placed-date range")
     public ApiResponse<PageResponse<OrderSummaryDto>> list(
             @RequestParam(required = false) OrderStatus status,
+            @RequestParam(required = false) PaymentStatus paymentStatus,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @PageableDefault(size = 20, sort = "placedAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        return ApiResponse.success(PageResponse.of(orderService.listAll(status, pageable)));
+        ZoneId zone = ZoneId.systemDefault();
+        Instant fromInstant = from == null ? null : from.atStartOfDay(zone).toInstant();
+        Instant toInstant = to == null ? null : to.plusDays(1).atStartOfDay(zone).toInstant();   // inclusive of 'to'
+        return ApiResponse.success(PageResponse.of(orderService.listAll(status, paymentStatus, fromInstant, toInstant, pageable)));
     }
 
     @GetMapping("/{id}")

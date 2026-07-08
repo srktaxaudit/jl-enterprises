@@ -18,6 +18,9 @@ public interface ExchangeRequestRepository extends JpaRepository<ExchangeRequest
 
     Page<ExchangeRequest> findByUserId(UUID userId, Pageable pageable);
 
+    /** Admin filter by status. */
+    Page<ExchangeRequest> findByExchangeStatus(ExchangeStatus status, Pageable pageable);
+
     /** Exchanges still awaiting admin attention — for the sidebar count badge. */
     long countByExchangeStatusIn(Collection<ExchangeStatus> statuses);
 }

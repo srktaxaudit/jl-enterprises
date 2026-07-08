@@ -32,9 +32,17 @@
     <div id="msg" class="hidden mb-4 text-[13px] rounded-lg px-3 py-2"></div>
 
     <div class="bg-white border border-slate-200 rounded-2xl p-5">
-      <div class="flex items-center gap-3 mb-4">
-        <h2 class="text-navy font-semibold">Directory</h2>
-        <input id="search" placeholder="Search name or email…" class="ml-auto w-64 rounded-lg border border-slate-300 px-3 py-1.5 text-sm" />
+      <div class="flex flex-wrap items-end gap-3 mb-4">
+        <h2 class="text-navy font-semibold w-full">Directory</h2>
+        <label class="text-[11px] text-slate-500">Status<br>
+          <select id="activeFilter" class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm">
+            <option value="">All</option><option value="true">Active</option><option value="false">Inactive</option>
+          </select></label>
+        <label class="text-[11px] text-slate-500">Sort<br>
+          <select id="sortSel" class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm">
+            <option value="createdAt,desc">Latest registered</option><option value="firstName,asc">Name A to Z</option><option value="firstName,desc">Name Z to A</option>
+          </select></label>
+        <input id="search" placeholder="Search name, email or phone…" class="ml-auto w-64 rounded-lg border border-slate-300 px-3 py-1.5 text-sm" />
       </div>
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
@@ -64,7 +72,10 @@
 
   async function load(){
     const search = $("search").value.trim();
-    const q = `?page=${state.page}&size=${state.size}` + (search?`&search=${encodeURIComponent(search)}`:"");
+    const active = $("activeFilter").value;
+    const sort = $("sortSel").value;
+    const q = `?page=${state.page}&size=${state.size}&sort=${sort}`
+      + (search?`&search=${encodeURIComponent(search)}`:"") + (active?`&active=${active}`:"");
     const body = $("rows");
     body.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:20px">${jlSpinnerHTML()}</td></tr>`;
     try {
@@ -125,6 +136,8 @@
   $("rows").addEventListener("click", (ev)=>{ const b=ev.target.closest("button[data-orders]"); if(b) openCustomer(b.dataset.orders); });
 
   let timer; $("search").addEventListener("input", ()=>{ clearTimeout(timer); state.page=0; timer=setTimeout(load,300); });
+  $("activeFilter").addEventListener("change", ()=>{ state.page=0; load(); });
+  $("sortSel").addEventListener("change", ()=>{ state.page=0; load(); });
   $("prev").addEventListener("click", ()=>{ if(state.page>0){state.page--; load();} });
   $("next").addEventListener("click", ()=>{ if(state.page<state.totalPages-1){state.page++; load();} });
 
