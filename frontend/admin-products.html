@@ -44,7 +44,15 @@
         <div><label class="lbl">Price (₹) *</label><input id="price" data-jl="decimal" type="number" step="0.01" required class="inp" /></div>
         <div><label class="lbl">Compare price (₹)</label><input id="comparePrice" data-jl="decimal" type="number" step="0.01" class="inp" /></div>
         <div><label class="lbl">Category</label><select id="categoryId" class="inp"></select></div>
-        <div><label class="lbl">Brand</label><select id="brandId" class="inp"></select></div>
+        <div>
+          <div class="flex items-center justify-between"><label class="lbl">Brand</label><button type="button" id="newBrandBtn" class="text-[12px] text-brand hover:underline">+ New brand</button></div>
+          <select id="brandId" class="inp"></select>
+          <div id="newBrandRow" class="hidden mt-2 flex gap-2">
+            <input id="newBrandName" class="inp" placeholder="New brand name" maxlength="120" />
+            <button type="button" id="newBrandSave" class="bg-navy text-white rounded-lg px-3 text-sm whitespace-nowrap">Add</button>
+            <button type="button" id="newBrandCancel" class="text-slate-400 px-1" aria-label="Cancel">✕</button>
+          </div>
+        </div>
         <div class="md:col-span-2"><label class="lbl">Short description</label><input id="shortDescription" maxlength="500" class="inp" /></div>
         <div class="md:col-span-2"><label class="lbl">Description</label><textarea id="description" rows="3" class="inp"></textarea></div>
         <label class="flex items-center gap-2 text-sm"><input id="featured" type="checkbox" /> Featured</label>
@@ -105,8 +113,27 @@
   async function loadRefs(){
     [CATEGORIES, BRANDS] = await Promise.all([ jlApi("/api/v1/categories"), jlApi("/api/v1/brands") ]);
     $("categoryId").innerHTML = '<option value="">— none —</option>' + CATEGORIES.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join("");
-    $("brandId").innerHTML = '<option value="">— none —</option>' + BRANDS.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join("");
+    fillBrands();
   }
+
+  function fillBrands(selectedId){
+    $("brandId").innerHTML = '<option value="">— none —</option>' + BRANDS.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join("");
+    if (selectedId) $("brandId").value = selectedId;
+  }
+  $("newBrandBtn").addEventListener("click", ()=>{ const r=$("newBrandRow"); r.classList.toggle("hidden"); if(!r.classList.contains("hidden")) $("newBrandName").focus(); });
+  $("newBrandCancel").addEventListener("click", ()=>{ $("newBrandRow").classList.add("hidden"); $("newBrandName").value=""; });
+  $("newBrandSave").addEventListener("click", async ()=>{
+    const name = $("newBrandName").value.trim();
+    if(!name){ flash("Enter a brand name.", false); return; }
+    const btn=$("newBrandSave"); btn.disabled=true; const old=btn.textContent; btn.textContent="…";
+    try {
+      const b = await jlApi("/api/v1/brands", { method:"POST", body:{ name } });
+      BRANDS.push(b); fillBrands(b.id);
+      $("newBrandRow").classList.add("hidden"); $("newBrandName").value="";
+      flash('Brand "'+esc(b.name)+'" added — it\'s now selected.', true);
+    } catch(e){ flash(e.message || "Could not add brand", false); }
+    finally { btn.disabled=false; btn.textContent=old; }
+  });
 
   async function load(search=""){
     const body = $("rows");
