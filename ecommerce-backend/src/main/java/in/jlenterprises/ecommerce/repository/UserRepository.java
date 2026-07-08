@@ -35,6 +35,9 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
 
     Optional<User> findByProviderAndProviderId(AuthProvider provider, String providerId);
 
+    /** Contacts imported from Vyapar are tagged providerId "VYP-P-*" (for rollback). */
+    List<User> findByProviderIdStartingWith(String prefix);
+
     /** Recipients for a WhatsApp/SMS broadcast — users who have a phone number. */
     List<User> findByPhoneNotNull();
 
