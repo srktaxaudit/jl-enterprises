@@ -7,6 +7,20 @@
    XSS-exposed; for higher security move to httpOnly cookies + a token endpoint.
    ══════════════════════════════════════════════════════════════════════ */
 
+// Some Android WebViews / "desktop site" modes ignore the <meta viewport> and
+// lay the page out at ~980px, so phones get a shrunken desktop admin. Detect
+// the mismatch (physical screen far narrower than the layout) and re-assert
+// the meta — WebViews re-parse a programmatic content change — which snaps the
+// layout back to device width and lets the mobile drawer CSS apply.
+(function jlFixViewport() {
+  try {
+    if (screen.width < 768 && window.innerWidth > 820) {
+      const m = document.querySelector('meta[name="viewport"]');
+      if (m) m.setAttribute("content", "width=device-width, initial-scale=1.0");
+    }
+  } catch (_) { /* best-effort */ }
+})();
+
 // Admin pages are rendered inside one persistent dashboard shell.  Keep direct
 // bookmarks working by promoting standalone pages into that shell; pages loaded
 // by the shell's iframe are left alone.

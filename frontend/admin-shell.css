@@ -24,7 +24,10 @@ button,a{font:inherit}
 .admin-content{position:relative;min-height:0;flex:1}.admin-content iframe{display:block;width:100%;height:100%;border:0;background:#eef1f6}
 .admin-scrim{display:none}
 .admin-shell.collapsed{grid-template-columns:72px minmax(0,1fr)}.collapsed .admin-sidebar{width:72px}.collapsed .admin-brand{padding-left:15px}.collapsed .admin-brand-copy,.collapsed .admin-nav-group,.collapsed .admin-nav a .label,.collapsed .admin-sidebar-footer b{display:none}.collapsed .admin-collapse{position:absolute;right:-13px;top:22px;background:var(--brand);color:#fff;transform:rotate(180deg);box-shadow:0 4px 12px rgba(15,23,42,.25)}.collapsed .admin-nav a{justify-content:center;padding-left:0;padding-right:0}.collapsed .admin-nav a .icon{width:22px}.collapsed .admin-sidebar-footer{padding-left:0;padding-right:0}.collapsed .admin-sidebar-footer a,.collapsed .admin-sidebar-footer button{justify-content:center}
-@media(max-width:767px){
+/* Drawer layout: real small viewports, PLUS touch devices whose WebView lays
+   the page out wider than the screen (ignored viewport meta → ~980px layout).
+   pointer:coarse keeps mouse-driven small desktop windows on the full layout. */
+@media (max-width:767px), (pointer:coarse) and (max-width:1023px){
   .admin-shell,.admin-shell.collapsed{display:block}.admin-sidebar,.collapsed .admin-sidebar{position:fixed;left:0;top:0;width:min(84vw,290px);transform:translateX(-105%);box-shadow:16px 0 40px rgba(15,23,42,.25)}
   .admin-shell.mobile-open .admin-sidebar{transform:none}.admin-scrim{position:fixed;inset:0;z-index:35;background:rgba(15,23,42,.46);backdrop-filter:blur(2px)}.admin-shell.mobile-open .admin-scrim{display:block}
   .collapsed .admin-brand-copy,.collapsed .admin-nav-group,.collapsed .admin-nav a .label,.collapsed .admin-sidebar-footer b{display:block}.collapsed .admin-nav a{justify-content:flex-start;padding:8px 18px}.collapsed .admin-sidebar-footer{padding:10px 18px 16px}.collapsed .admin-sidebar-footer a,.collapsed .admin-sidebar-footer button{justify-content:flex-start}
@@ -49,7 +52,7 @@ button,a{font:inherit}
 .admin-nav-sub a{padding-left:40px}
 .collapsed .admin-nav-parent{justify-content:center;padding-left:0;padding-right:0}
 .collapsed .admin-nav-parent .label,.collapsed .admin-nav-parent .chev{display:none}
-@media(max-width:767px){
+@media (max-width:767px), (pointer:coarse) and (max-width:1023px){
   .collapsed .admin-nav-parent{justify-content:flex-start;padding:8px 18px}
   .collapsed .admin-nav-parent .label{display:block}
   .collapsed .admin-nav-parent .chev{display:inline-block}
