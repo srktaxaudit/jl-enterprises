@@ -186,8 +186,10 @@
     } catch(e){ flash(e.message || "Could not delete brand", false); }
   });
 
+  let loadSeq = 0;   // guards against out-of-order responses: only the latest load() renders
   async function load(){
     const body = $("rows");
+    const seq = ++loadSeq;
     const search = $("search").value.trim();
     const cat = $("catFilter").value, stock = $("stockFilter").value, emi = $("emiFilter").value, sort = $("sortSel").value;
     body.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:20px">${jlSpinnerHTML()}</td></tr>`;
@@ -198,6 +200,7 @@
         + (stock?`&inStock=${stock}`:"")
         + (emi?`&emiAvailable=${emi}`:"")
         + (sort?`&sort=${sort}`:""));
+      if (seq !== loadSeq) return;   // a newer search/filter started — drop this stale result
       const rows = page.content || [];
       body.innerHTML = rows.length ? rows.map(p=>`
         <tr class="border-t border-slate-100">
@@ -211,7 +214,7 @@
             <button data-del="${p.id}" class="text-[12px] text-red-600">Delete</button>
           </td>
         </tr>`).join("") : `<tr><td colspan="6" class="py-4 text-slate-400">No products.</td></tr>`;
-    } catch(e){ body.innerHTML = `<tr><td colspan="6" class="py-4 text-red-600">Could not load (${esc(e.message)}).</td></tr>`; }
+    } catch(e){ if (seq !== loadSeq) return; body.innerHTML = `<tr><td colspan="6" class="py-4 text-red-600">Could not load (${esc(e.message)}).</td></tr>`; }
   }
 
   // Open/close the product form as a modal dialog (no layout shift; table stays put).
