@@ -36,7 +36,8 @@ public class AdminUserServiceImpl implements AdminUserService {
     private static final List<RoleName> STAFF_ROLES = List.of(
             RoleName.ROLE_SUPER_ADMIN, RoleName.ROLE_ADMIN, RoleName.ROLE_MANAGER,
             RoleName.ROLE_INVENTORY_MANAGER, RoleName.ROLE_ORDER_MANAGER, RoleName.ROLE_PRODUCT_MANAGER,
-            RoleName.ROLE_MARKETING_MANAGER, RoleName.ROLE_CUSTOMER_SUPPORT);
+            RoleName.ROLE_MARKETING_MANAGER, RoleName.ROLE_CUSTOMER_SUPPORT,
+            RoleName.ROLE_ACCOUNTANT, RoleName.ROLE_HR);
 
     /** Roles only a super-admin may grant or manage. Prevents an ADMIN from escalating to (or seizing) admin accounts. */
     private static final Set<RoleName> PRIVILEGED_ROLES = Set.of(RoleName.ROLE_SUPER_ADMIN, RoleName.ROLE_ADMIN);

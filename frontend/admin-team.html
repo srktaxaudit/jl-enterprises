@@ -37,15 +37,15 @@
     <p class="text-slate-400 text-sm mb-5">Manage staff access. Roles: SUPER_ADMIN · ADMIN · MANAGER · CUSTOMER.</p>
 
     <div class="bg-blue-50 border border-blue-200 text-blue-800 text-[13px] rounded-lg px-3 py-2 mb-5">
-      ℹ️ New staff sign up like any customer, then a <b>Super Admin</b> promotes them here by assigning a role.
+      ℹ️ This list shows <b>company staff only</b>. To promote a customer to staff, <b>search their name or email</b> above, then assign a role.
     </div>
 
     <div id="msg" class="hidden mb-4 text-[13px] rounded-lg px-3 py-2"></div>
 
     <div class="bg-white border border-slate-200 rounded-2xl p-5">
       <div class="flex items-center gap-3 mb-4">
-        <h2 class="text-navy font-semibold">Users</h2>
-        <input id="search" placeholder="Search name or email…"
+        <h2 class="text-navy font-semibold">Staff</h2>
+        <input id="search" placeholder="Search any user to promote…"
                class="ml-auto w-64 rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-brand" />
       </div>
       <div class="overflow-x-auto">
@@ -119,8 +119,13 @@
     const body = document.getElementById("usersBody");
     body.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-slate-400">${jlSpinnerHTML({label:"Loading users"})}</td></tr>`;
     try {
-      const q = search ? `?search=${encodeURIComponent(search)}&size=50` : "?size=50";
-      const page = await jlApi("/api/v1/admin/users" + q);
+      // Default view = company staff only (no customers). When searching, look across ALL
+      // users so a Super Admin can still find a customer to promote to staff.
+      const s = (search || "").trim();
+      const path = s
+        ? `/api/v1/admin/users?search=${encodeURIComponent(s)}&size=50`
+        : "/api/v1/admin/staff?size=50";
+      const page = await jlApi(path);
       const users = page.content || [];
       body.innerHTML = users.length ? users.map((u) => `
         <tr class="border-t border-slate-100 align-top">
