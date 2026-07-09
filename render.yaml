@@ -22,7 +22,9 @@ services:
     ipAllowList: []          # only reachable from Render services
 
   - type: web
-    name: jl-ecommerce-api
+    # Must match the live host every client calls (jl-enterprises-api.onrender.com):
+    # frontend/config.js, mobile/app.json, mobile/src/core/config/env.ts, the READMEs.
+    name: jl-enterprises-api
     runtime: docker
     rootDir: ecommerce-backend
     dockerfilePath: ./Dockerfile
@@ -52,13 +54,39 @@ services:
       # ── App ──
       - key: JWT_SECRET
         generateValue: true          # Render generates a strong random value
-      - key: CORS_ORIGINS             # live origins: https://jlstores.in, https://www.jlstores.in, https://*.vercel.app (deployed host: jl-enterprises-api.onrender.com)
+      - key: CORS_ORIGINS             # live origins: https://jlstores.in, https://www.jlstores.in, https://*.vercel.app
         sync: false
       - key: APP_BOOTSTRAP_ADMIN_PASSWORD
         sync: false
+      # ── Email (SMTP) — needed for OTP, email verification & password reset ──
       - key: MAIL_HOST
         sync: false
       - key: MAIL_PORT
+        sync: false
+      - key: MAIL_USERNAME
+        sync: false
+      - key: MAIL_PASSWORD
+        sync: false
+      - key: MAIL_SMTP_AUTH
+        value: "true"
+      - key: MAIL_STARTTLS
+        value: "true"
+      - key: MAIL_FROM
+        sync: false
+      # Where the password-reset email link points (your storefront reset page).
+      - key: PASSWORD_RESET_URL
+        sync: false
+      # ── Supabase Storage — product image uploads (blank = uploads disabled) ──
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: SUPABASE_BUCKET
+        value: product-images
+      # ── Razorpay online payments (blank = COD-only) ──
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
         sync: false
       # WhatsApp broadcast (optional — demo mode until set)
       - key: WHATSAPP_TOKEN

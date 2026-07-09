@@ -88,7 +88,7 @@ Render backend). Log in with a staff account; RBAC hides modules you can’t acc
 - **Offline caching** — wrap the QueryClient with `@tanstack/query-async-storage-persister` + AsyncStorage.
 - **Push notifications** — register the device token (`expo-notifications`) and add a backend endpoint to store it + send on order/low-stock/exchange events (the backend already has a NotificationService).
 - **Image upload** — `expo-image-picker` → multipart POST to `/api/v1/products/{id}/images` (reuse the web pattern).
-- **Remaining modules** — Inventory, Offers, Customers, Reviews, Service, WhatsApp, Accounting (Chart/Journal/Ledgers/Reports/GST/Outstanding), Billing, Staff, Team, Logs, Import/Export, Branding, Settings.
+- **App icon & splash** — `app.json` currently omits them, so builds use the default Expo assets; add branded icon/splash before store submission.
 - **Builds & stores** — `eas build -p android|ios`, then `eas submit`. App IDs: `com.jlenterprises.admin`.
 - **Verify endpoints** — a few paths in the hooks (e.g. order status PATCH) are marked to confirm against the controllers.
 

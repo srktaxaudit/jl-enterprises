@@ -1,14 +1,31 @@
+# ── Dependencies ──
 /node_modules
+mobile/node_modules
+
+# ── Build output ──
 /.next
 /out
 /build
-.env
-.env*.local
-.DS_Store
-*.pem
-npm-debug.log*
-.vercel
+ecommerce-backend/target/
 next-env.d.ts
 *.tsbuildinfo
 
+# ── Expo / React Native (mobile/) ──
+.expo/
+mobile/.expo/
+
+# ── Deploy / local ──
 .vercel
+.env
+.env*.local
+
+# ── OS / editor ──
+.DS_Store
+npm-debug.log*
+
+# ── Secrets & local data (never commit) ──
+*.pem
+*.key
+*.keystore
+*.p12
+Projects.xlsx

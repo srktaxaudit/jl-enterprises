@@ -10,7 +10,7 @@ multi-stage `Dockerfile`.
 
 | Service | Folder | Database |
 |---|---|---|
-| `jl-ecommerce-api` | `ecommerce-backend/` | **Supabase Postgres** + Redis `jl-ecom-redis` |
+| `jl-enterprises-api` | `ecommerce-backend/` | **Supabase Postgres** + Redis `jl-ecom-redis` |
 
 > **Database = Supabase.** The backend auto-creates its schema on first boot
 > (Hibernate), so you run **no SQL** in the Supabase editor. Just supply the
@@ -25,7 +25,7 @@ multi-stage `Dockerfile`.
    info from Project Settings → Database.
 2. Push this repo to GitHub/GitLab.
 3. Render → **New → Blueprint** → select the repo. Render reads [`render.yaml`](render.yaml)
-   and creates `jl-ecom-redis` and `jl-ecommerce-api`.
+   and creates `jl-ecom-redis` and `jl-enterprises-api`.
 4. Fill the values marked `sync: false` — the three `DB_*` vars from Supabase (see the env
    table), `CORS_ORIGINS`, and `APP_BOOTSTRAP_ADMIN_PASSWORD` — then **Apply**.
    (`REDIS_HOST`, `REDIS_PORT` and `JWT_SECRET` are wired automatically.)
@@ -34,12 +34,13 @@ multi-stage `Dockerfile`.
 ## Option B — Manual (single Web Service)
 
 **New → Web Service** → connect repo → **Root Directory** `ecommerce-backend` →
-**Runtime: Docker** → Health check path `/actuator/health` → add the env vars below → Create.
+**Runtime: Docker** → Health check path `/actuator/health/liveness` (matches `render.yaml`)
+→ add the env vars below → Create.
 Point the `DB_*` vars at your Supabase Session pooler and (optionally) add a Key Value store.
 
 ---
 
-## Env vars — `jl-ecommerce-api`
+## Env vars — `jl-enterprises-api`
 
 | Key | Value |
 |---|---|
@@ -66,9 +67,10 @@ After deploy:
 - A SUPER_ADMIN is seeded (`admin@jlenterprises.in` / `APP_BOOTSTRAP_ADMIN_PASSWORD`).
 
 ## Point the static admin at the deployed API
-In [`frontend/admin.js`](frontend/admin.js), set the production URL:
+In [`frontend/config.js`](frontend/config.js), set the production URL (this single line is
+loaded before `store.js` / `admin.js` on every page):
 ```js
-return "https://jl-ecommerce-api.onrender.com";   // your Render service URL
+window.JL_API_BASE = "https://jl-enterprises-api.onrender.com";   // your Render service URL
 ```
 Then add that static site's origin to `CORS_ORIGINS`. Log in at `admin-login.html`
 with the seeded SUPER_ADMIN, and manage staff/roles from `admin-team.html`.
