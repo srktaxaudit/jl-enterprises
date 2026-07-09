@@ -169,7 +169,7 @@
 
   function card(r) {
     const value = r.finalValue != null ? inr(r.finalValue) + " (approved)" : inr(r.estimatedValue) + " (estimate)";
-    const imgs = (r.imageUrls||[]).slice(0,3).map(u=>`<img src="${esc(u)}" class="w-11 h-11 rounded-lg object-cover border border-slate-200" />`).join("");
+    const imgs = (r.imageUrls||[]).slice(0,3).map(u=>`<img src="${esc(u)}" alt="${esc(r.applianceCategory)} photo" class="w-11 h-11 rounded-lg object-cover border border-slate-200" />`).join("");
     return `<div class="bg-white border border-slate-200 rounded-2xl p-4">
       <div class="flex items-center justify-between gap-2">
         <b class="text-navy text-sm">${esc(r.applianceCategory)}${r.brand?" · "+esc(r.brand):""}</b>
@@ -193,7 +193,7 @@
     }
   });
   function renderThumbs() {
-    $("thumbs").innerHTML = uploaded.map((u,i)=>`<div class="relative"><img src="${esc(u)}" class="w-16 h-16 rounded-lg object-cover border border-slate-200" /><button type="button" data-rm="${i}" class="absolute -top-1.5 -right-1.5 bg-red-600 text-white w-5 h-5 rounded-full text-[11px] leading-none">×</button></div>`).join("");
+    $("thumbs").innerHTML = uploaded.map((u,i)=>`<div class="relative"><img src="${esc(u)}" alt="Uploaded appliance photo ${i+1}" class="w-16 h-16 rounded-lg object-cover border border-slate-200" /><button type="button" data-rm="${i}" class="absolute -top-1.5 -right-1.5 bg-red-600 text-white w-5 h-5 rounded-full text-[11px] leading-none">×</button></div>`).join("");
   }
   $("thumbs") && $("thumbs").addEventListener("click", (e) => {
     const b = e.target.closest("button[data-rm]"); if (!b) return;

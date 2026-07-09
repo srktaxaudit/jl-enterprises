@@ -451,6 +451,10 @@ function initEmiCalculator() {
       markInvalid(downEl, "emiDownHint");
       return;
     }
+    if (!months || months <= 0) {   // guard: never divide by an empty/0 tenure (would show Infinity/NaN)
+      markInvalid(document.getElementById("emiMonths"), "emiMonthsHint");
+      return;
+    }
 
     const balance = amount - down;
     const monthly = Math.ceil(balance / months);

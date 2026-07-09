@@ -234,7 +234,7 @@
     const strip = $("imageStrip");
     strip.innerHTML = (imgs && imgs.length) ? imgs.map(im=>`
       <div class="relative w-24">
-        <img src="${esc(im.url)}" alt="" class="w-24 h-24 object-cover rounded-lg border ${im.primary?'border-orange ring-2 ring-orange':'border-slate-200'}" />
+        <img src="${esc(im.url)}" alt="Product image" class="w-24 h-24 object-cover rounded-lg border ${im.primary?'border-orange ring-2 ring-orange':'border-slate-200'}" />
         <div class="flex justify-between items-center mt-1 text-[11px]">
           <button type="button" data-primary="${im.id}" class="${im.primary?'text-orange font-bold':'text-slate-500'}">${im.primary?'★ Primary':'Set ★'}</button>
           <button type="button" data-delimg="${im.id}" class="text-red-600" title="Remove">✕</button>
