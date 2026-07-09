@@ -51,7 +51,11 @@
               <button type="button" id="delBrandBtn" class="text-[12px] text-red-500 hover:underline">Delete selected</button>
             </span>
           </div>
-          <select id="brandId" class="inp"></select>
+          <div id="brandWidget" class="relative">
+            <input type="hidden" id="brandId" />
+            <input type="text" id="brandSearch" class="inp" placeholder="— none — (type to search)" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="brandList" />
+            <div id="brandList" class="hidden absolute z-30 left-0 right-0 mt-1 max-h-52 overflow-auto bg-white border border-slate-200 rounded-lg shadow-card text-sm"></div>
+          </div>
           <div id="newBrandRow" class="hidden mt-2 flex gap-2">
             <input id="newBrandName" class="inp" placeholder="New brand name" maxlength="120" />
             <button type="button" id="newBrandSave" class="bg-navy text-white rounded-lg px-3 text-sm whitespace-nowrap">Add</button>
@@ -155,10 +159,29 @@
     fillBrands();
   }
 
-  function fillBrands(selectedId){
-    $("brandId").innerHTML = '<option value="">— none —</option>' + BRANDS.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join("");
-    if (selectedId) $("brandId").value = selectedId;
+  // ── Searchable brand picker (hidden #brandId holds the UUID; #brandSearch filters) ──
+  function brandName(id){ const b = BRANDS.find(x=>x.id===id); return b ? b.name : ""; }
+  function setBrand(id){ $("brandId").value = id || ""; $("brandSearch").value = id ? brandName(id) : ""; }
+  function renderBrandOptions(filter){
+    const f = (filter||"").trim().toLowerCase();
+    const cur = $("brandId").value;
+    const matches = BRANDS.filter(b => !f || b.name.toLowerCase().includes(f))
+                          .sort((a,b)=> a.name.localeCompare(b.name));
+    const opt = (id,label)=>`<button type="button" data-brand-id="${esc(id)}" class="block w-full text-left px-3 py-1.5 hover:bg-slate-50 ${id===cur?'font-semibold text-navy':'text-slate-700'}">${esc(label)}</button>`;
+    $("brandList").innerHTML = opt("", "— none —")
+      + (matches.length ? matches.map(b=>opt(b.id,b.name)).join("")
+                        : '<div class="px-3 py-2 text-slate-400">No brands match.</div>');
   }
+  function openBrandList(){ renderBrandOptions($("brandSearch").value); $("brandList").classList.remove("hidden"); $("brandSearch").setAttribute("aria-expanded","true"); }
+  function closeBrandList(revert){ $("brandList").classList.add("hidden"); $("brandSearch").setAttribute("aria-expanded","false"); if(revert) $("brandSearch").value = brandName($("brandId").value); }
+  // Keep every existing caller working — selecting by id sets the hidden value + display text.
+  function fillBrands(selectedId){ setBrand(selectedId || ""); }
+
+  $("brandSearch").addEventListener("focus", openBrandList);
+  $("brandSearch").addEventListener("input", openBrandList);
+  $("brandSearch").addEventListener("keydown", (e)=>{ if(e.key==="Escape"){ closeBrandList(true); $("brandSearch").blur(); } });
+  $("brandList").addEventListener("click", (e)=>{ const b=e.target.closest("[data-brand-id]"); if(!b) return; setBrand(b.dataset.brandId||""); closeBrandList(false); });
+  document.addEventListener("click", (e)=>{ if(!$("brandWidget").contains(e.target)) closeBrandList(true); });
   $("newBrandBtn").addEventListener("click", ()=>{ const r=$("newBrandRow"); r.classList.toggle("hidden"); if(!r.classList.contains("hidden")) $("newBrandName").focus(); });
   $("newBrandCancel").addEventListener("click", ()=>{ $("newBrandRow").classList.add("hidden"); $("newBrandName").value=""; });
   $("newBrandSave").addEventListener("click", async ()=>{
@@ -284,7 +307,7 @@
       const p = await jlApi(`/api/v1/products/${slug}`);
       $("pid").value=p.id; $("name").value=p.name||""; $("sku").value=p.sku||"";
       $("price").value=p.price??""; $("comparePrice").value=p.comparePrice??"";
-      $("categoryId").value=p.categoryId||""; $("brandId").value=p.brandId||"";
+      $("categoryId").value=p.categoryId||""; setBrand(p.brandId||"");
       $("shortDescription").value=p.shortDescription||""; $("description").value=p.description||"";
       $("featured").checked=!!p.featured;
       $("emiAvailable").checked=!!p.emiAvailable;
