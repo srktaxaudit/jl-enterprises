@@ -14,6 +14,18 @@
 <meta name="apple-mobile-web-app-title" content="JL Admin" />
 <link rel="apple-touch-icon" href="jl-admin-icon.svg" />
 <link rel="icon" href="jl-admin-icon.svg" />
+<!-- Apply the saved (or system) theme before first paint to avoid a light flash. -->
+<script>
+  (function () {
+    try {
+      var t = localStorage.getItem("jl-admin-theme");
+      if (t !== "dark" && t !== "light") t = (window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches) ? "dark" : "light";
+      var e = document.documentElement;
+      e.setAttribute("data-theme", t);
+      e.style.colorScheme = t;
+    } catch (_) {}
+  })();
+</script>
 <script>if("serviceWorker" in navigator){addEventListener("load",function(){navigator.serviceWorker.register("admin-sw.js").catch(function(){});});}</script>
 <link rel="stylesheet" href="admin-shell.css" />
 <style>
@@ -53,6 +65,7 @@
         <div class="admin-page-title" id="pageTitle">Dashboard</div>
         <div class="admin-topbar-spacer"></div>
         <span class="admin-status"><i></i> Admin panel</span>
+        <button id="themeBtn" class="admin-theme-toggle" type="button" aria-label="Toggle dark mode" title="Toggle dark / light theme">🌙</button>
         <button id="bellBtn" type="button" aria-label="Notifications" title="Notifications"
           style="position:relative;background:none;border:0;cursor:pointer;font-size:18px;line-height:1;padding:6px;margin-right:2px;">
           🔔

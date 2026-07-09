@@ -59,3 +59,20 @@ button,a{font:inherit}
   .collapsed .admin-nav-sub a{padding-left:40px}
 }
 @media(prefers-reduced-motion:reduce){.admin-nav-sub{transition:none}.admin-nav-parent .chev{transition:none}}
+
+/* ── Theme toggle button (topbar) ── */
+.admin-theme-toggle{background:#f1f5f9;border:0;border-radius:10px;width:36px;height:36px;font-size:16px;line-height:1;cursor:pointer;color:var(--navy)}
+.admin-theme-toggle:hover{background:#e2e8f0}
+
+/* ── Dark theme: shell chrome (the sidebar is already dark, so we only restyle
+   the page background, topbar and iframe surface). ── */
+html[data-theme="dark"]{color-scheme:dark}
+html[data-theme="dark"] body,html[data-theme="dark"] .admin-shell{background:#0f172a}
+html[data-theme="dark"] .admin-topbar{background:#111c31;border-bottom-color:#22304a;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+html[data-theme="dark"] .admin-page-title{color:#e2e8f0}
+html[data-theme="dark"] .admin-menu{background:#22304a;color:#e2e8f0}
+html[data-theme="dark"] .admin-theme-toggle{background:#22304a;color:#e2e8f0}
+html[data-theme="dark"] .admin-theme-toggle:hover{background:#2f3f5e}
+html[data-theme="dark"] .admin-status{background:rgba(34,197,94,.12);color:#4ade80}
+html[data-theme="dark"] .admin-content iframe{background:#0f172a}
+html[data-theme="dark"] .admin-sidebar{box-shadow:8px 0 28px rgba(0,0,0,.35)}

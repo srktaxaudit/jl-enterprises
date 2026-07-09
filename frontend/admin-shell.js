@@ -114,7 +114,7 @@
       let style = doc.getElementById("jl-admin-embedded-style");
       if (!style) {
         style = doc.createElement("style"); style.id = "jl-admin-embedded-style";
-        style.textContent = `html,body{min-height:100%!important}body{background:#eef1f6!important}.jl-admin-embedded>[class*="sticky"][class*="top-0"]{display:none!important}.jl-admin-embedded>div.md\\:flex>aside{display:none!important}.jl-admin-embedded>div.md\\:flex{display:block!important}.jl-admin-embedded>div.md\\:flex>div{width:100%!important}.jl-admin-embedded>div.md\\:flex>div>[class*="sticky"][class*="top-0"]{display:none!important}@media(max-width:767px){.jl-admin-embedded [class*="max-w-"]{padding-left:14px!important;padding-right:14px!important}}`;
+        style.textContent = `html,body{min-height:100%!important}body{background:#eef1f6!important}html[data-theme="dark"] body{background:#0f172a!important}.jl-admin-embedded>[class*="sticky"][class*="top-0"]{display:none!important}.jl-admin-embedded>div.md\\:flex>aside{display:none!important}.jl-admin-embedded>div.md\\:flex{display:block!important}.jl-admin-embedded>div.md\\:flex>div{width:100%!important}.jl-admin-embedded>div.md\\:flex>div>[class*="sticky"][class*="top-0"]{display:none!important}@media(max-width:767px){.jl-admin-embedded [class*="max-w-"]{padding-left:14px!important;padding-right:14px!important}}`;
         doc.head.appendChild(style);
       }
       // Keep links inside the workspace and let the shell own visible navigation state.
@@ -159,6 +159,20 @@
   frame.addEventListener("load", prepareFrame);
   addEventListener("popstate", e => navigate((e.state && e.state.page) || new URLSearchParams(location.search).get("page"), false));
   document.getElementById("shellLogout").addEventListener("click", async () => { await JLAuth.logout(); location.replace(JL_LOGIN_PAGE); });
+
+  // ── Theme toggle (light / dark) — jlTheme (in jl-ui.js) persists the choice and
+  //    syncs it into the embedded iframe via the storage event. ──
+  const themeBtn = document.getElementById("themeBtn");
+  function paintThemeBtn() {
+    if (!themeBtn || !window.jlTheme) return;
+    const dark = jlTheme.get() === "dark";
+    themeBtn.textContent = dark ? "☀️" : "🌙";
+    themeBtn.title = dark ? "Switch to light theme" : "Switch to dark theme";
+  }
+  if (themeBtn && window.jlTheme) {
+    paintThemeBtn();
+    themeBtn.addEventListener("click", () => { jlTheme.toggle(); paintThemeBtn(); });
+  }
 
   // ── Notification bell (header) — opens the notifications page + shows unread count ──
   const bellBtn = document.getElementById("bellBtn");

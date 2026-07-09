@@ -92,6 +92,97 @@
   st.id = "jlui-styles"; st.textContent = CSS;
   (document.head || document.documentElement).appendChild(st);
 
+  // ── theme (light / dark) ──────────────────────────────────────────────────
+  // Admin-only: the storefront shares this origin's localStorage, so we scope the
+  // dark theme strictly to admin pages (never restyle the public store). Every
+  // admin page + the shell load this file, so the choice is applied everywhere and
+  // kept in sync across the shell ⇄ iframe via the `storage` event.
+  var THEME_KEY = "jl-admin-theme";
+  var IS_ADMIN = /(^|\/)admin[-.]/i.test(location.pathname);
+  function systemPrefersDark() {
+    try { return window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches; }
+    catch (_) { return false; }
+  }
+  function readTheme() {
+    try { var t = localStorage.getItem(THEME_KEY); if (t === "dark" || t === "light") return t; }
+    catch (_) {}
+    return systemPrefersDark() ? "dark" : "light";
+  }
+  function applyTheme(t) {
+    if (!IS_ADMIN) return;                 // never touch the storefront
+    var el = document.documentElement;
+    el.setAttribute("data-theme", t === "dark" ? "dark" : "light");
+    el.style.colorScheme = t === "dark" ? "dark" : "light";   // native controls + scrollbars
+  }
+  window.jlTheme = {
+    get: readTheme,
+    set: function (t) {
+      t = t === "dark" ? "dark" : "light";
+      try { localStorage.setItem(THEME_KEY, t); } catch (_) {}
+      applyTheme(t);
+      try { window.dispatchEvent(new CustomEvent("jl-theme-change", { detail: t })); } catch (_) {}
+      return t;
+    },
+    toggle: function () { return window.jlTheme.set(readTheme() === "dark" ? "light" : "dark"); },
+  };
+  if (IS_ADMIN) {
+    // Dark-mode overrides for the shared Tailwind admin palette. Scoped under
+    // html[data-theme="dark"] so specificity beats the single-class utilities and
+    // it's a pure no-op until the attribute is set (i.e. never affects the store).
+    var DARK = `
+    html[data-theme="dark"]{color-scheme:dark}
+    html[data-theme="dark"] .bg-\\[\\#eef1f6\\]{background-color:#0f172a!important}
+    html[data-theme="dark"] .bg-white{background-color:#1e293b!important}
+    html[data-theme="dark"] .bg-slate-50{background-color:#172033!important}
+    html[data-theme="dark"] .bg-slate-100{background-color:#1f2b41!important}
+    html[data-theme="dark"] .border-slate-100,html[data-theme="dark"] .border-slate-200,
+    html[data-theme="dark"] .border-slate-300{border-color:#334155!important}
+    html[data-theme="dark"] .divide-slate-100>*+*,html[data-theme="dark"] .divide-slate-200>*+*{border-color:#334155!important}
+    html[data-theme="dark"] .text-navy,html[data-theme="dark"] .text-slate-800,
+    html[data-theme="dark"] .text-slate-700,html[data-theme="dark"] .text-slate-900{color:#e2e8f0!important}
+    html[data-theme="dark"] .text-slate-600,html[data-theme="dark"] .text-slate-500{color:#cbd5e1!important}
+    html[data-theme="dark"] .text-slate-400,html[data-theme="dark"] .text-slate-300{color:#94a3b8!important}
+    html[data-theme="dark"] .hover\\:bg-slate-50:hover{background-color:#243043!important}
+    html[data-theme="dark"] .hover\\:bg-slate-100:hover{background-color:#2a3750!important}
+    html[data-theme="dark"] input,html[data-theme="dark"] select,html[data-theme="dark"] textarea,
+    html[data-theme="dark"] .inp{background-color:#0f172a!important;color:#e2e8f0!important;border-color:#334155!important}
+    html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::placeholder{color:#64748b}
+    /* light tinted chips / banners → translucent so their coloured text stays readable */
+    html[data-theme="dark"] .bg-blue-50{background-color:rgba(59,130,246,.15)!important}
+    html[data-theme="dark"] .bg-green-50,html[data-theme="dark"] .bg-emerald-50{background-color:rgba(34,197,94,.15)!important}
+    html[data-theme="dark"] .bg-red-50,html[data-theme="dark"] .bg-rose-50{background-color:rgba(239,68,68,.15)!important}
+    html[data-theme="dark"] .bg-amber-50,html[data-theme="dark"] .bg-yellow-50,html[data-theme="dark"] .bg-orange-50{background-color:rgba(245,158,11,.15)!important}
+    html[data-theme="dark"] .bg-violet-50,html[data-theme="dark"] .bg-purple-50,html[data-theme="dark"] .bg-indigo-50{background-color:rgba(139,92,246,.15)!important}
+    html[data-theme="dark"] .border-blue-200{border-color:rgba(59,130,246,.35)!important}
+    html[data-theme="dark"] .border-green-200,html[data-theme="dark"] .border-emerald-200{border-color:rgba(34,197,94,.35)!important}
+    html[data-theme="dark"] .border-red-200,html[data-theme="dark"] .border-amber-200,html[data-theme="dark"] .border-violet-200{border-color:rgba(148,163,184,.3)!important}
+    html[data-theme="dark"] .text-blue-700,html[data-theme="dark"] .text-blue-800,html[data-theme="dark"] .text-blue-600{color:#93c5fd!important}
+    html[data-theme="dark"] .text-green-700,html[data-theme="dark"] .text-green-800,html[data-theme="dark"] .text-green-600,
+    html[data-theme="dark"] .text-emerald-700,html[data-theme="dark"] .text-emerald-800{color:#86efac!important}
+    html[data-theme="dark"] .text-red-700,html[data-theme="dark"] .text-red-800,html[data-theme="dark"] .text-red-600{color:#fca5a5!important}
+    html[data-theme="dark"] .text-violet-700,html[data-theme="dark"] .text-purple-700{color:#c4b5fd!important}
+    html[data-theme="dark"] .text-amber-700,html[data-theme="dark"] .text-orange-700,html[data-theme="dark"] .text-yellow-700{color:#fcd34d!important}
+    html[data-theme="dark"] .shadow-card{box-shadow:0 12px 30px rgba(0,0,0,.45)!important}
+    /* keep this toolkit's own modals/toasts on-theme */
+    html[data-theme="dark"] .jlui-modal,html[data-theme="dark"] .jlui-overlay-card,
+    html[data-theme="dark"] .jlui-toast{background:#1e293b}
+    html[data-theme="dark"] .jlui-modal-title,html[data-theme="dark"] .jlui-toast-tt{color:#e2e8f0}
+    html[data-theme="dark"] .jlui-modal-msg,html[data-theme="dark"] .jlui-toast-msg{color:#cbd5e1}
+    html[data-theme="dark"] .jlui-modal-in{background:#0f172a;color:#e2e8f0;border-color:#334155}
+    html[data-theme="dark"] .jlui-btn-ghost{background:#334155;color:#e2e8f0}
+    html[data-theme="dark"] .jlui-btn-ghost:hover{background:#475569}
+    html[data-theme="dark"] .jlui-dialog-x{background:#1e293b;border-color:#334155;color:#cbd5e1}`;
+    var dst = document.createElement("style");
+    dst.id = "jlui-dark"; dst.textContent = DARK;
+    (document.head || document.documentElement).appendChild(dst);
+    applyTheme(readTheme());
+    // Cross-document sync: `storage` fires in the OTHER same-origin documents
+    // (shell ⇄ iframe), so toggling in the shell re-themes the embedded page.
+    window.addEventListener("storage", function (e) {
+      if (e.key === THEME_KEY) applyTheme(readTheme());
+    });
+  }
+
   var FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]):not([type=hidden]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
   function trapFocus(container, e) {
     if (e.key !== "Tab") return;
