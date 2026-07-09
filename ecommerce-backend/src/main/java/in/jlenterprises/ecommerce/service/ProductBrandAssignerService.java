@@ -62,12 +62,19 @@ public class ProductBrandAssignerService {
         String slug = SlugUtil.slugify(name);
         Brand cached = cache.get(slug);
         if (cached != null) return cached;
-        Brand brand = brandRepository.findBySlug(slug).orElseGet(() -> {
+        // Reuse any existing row with this slug — including a soft-deleted one, which we revive.
+        // The slug is uniquely constrained regardless of the deleted flag, so a blind insert of
+        // an already-used slug would fail the whole transaction.
+        Brand brand = brandRepository.findAnyBySlug(slug).map(existing -> {
+            if (existing.isDeleted()) existing.setDeleted(false);   // revive rather than clash
+            return existing;
+        }).orElseGet(() -> {
             Brand b = new Brand();
             b.setName(name);
             b.setSlug(slug);
-            return brandRepository.save(b);
+            return b;
         });
+        brand = brandRepository.save(brand);
         cache.put(slug, brand);
         return brand;
     }
