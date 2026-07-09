@@ -86,7 +86,9 @@
   document.getElementById("statusFilter").innerHTML =
     '<option value="">All statuses</option>' + STATUSES.map(s=>`<option value="${s}">${s}</option>`).join("");
 
+  let loadSeq = 0;   // guards against out-of-order responses: only the latest load() renders
   async function load(){
+    const seq = ++loadSeq;
     const status = document.getElementById("statusFilter").value;
     const pay = document.getElementById("payFilter").value;
     const from = document.getElementById("fromDate").value;
@@ -99,6 +101,7 @@
     body.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:20px">${jlSpinnerHTML()}</td></tr>`;
     try {
       const page = await jlApi("/api/v1/admin/orders" + q);
+      if (seq !== loadSeq) return;   // a newer filter/sort/page started — drop this stale result
       state.totalPages = page.totalPages || 1;
       const rows = page.content || [];
       body.innerHTML = rows.length ? rows.map(o=>`
@@ -122,7 +125,7 @@
       document.getElementById("pageInfo").textContent = `Page ${state.page+1} of ${state.totalPages}`;
       document.getElementById("prev").disabled = page.first;
       document.getElementById("next").disabled = page.last;
-    } catch(e){ body.innerHTML = `<tr><td colspan="6" class="py-4 text-red-600">Could not load orders (${esc(e.message)}).</td></tr>`; }
+    } catch(e){ if (seq !== loadSeq) return; body.innerHTML = `<tr><td colspan="6" class="py-4 text-red-600">Could not load orders (${esc(e.message)}).</td></tr>`; }
   }
 
   document.getElementById("rows").addEventListener("click", async (ev)=>{

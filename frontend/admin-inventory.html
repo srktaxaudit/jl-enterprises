@@ -70,17 +70,20 @@
     el.className="mb-4 text-[13px] rounded-lg px-3 py-2 "+(ok?"bg-green-50 text-green-700 border border-green-200":"bg-red-50 text-red-700 border border-red-200");
     el.classList.remove("hidden"); }
 
+  let searchSeq = 0;   // guards against out-of-order responses: only the latest search() renders
   async function search(term){
+    const seq = ++searchSeq;
     const box = $("results");
     if(!term){ box.innerHTML=""; return; }
     try {
       const page = await jlApi(`/api/v1/admin/products?size=10&search=${encodeURIComponent(term)}`);
+      if (seq !== searchSeq) return;   // a newer keystroke started — drop this stale result
       const rows = page.content || [];
       box.innerHTML = rows.length ? rows.map(p=>`
         <button data-pick="${p.id}" data-name="${esc(p.name)}" class="block w-full text-left px-2 py-1.5 rounded hover:bg-slate-50">
           <b class="text-navy">${esc(p.name)}</b> <span class="text-slate-400">· ${esc(p.sku)}</span></button>`).join("")
         : '<div class="text-slate-400 py-1">No matches.</div>';
-    } catch(e){ box.innerHTML = `<div class="text-red-600">${esc(e.message)}</div>`; }
+    } catch(e){ if (seq !== searchSeq) return; box.innerHTML = `<div class="text-red-600">${esc(e.message)}</div>`; }
   }
 
   async function pick(productId, name){

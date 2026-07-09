@@ -70,7 +70,9 @@
   let USERS = [];
   const name = (u) => [u.firstName,u.lastName].filter(Boolean).join(" ").trim() || u.email;
 
+  let loadSeq = 0;   // guards against out-of-order responses: only the latest load() renders
   async function load(){
+    const seq = ++loadSeq;
     const search = $("search").value.trim();
     const active = $("activeFilter").value;
     const sort = $("sortSel").value;
@@ -80,6 +82,7 @@
     body.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:20px">${jlSpinnerHTML()}</td></tr>`;
     try {
       const page = await jlApi("/api/v1/admin/users" + q);
+      if (seq !== loadSeq) return;   // a newer search/filter started — drop this stale result
       state.totalPages = page.totalPages || 1;
       const rows = page.content || [];
       USERS = rows;
@@ -95,7 +98,7 @@
         : `<tr><td colspan="6" class="py-4 text-slate-400">No users found.</td></tr>`;
       $("pageInfo").textContent = `Page ${state.page+1} of ${state.totalPages}`;
       $("prev").disabled = page.first; $("next").disabled = page.last;
-    } catch(e){ body.innerHTML = `<tr><td colspan="6" class="py-4 text-red-600">Could not load (${esc(e.message)}).</td></tr>`; }
+    } catch(e){ if (seq !== loadSeq) return; body.innerHTML = `<tr><td colspan="6" class="py-4 text-red-600">Could not load (${esc(e.message)}).</td></tr>`; }
   }
 
   const inr = (n) => "₹" + Math.round(Number(n||0)).toLocaleString("en-IN");

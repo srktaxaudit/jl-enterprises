@@ -115,7 +115,9 @@
     return html || '<span class="text-slate-300 text-[12px]">—</span>';
   }
 
+  let usersSeq = 0;   // guards against out-of-order responses: only the latest loadUsers() renders
   async function loadUsers(search = "") {
+    const seq = ++usersSeq;
     const body = document.getElementById("usersBody");
     body.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-slate-400">${jlSpinnerHTML({label:"Loading users"})}</td></tr>`;
     try {
@@ -126,6 +128,7 @@
         ? `/api/v1/admin/users?search=${encodeURIComponent(s)}&size=50`
         : "/api/v1/admin/staff?size=50";
       const page = await jlApi(path);
+      if (seq !== usersSeq) return;   // a newer search started — drop this stale result
       const users = page.content || [];
       body.innerHTML = users.length ? users.map((u) => `
         <tr class="border-t border-slate-100 align-top">
@@ -136,6 +139,7 @@
           <td class="text-right whitespace-nowrap">${rowActions(u)}</td>
         </tr>`).join("") : `<tr><td colspan="5" class="py-4 text-slate-400">No users found.</td></tr>`;
     } catch (e) {
+      if (seq !== usersSeq) return;
       body.innerHTML = `<tr><td colspan="5" class="py-4 text-red-600">Could not load users (${esc(e.message)}).</td></tr>`;
     }
   }
