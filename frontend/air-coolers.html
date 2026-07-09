@@ -1,0 +1,68 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Air Coolers — JL Enterprises</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = { theme: { extend: {
+    colors: { navy: { DEFAULT: "#0b2447", 600: "#19376d" }, brand: { DEFAULT: "#576cbc", sky: "#a5d7e8" },
+      orange: { DEFAULT: "#f97316", 600: "#ea580c" }, amber: { DEFAULT: "#fbbf24" } },
+    boxShadow: { card: "0 12px 30px rgba(15,23,42,.12)" } } } };
+</script>
+<link rel="stylesheet" href="style.css" />
+<style> body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background:#fff; }
+  .no-scrollbar::-webkit-scrollbar { display:none; } .no-scrollbar { -ms-overflow-style:none; scrollbar-width:none; }
+  .filt { border:1px solid #e2e8f0; background:#fff; border-radius:9999px; padding:6px 12px; font-size:13px; color:#475569; outline:none; } </style>
+</head>
+<body class="text-slate-800">
+
+<div class="bg-navy text-white text-center text-[13px] py-1.5 px-3">🚚 Free door delivery across <b class="text-amber">Tamil Nadu</b> · 💳 Easy EMI &amp; COD · 🔧 Doorstep service</div>
+
+<header class="bg-white border-b border-slate-200 sticky top-0 z-40">
+  <div class="max-w-[1440px] mx-auto px-5 flex items-center gap-5 py-3">
+    <a href="index.html" class="flex items-center gap-2.5 shrink-0"><div class="w-12 h-10 rounded-lg bg-gradient-to-br from-navy to-brand text-white font-extrabold flex items-center justify-center text-lg">JL</div><div class="leading-tight hidden sm:block"><div class="font-extrabold text-navy">JL ENTERPRISES</div><div class="text-[10px] font-semibold text-slate-400 tracking-wider">HOME APPLIANCES · THOOTHUKUDI</div></div></a>
+    <form action="index.html" method="get" class="flex-1 flex bg-slate-100 border border-slate-200 rounded-full overflow-hidden"><input name="q" class="flex-1 bg-transparent px-4 py-2.5 text-sm outline-none text-slate-600" placeholder="Search products…" /><button class="bg-navy text-white px-5 font-semibold text-sm">Search</button></form>
+    <nav class="flex items-center gap-4 text-slate-600"><a href="service.html" class="flex flex-col items-center text-[11px]"><span class="text-xl">🔧</span>Service</a><a href="login.html" class="hidden sm:flex flex-col items-center text-[11px]"><span class="text-xl">👤</span>Login</a><a href="cart.html" class="relative flex flex-col items-center text-[11px]"><span class="text-xl">🛒</span>Cart<span id="cartBadge" class="hidden absolute -top-1.5 -right-2 bg-orange text-white text-[11px] font-bold w-[18px] h-[18px] rounded-full items-center justify-center">0</span></a></nav>
+  </div>
+  <nav class="bg-navy-600"><div class="max-w-[1440px] mx-auto px-5 flex items-center gap-1 overflow-x-auto no-scrollbar">
+    <a href="index.html" class="text-blue-100/90 hover:text-white px-4 py-2.5 text-sm whitespace-nowrap">Home</a>
+    <a href="air-conditioners.html" class="text-blue-100/90 hover:text-white px-4 py-2.5 text-sm whitespace-nowrap">Air Conditioners</a>
+    <a href="televisions.html" class="text-blue-100/90 hover:text-white px-4 py-2.5 text-sm whitespace-nowrap">Televisions</a>
+    <a href="refrigerators.html" class="text-blue-100/90 hover:text-white px-4 py-2.5 text-sm whitespace-nowrap">Refrigerators</a>
+    <a href="washing-machines.html" class="text-blue-100/90 hover:text-white px-4 py-2.5 text-sm whitespace-nowrap">Washing Machines</a>
+    <a href="home-theatre.html" class="text-blue-100/90 hover:text-white px-4 py-2.5 text-sm whitespace-nowrap">Home Theatre</a>
+    <a href="kitchen.html" class="text-blue-100/90 hover:text-white px-4 py-2.5 text-sm whitespace-nowrap">Kitchen &amp; Stove</a>
+    <a href="furniture.html" class="text-blue-100/90 hover:text-white px-4 py-2.5 text-sm whitespace-nowrap">Furniture</a>
+  </div></nav>
+</header>
+
+<main class="min-h-[60vh]"><div class="max-w-[1440px] mx-auto px-5">
+  <div class="text-[13px] text-slate-400 my-4"><a href="index.html" class="text-brand">Home</a> / Air Coolers</div>
+  <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+    <h2 class="text-2xl text-navy font-bold">🧊 Air Coolers</h2>
+    <span id="resultCount" class="text-[13px] text-slate-400"></span>
+  </div>
+  <div class="flex items-center gap-2 flex-wrap mb-4">
+    <select id="fPrice" class="filt"><option value="">Any price</option><option value="0-2000">Under ₹2,000</option><option value="2000-5000">₹2,000 – ₹5,000</option><option value="5000-10000">₹5,000 – ₹10,000</option><option value="10000-">Above ₹10,000</option></select>
+    <select id="fBrand" class="filt"><option value="">All brands</option></select>
+    <select id="fRating" class="filt"><option value="">Any rating</option><option value="4.5">4.5★ &amp; up</option><option value="4">4★ &amp; up</option></select>
+    <select id="fSort" class="filt"><option value="">Featured</option><option value="price_asc">Price: Low to High</option><option value="price_desc">Price: High to Low</option><option value="rating">Top Rated</option><option value="discount">Biggest Discount</option></select>
+    <button id="fClear" class="hidden text-[13px] text-brand font-semibold px-2">✕ Clear filters</button>
+  </div>
+  <div id="grid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 mb-8"></div>
+</div></main>
+
+<footer class="bg-navy text-slate-400 mt-9 py-6 text-center text-[13px]">© 2026 JL Enterprises, Thoothukudi · <a href="index.html" class="text-brand">Home</a> · <a href="service.html" class="text-brand">Service</a></footer>
+<a href="cart.html" id="floatingCart" class="hidden fixed bottom-5 right-5 bg-orange text-white font-bold px-5 py-3.5 rounded-full shadow-card z-40 items-center gap-2">🛒 <span id="floatCount">0</span> item(s) · <span id="floatTotal">₹0</span></a>
+
+<script>window.JL_CATEGORY = "air-coolers";</script>
+<script src="jl-ui.js"></script>
+<script src="config.js"></script>
+<script src="store.js"></script>
+<script src="category.js"></script>
+<script src="script.js"></script>
+<script src="search.js"></script>
+</body>
+</html>

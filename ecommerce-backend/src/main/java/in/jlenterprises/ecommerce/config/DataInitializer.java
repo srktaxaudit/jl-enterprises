@@ -1,8 +1,10 @@
 package in.jlenterprises.ecommerce.config;
 
 import in.jlenterprises.ecommerce.constant.RoleName;
+import in.jlenterprises.ecommerce.entity.Category;
 import in.jlenterprises.ecommerce.entity.Role;
 import in.jlenterprises.ecommerce.entity.User;
+import in.jlenterprises.ecommerce.repository.CategoryRepository;
 import in.jlenterprises.ecommerce.repository.RoleRepository;
 import in.jlenterprises.ecommerce.repository.UserRepository;
 import org.slf4j.Logger;
@@ -28,16 +30,18 @@ public class DataInitializer implements CommandLineRunner {
 
     private final RoleRepository roleRepository;
     private final UserRepository userRepository;
+    private final CategoryRepository categoryRepository;
     private final PasswordEncoder passwordEncoder;
     private final String adminEmail;
     private final String adminPassword;
 
     public DataInitializer(RoleRepository roleRepository, UserRepository userRepository,
-                           PasswordEncoder passwordEncoder,
+                           CategoryRepository categoryRepository, PasswordEncoder passwordEncoder,
                            @Value("${app.bootstrap.admin-email:admin@jlenterprises.in}") String adminEmail,
                            @Value("${app.bootstrap.admin-password:" + DEFAULT_ADMIN_PASSWORD + "}") String adminPassword) {
         this.roleRepository = roleRepository;
         this.userRepository = userRepository;
+        this.categoryRepository = categoryRepository;
         this.passwordEncoder = passwordEncoder;
         this.adminEmail = adminEmail;
         this.adminPassword = adminPassword;
@@ -55,6 +59,13 @@ public class DataInitializer implements CommandLineRunner {
                 log.info("Seeded role {}", name);
             }
         }
+
+        // Storefront departments that aren't among the original 7 (added later). Idempotent
+        // by slug, so existing installs just get the new ones; the 7 originals are untouched.
+        seedCategory("Fans", "fans", 8);
+        seedCategory("Air Coolers", "air-coolers", 9);
+        seedCategory("Voltage Stabilizers", "stabilizers", 10);
+        seedCategory("Water Heaters", "water-heaters", 11);
 
         if (!userRepository.existsByEmailIgnoreCase(adminEmail)) {
             // Never seed a super-admin with the publicly-known default password. If the
@@ -76,6 +87,18 @@ public class DataInitializer implements CommandLineRunner {
             admin.getRoles().add(superAdmin);
             userRepository.save(admin);
             log.warn("Seeded SUPER_ADMIN account '{}'. CHANGE THE DEFAULT PASSWORD immediately.", adminEmail);
+        }
+    }
+
+    /** Create a storefront category if one with this slug doesn't already exist. */
+    private void seedCategory(String name, String slug, int sortOrder) {
+        if (categoryRepository.findBySlug(slug).isEmpty()) {
+            Category c = new Category();
+            c.setName(name);
+            c.setSlug(slug);
+            c.setSortOrder(sortOrder);
+            categoryRepository.save(c);
+            log.info("Seeded category {}", slug);
         }
     }
 }

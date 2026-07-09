@@ -488,8 +488,30 @@ function initFooterSocials() {
   container.appendChild(col);
 }
 
+/* ── Category nav: append the newer departments to the top category bar on every
+      page that shows it (kept here so the bar's markup stays in one place). ── */
+function initCategoryNav() {
+  const bar = document.querySelector("nav.bg-navy-600 > div");
+  if (!bar || bar.querySelector("[data-jl-cat-extra]")) return;
+  const EXTRA = [["fans.html", "Fans"], ["air-coolers.html", "Air Coolers"],
+                 ["stabilizers.html", "Stabilizers"], ["water-heaters.html", "Water Heaters"]];
+  const current = location.pathname.split("/").pop();
+  EXTRA.forEach(([href, label]) => {
+    const active = href === current;
+    const a = document.createElement("a");
+    a.href = href;
+    a.setAttribute("data-jl-cat-extra", "");
+    a.className = active
+      ? "text-white px-4 py-2.5 text-sm whitespace-nowrap border-b-[3px] border-orange font-semibold"
+      : "text-blue-100/90 hover:text-white px-4 py-2.5 text-sm whitespace-nowrap";
+    a.textContent = label;
+    bar.appendChild(a);
+  });
+}
+
 /* ── Boot: run once the page is ready ────────────────────────────── */
 document.addEventListener("DOMContentLoaded", () => {
+  initCategoryNav();    // appends Fans / Air Coolers / Stabilizers / Water Heaters to the nav bar
   updateCartWidgets();  // badge reflects the stored cart on every page
   jlSyncCartControls(); // any add/qty controls already in the DOM reflect the cart
   renderCartPage();     // only does something on cart.html
