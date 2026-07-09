@@ -3,6 +3,7 @@ package in.jlenterprises.ecommerce.service.impl;
 import in.jlenterprises.ecommerce.audit.Auditable;
 import in.jlenterprises.ecommerce.constant.NotificationType;
 import in.jlenterprises.ecommerce.constant.OrderStatus;
+import in.jlenterprises.ecommerce.constant.PaymentMethod;
 import in.jlenterprises.ecommerce.constant.PaymentStatus;
 import in.jlenterprises.ecommerce.constant.TransactionType;
 import in.jlenterprises.ecommerce.dto.order.OrderPaymentDto;
@@ -85,6 +86,19 @@ public class PaymentServiceImpl implements PaymentService {
         Order order = orderRepository.findByIdAndUserId(orderId, userId)
                 .orElseThrow(() -> ResourceNotFoundException.of("Order", orderId));
         Payment payment = paymentFor(orderId);
+
+        // Idempotency: a payment already settled must not create a duplicate CHARGE
+        // transaction or re-fire user/admin notifications on a repeated confirm callback.
+        if (payment.getPaymentStatus() == PaymentStatus.SUCCESS) {
+            return toDto(payment);
+        }
+        // Cash on delivery is collected at delivery, not through this customer-facing confirm
+        // endpoint. It stays PENDING until an admin marks the order fulfilled — otherwise a
+        // customer could self-confirm their own COD order as paid.
+        if (payment.getMethod() == PaymentMethod.COD) {
+            return toDto(payment);
+        }
+
         PaymentStrategy strategy = strategyFactory.forMethod(payment.getMethod());
 
         boolean paid = strategy.verify(payment,
