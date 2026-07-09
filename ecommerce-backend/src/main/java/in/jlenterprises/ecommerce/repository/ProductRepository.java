@@ -37,4 +37,9 @@ public interface ProductRepository extends JpaRepository<Product, UUID>, JpaSpec
     @org.springframework.data.jpa.repository.Query(
             "select p from Product p left join fetch p.category c where c is null or c.slug = 'general'")
     java.util.List<Product> findUncategorized();
+
+    /** Products with no brand assigned — for the auto-brand assigner (join-fetched: no N+1). */
+    @org.springframework.data.jpa.repository.Query(
+            "select p from Product p left join fetch p.brand b where b is null")
+    java.util.List<Product> findWithoutBrand();
 }

@@ -103,6 +103,7 @@
         <div class="w-full flex items-center gap-3">
           <h2 class="text-navy font-semibold">Catalog</h2>
           <button id="autoCatBtn" class="ml-auto text-[12px] bg-brand hover:bg-navy text-white rounded-lg px-3 py-1.5" title="File General/uncategorised products into the right department by their name">🏷️ Auto-categorize by name</button>
+          <button id="autoBrandBtn" class="text-[12px] bg-brand hover:bg-navy text-white rounded-lg px-3 py-1.5" title="Assign a brand (guessed from the product name) to products that have none">🏭 Auto-assign brands</button>
         </div>
         <label class="text-[11px] text-slate-500">Category<br>
           <select id="catFilter" class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm"><option value="">All categories</option></select></label>
@@ -360,6 +361,21 @@
       if(summary) flash("Moved: " + summary, true);
       load();
     } catch(err){ jlToast(err.message || "Auto-categorize failed", {type:"error"}); }
+    finally { jlBtn(e.target, false); }
+  });
+
+  $("autoBrandBtn").addEventListener("click", async (e)=>{
+    if(!(await jlConfirm("Assign a brand to every product that has none, guessing the brand from its name? Products that already have a brand are left unchanged.", {title:"Auto-assign brands", confirmText:"Assign"}))) return;
+    jlBtn(e.target, true);
+    try {
+      const assigned = await jlApi("/api/v1/admin/products/auto-brands", {method:"POST"});
+      const total = Object.values(assigned||{}).reduce((a,b)=>a+Number(b),0);
+      const summary = Object.entries(assigned||{}).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${v} → ${k}`).join(" · ");
+      jlToast(total ? `Assigned brands to ${total} products.` : "Every product already has a brand.", {type:"success"});
+      if(summary) flash("Assigned: " + summary, true);
+      try { BRANDS = await jlApi("/api/v1/brands"); fillBrands(); } catch(_){}   // refresh the brand dropdowns with any newly-created brands
+      load();
+    } catch(err){ jlToast(err.message || "Auto-assign brands failed", {type:"error"}); }
     finally { jlBtn(e.target, false); }
   });
 

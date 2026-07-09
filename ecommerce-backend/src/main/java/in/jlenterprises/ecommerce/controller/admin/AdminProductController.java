@@ -32,10 +32,13 @@ public class AdminProductController {
 
     private final ProductService productService;
     private final ProductCategorizerService categorizerService;
+    private final in.jlenterprises.ecommerce.service.ProductBrandAssignerService brandAssignerService;
 
-    public AdminProductController(ProductService productService, ProductCategorizerService categorizerService) {
+    public AdminProductController(ProductService productService, ProductCategorizerService categorizerService,
+                                  in.jlenterprises.ecommerce.service.ProductBrandAssignerService brandAssignerService) {
         this.productService = productService;
         this.categorizerService = categorizerService;
+        this.brandAssignerService = brandAssignerService;
     }
 
     @GetMapping
@@ -56,5 +59,13 @@ public class AdminProductController {
         Map<String, Integer> moved = categorizerService.autoCategorize();
         int total = moved.values().stream().mapToInt(Integer::intValue).sum();
         return ApiResponse.success("Organised " + total + " products.", moved);
+    }
+
+    @PostMapping("/auto-brands")
+    @Operation(summary = "Assign a brand (inferred from the product name) to products that have none")
+    public ApiResponse<Map<String, Integer>> autoAssignBrands() {
+        Map<String, Integer> assigned = brandAssignerService.autoAssign();
+        int total = assigned.values().stream().mapToInt(Integer::intValue).sum();
+        return ApiResponse.success("Assigned brands to " + total + " products.", assigned);
     }
 }
