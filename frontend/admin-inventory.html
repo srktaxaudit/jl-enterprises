@@ -92,6 +92,10 @@
       $("reorderLevel").value = inv.reorderLevel;
       $("warehouseLocation").value = inv.warehouseLocation || "";
       $("editCard").classList.remove("hidden");
+      // Product picked → collapse the results list and show the chosen name in the search box.
+      $("results").innerHTML = "";
+      $("search").value = name || inv.productName;
+      $("quantity").focus();
     } catch(e){ flash(e.message||"No stock record", false); }
   }
 
