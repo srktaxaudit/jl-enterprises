@@ -4,6 +4,7 @@ import in.jlenterprises.ecommerce.dto.catalog.ProductSearchCriteria;
 import in.jlenterprises.ecommerce.dto.catalog.ProductSummaryDto;
 import in.jlenterprises.ecommerce.response.ApiResponse;
 import in.jlenterprises.ecommerce.response.PageResponse;
+import in.jlenterprises.ecommerce.service.ProductCategorizerService;
 import in.jlenterprises.ecommerce.service.ProductService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -11,9 +12,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Map;
 
 /**
  * Admin catalog listing — returns ALL products (including inactive and out-of-stock),
@@ -27,9 +31,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminProductController {
 
     private final ProductService productService;
+    private final ProductCategorizerService categorizerService;
 
-    public AdminProductController(ProductService productService) {
+    public AdminProductController(ProductService productService, ProductCategorizerService categorizerService) {
         this.productService = productService;
+        this.categorizerService = categorizerService;
     }
 
     @GetMapping
@@ -42,5 +48,13 @@ public class AdminProductController {
             @PageableDefault(size = 50) Pageable pageable) {
         var criteria = new ProductSearchCriteria(search, category, null, null, null, null, null, inStock, emiAvailable);
         return ApiResponse.success(PageResponse.of(productService.search(criteria, pageable)));
+    }
+
+    @PostMapping("/auto-categorize")
+    @Operation(summary = "Auto-file General/uncategorised products into the right department by name")
+    public ApiResponse<Map<String, Integer>> autoCategorize() {
+        Map<String, Integer> moved = categorizerService.autoCategorize();
+        int total = moved.values().stream().mapToInt(Integer::intValue).sum();
+        return ApiResponse.success("Organised " + total + " products.", moved);
     }
 }

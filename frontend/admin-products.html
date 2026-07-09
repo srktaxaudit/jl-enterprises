@@ -100,7 +100,10 @@
 
     <div class="bg-white border border-slate-200 rounded-2xl p-5">
       <div class="flex flex-wrap items-end gap-3 mb-4">
-        <h2 class="text-navy font-semibold w-full">Catalog</h2>
+        <div class="w-full flex items-center gap-3">
+          <h2 class="text-navy font-semibold">Catalog</h2>
+          <button id="autoCatBtn" class="ml-auto text-[12px] bg-brand hover:bg-navy text-white rounded-lg px-3 py-1.5" title="File General/uncategorised products into the right department by their name">🏷️ Auto-categorize by name</button>
+        </div>
         <label class="text-[11px] text-slate-500">Category<br>
           <select id="catFilter" class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm"><option value="">All categories</option></select></label>
         <label class="text-[11px] text-slate-500">Stock<br>
@@ -344,6 +347,21 @@
 
   let timer; $("search").addEventListener("input", (e)=>{ clearTimeout(timer); const v=e.target.value.trim(); timer=setTimeout(()=>load(v),300); });
   ["catFilter","stockFilter","emiFilter","sortSel"].forEach(id => $(id).addEventListener("change", ()=>load()));
+
+  // One-click: file General/uncategorised products into the right department by name.
+  $("autoCatBtn").addEventListener("click", async (e)=>{
+    if(!(await jlConfirm("Auto-file all General / uncategorised products into the right department based on their name? Products you placed in a category manually are left unchanged.", {title:"Auto-categorize", confirmText:"Categorize"}))) return;
+    jlBtn(e.target, true);
+    try {
+      const moved = await jlApi("/api/v1/admin/products/auto-categorize", {method:"POST"});
+      const total = Object.values(moved||{}).reduce((a,b)=>a+Number(b),0);
+      const summary = Object.entries(moved||{}).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${v} → ${k}`).join(" · ");
+      jlToast(total ? `Organised ${total} products.` : "All products are already categorized.", {type:"success"});
+      if(summary) flash("Moved: " + summary, true);
+      load();
+    } catch(err){ jlToast(err.message || "Auto-categorize failed", {type:"error"}); }
+    finally { jlBtn(e.target, false); }
+  });
 
   jlWireLogout("#logoutBtn");
   jlRequireAdmin().then(async (a)=>{
