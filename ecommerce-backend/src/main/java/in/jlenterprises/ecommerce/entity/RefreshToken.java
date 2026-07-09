@@ -26,8 +26,14 @@ import java.time.Instant;
 @NoArgsConstructor
 public class RefreshToken extends BaseEntity {
 
+    /** SHA-256 hash of the opaque token (hex). The raw value is never stored at rest. */
     @Column(name = "token", nullable = false, length = 200)
     private String token;
+
+    /** The raw opaque token — only populated transiently when a token is issued/rotated,
+        so the caller can hand it to the client. Never persisted. */
+    @jakarta.persistence.Transient
+    private String rawToken;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false, foreignKey = @jakarta.persistence.ForeignKey(name = "fk_refresh_user"))

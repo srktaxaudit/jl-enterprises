@@ -217,7 +217,7 @@ public class AuthServiceImpl implements AuthService {
         RefreshToken rotated = refreshTokenService.rotate(current, userAgent, ip);
         User user = rotated.getUser();
         String access = jwtService.generateAccessToken(user.getEmail(), roleNames(user));
-        return AuthResponse.of(access, rotated.getToken(), jwtService.getAccessTtlSeconds(), userMapper.toDto(user));
+        return AuthResponse.of(access, rotated.getRawToken(), jwtService.getAccessTtlSeconds(), userMapper.toDto(user));
     }
 
     @Override
@@ -286,8 +286,14 @@ public class AuthServiceImpl implements AuthService {
             userRepository.findByEmailIgnoreCase(request.identifier())
                     .ifPresent(u -> { u.setEmailVerified(true); userRepository.save(u); });
         } else if (request.purpose() == OtpPurpose.PHONE_VERIFICATION) {
-            userRepository.findByEmailIgnoreCase(request.identifier())
-                    .ifPresent(u -> { u.setPhoneVerified(true); userRepository.save(u); });
+            // The identifier is a phone number, not an email — match it against stored
+            // phones by their last 10 digits (format-agnostic). The previous email lookup
+            // always missed, so phoneVerified was never actually set.
+            String digits = request.identifier().replaceAll("\\D", "");
+            String last10 = digits.length() > 10 ? digits.substring(digits.length() - 10) : digits;
+            java.util.List<User> matches = userRepository.findByPhoneLast10(last10);
+            matches.forEach(u -> u.setPhoneVerified(true));
+            if (!matches.isEmpty()) userRepository.saveAll(matches);
         }
     }
 
@@ -344,7 +350,7 @@ public class AuthServiceImpl implements AuthService {
     private AuthResponse buildAuthResponse(User user, boolean rememberMe, String userAgent, String ip) {
         String access = jwtService.generateAccessToken(user.getEmail(), roleNames(user));
         RefreshToken refresh = refreshTokenService.issue(user, rememberMe, userAgent, ip);
-        return AuthResponse.of(access, refresh.getToken(), jwtService.getAccessTtlSeconds(), userMapper.toDto(user));
+        return AuthResponse.of(access, refresh.getRawToken(), jwtService.getAccessTtlSeconds(), userMapper.toDto(user));
     }
 
     private List<String> roleNames(User user) {

@@ -233,6 +233,22 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
+    public int expireAbandonedOrders(java.time.Duration olderThan) {
+        Instant cutoff = Instant.now().minus(olderThan);
+        java.util.List<Order> abandoned = orderRepository.findAbandonedOnlineOrders(cutoff);
+        for (Order order : abandoned) {
+            doCancel(order, "Auto-cancelled: online payment was not completed in time.");
+            notificationService.notifyAdmins(NotificationType.ORDER, "Order auto-cancelled (unpaid)",
+                    "Order " + order.getOrderNumber() + " was auto-cancelled and its stock released — "
+                            + "the online payment was not completed.",
+                    "/admin-orders.html", "Orders", order.getId(), "ORDER");
+        }
+        if (!abandoned.isEmpty()) orderRepository.saveAll(abandoned);
+        return abandoned.size();
+    }
+
+    @Override
+    @Transactional
     public OrderDto requestReturn(UUID userId, UUID orderId, String reason) {
         Order order = ownedOrder(userId, orderId);
         if (order.getOrderStatus() != OrderStatus.DELIVERED) {
@@ -410,16 +426,13 @@ public class OrderServiceImpl implements OrderService {
     private void restoreStock(Order order) {
         for (OrderItem item : order.getItems()) {
             if (item.getProduct() == null) continue;
-            inventoryRepository.findByProductId(item.getProduct().getId()).ifPresent(inv -> {
+            // Lock the row (SELECT ... FOR UPDATE) to match the deduct path, so a restock
+            // and a concurrent checkout of the same product can't race on the quantity.
+            inventoryRepository.findByProductIdForUpdate(item.getProduct().getId()).ifPresent(inv -> {
                 inv.setQuantity(inv.getQuantity() + item.getQuantity());
                 inventoryRepository.save(inv);
             });
         }
-    }
-
-    private Inventory inventoryFor(Product product) {
-        return inventoryRepository.findByProductId(product.getId())
-                .orElseThrow(() -> new BusinessException("No stock record for " + product.getName()));
     }
 
     private AddressSnapshot snapshot(Address a) {

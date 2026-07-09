@@ -25,6 +25,12 @@ public interface OrderService {
     /** Customer cancels their order (allowed only in PENDING/CONFIRMED/PROCESSING). */
     OrderDto cancel(UUID userId, UUID orderId, String reason);
 
+    /**
+     * Cancel + restock online orders left unpaid past {@code olderThan} (never touches COD).
+     * Called by the scheduled sweeper; returns how many orders were released.
+     */
+    int expireAbandonedOrders(java.time.Duration olderThan);
+
     /** Customer requests a return for a DELIVERED order. */
     OrderDto requestReturn(UUID userId, UUID orderId, String reason);
 

@@ -41,4 +41,15 @@ public interface OrderRepository extends JpaRepository<Order, UUID>, JpaSpecific
     /** Orders in a date range with the payment eagerly loaded — for the billing summary. */
     @Query("select o from Order o left join fetch o.payment where o.placedAt between :from and :to")
     List<Order> findWithPaymentBetween(@Param("from") Instant from, @Param("to") Instant to);
+
+    /**
+     * Abandoned online orders: still PENDING, placed before the cutoff, whose payment is a
+     * gateway (non-COD) method that never succeeded. COD orders are excluded — they stay
+     * PENDING legitimately until delivery — so the sweeper never cancels a real COD order.
+     */
+    @Query("select o from Order o where o.orderStatus = in.jlenterprises.ecommerce.constant.OrderStatus.PENDING "
+            + "and o.placedAt < :cutoff and o.payment is not null "
+            + "and o.payment.method <> in.jlenterprises.ecommerce.constant.PaymentMethod.COD "
+            + "and o.payment.paymentStatus <> in.jlenterprises.ecommerce.constant.PaymentStatus.SUCCESS")
+    List<Order> findAbandonedOnlineOrders(@Param("cutoff") Instant cutoff);
 }

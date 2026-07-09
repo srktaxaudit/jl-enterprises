@@ -53,13 +53,28 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtFilter;
     private final RestAuthenticationEntryPoint entryPoint;
     private final RestAccessDeniedHandler accessDeniedHandler;
+    /** Allow every *.vercel.app preview origin. Convenient for preview deploys; set
+        APP_SECURITY_CORS_ALLOW_VERCEL_PREVIEWS=false in prod to restrict to the named origins. */
+    private final boolean allowVercelPreviews;
+    /** Per-IP allowance for the throttled public write endpoints, within the rolling window. */
+    private final int rateLimitMax;
+    private final long rateLimitWindowSeconds;
 
     public SecurityConfig(AppProperties props, JwtAuthenticationFilter jwtFilter,
-                          RestAuthenticationEntryPoint entryPoint, RestAccessDeniedHandler accessDeniedHandler) {
+                          RestAuthenticationEntryPoint entryPoint, RestAccessDeniedHandler accessDeniedHandler,
+                          @org.springframework.beans.factory.annotation.Value(
+                                  "${app.security.cors.allow-vercel-previews:true}") boolean allowVercelPreviews,
+                          @org.springframework.beans.factory.annotation.Value(
+                                  "${app.security.rate-limit.max:15}") int rateLimitMax,
+                          @org.springframework.beans.factory.annotation.Value(
+                                  "${app.security.rate-limit.window-seconds:60}") long rateLimitWindowSeconds) {
         this.props = props;
         this.jwtFilter = jwtFilter;
         this.entryPoint = entryPoint;
         this.accessDeniedHandler = accessDeniedHandler;
+        this.allowVercelPreviews = allowVercelPreviews;
+        this.rateLimitMax = rateLimitMax;
+        this.rateLimitWindowSeconds = rateLimitWindowSeconds;
     }
 
     @Bean
@@ -103,7 +118,11 @@ public class SecurityConfig {
                         "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "
                         + "img-src 'self' data:; font-src 'self' data:; frame-ancestors 'none'"))
             )
-            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+            // Throttle unauthenticated write endpoints (OTP/register/reset/public forms)
+            // before the JWT filter runs — prevents OTP/email bombing and form spam.
+            .addFilterBefore(new in.jlenterprises.ecommerce.security.filter.RateLimitFilter(
+                    rateLimitMax, rateLimitWindowSeconds), JwtAuthenticationFilter.class);
 
         return http.build();
     }
@@ -130,7 +149,7 @@ public class SecurityConfig {
         // "https://*.vercel.app" means the storefront works from ALL of them without
         // having to keep CORS_ORIGINS in sync with each new preview URL.
         List<String> originPatterns = new java.util.ArrayList<>(props.security().cors().allowedOrigins());
-        if (originPatterns.stream().noneMatch(o -> o.contains("*.vercel.app"))) {
+        if (allowVercelPreviews && originPatterns.stream().noneMatch(o -> o.contains("*.vercel.app"))) {
             originPatterns.add("https://*.vercel.app");
         }
         // The JL store production domain (served by Vercel). Added here so the
