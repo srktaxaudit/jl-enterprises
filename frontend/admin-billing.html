@@ -195,7 +195,7 @@
     try { inv = await jlApi(`/api/v1/admin/billing/invoices/${orderId}`); }
     catch(e){ jlToast(e.message||"Could not load invoice",{type:"error"}); return; }
     const el = document.createElement("div");
-    el.className = "bg-white rounded-2xl p-5 md:p-6";
+    el.className = "bg-white jl-doc-paper overflow-x-auto rounded-2xl p-5 md:p-6";
     el.innerHTML = `<div id="invBody">${invoiceHTML(inv)}</div>
       <div class="flex gap-2 justify-end mt-4">
         <button id="printInv" class="bg-navy hover:bg-navy-600 text-white font-semibold rounded-lg px-4 py-2 text-sm">🖨 Print / Save PDF</button>

@@ -133,6 +133,12 @@
     html[data-theme="dark"]{color-scheme:dark}
     html[data-theme="dark"] .bg-\\[\\#eef1f6\\]{background-color:#0f172a!important}
     html[data-theme="dark"] .bg-white{background-color:#1e293b!important}
+    /* Accounting pages use a locally-defined .card (not the .bg-white utility) as their
+       main surface — theme it too, else white-on-white text. */
+    html[data-theme="dark"] .card{background-color:#1e293b!important;border-color:#334155!important}
+    /* On-screen "paper" documents (e.g. the billing invoice preview) carry hardcoded dark
+       text and are meant to look printed — keep them white in dark mode so text stays legible. */
+    html[data-theme="dark"] .jl-doc-paper{background:#fff!important}
     html[data-theme="dark"] .bg-slate-50{background-color:#172033!important}
     html[data-theme="dark"] .bg-slate-100{background-color:#1f2b41!important}
     html[data-theme="dark"] .border-slate-100,html[data-theme="dark"] .border-slate-200,
@@ -142,6 +148,9 @@
     html[data-theme="dark"] .text-slate-700,html[data-theme="dark"] .text-slate-900{color:#e2e8f0!important}
     html[data-theme="dark"] .text-slate-600,html[data-theme="dark"] .text-slate-500{color:#cbd5e1!important}
     html[data-theme="dark"] .text-slate-400,html[data-theme="dark"] .text-slate-300{color:#94a3b8!important}
+    /* WhatsApp bubble keeps its light-green background; pin its text dark for contrast.
+       Placed after the slate-text rules so it wins over a text-slate-* class on the bubble. */
+    html[data-theme="dark"] .wa-preview,html[data-theme="dark"] .wa-preview *{color:#0f172a!important}
     html[data-theme="dark"] .hover\\:bg-slate-50:hover{background-color:#243043!important}
     html[data-theme="dark"] .hover\\:bg-slate-100:hover{background-color:#2a3750!important}
     html[data-theme="dark"] input,html[data-theme="dark"] select,html[data-theme="dark"] textarea,
