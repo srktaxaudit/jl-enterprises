@@ -41,22 +41,19 @@ public class ProductCategorizerService {
         for (Category c : categoryRepository.findAll()) bySlug.put(c.getSlug(), c);
 
         Map<String, Integer> moved = new LinkedHashMap<>();
-        for (Product p : productRepository.findAll()) {
-            Category cur = p.getCategory();
-            // Only organise uncategorised / General products — leave manual choices alone.
-            if (cur != null && !"general".equalsIgnoreCase(cur.getSlug())) continue;
-
+        java.util.List<Product> changed = new java.util.ArrayList<>();
+        // Only General/uncategorised products (category join-fetched → no N+1); manual choices untouched.
+        for (Product p : productRepository.findUncategorized()) {
             String slug = categorize(p.getName());
             if (slug == null || "general".equals(slug)) continue;
             Category target = bySlug.get(slug);
             if (target == null) continue;                                   // department not created yet
-            if (cur != null && cur.getId().equals(target.getId())) continue;
-
             p.setCategory(target);
-            productRepository.save(p);
+            changed.add(p);
             moved.merge(slug, 1, Integer::sum);
         }
-        log.info("Auto-categorize moved {} products: {}", moved.values().stream().mapToInt(Integer::intValue).sum(), moved);
+        productRepository.saveAll(changed);
+        log.info("Auto-categorize moved {} products: {}", changed.size(), moved);
         return moved;
     }
 

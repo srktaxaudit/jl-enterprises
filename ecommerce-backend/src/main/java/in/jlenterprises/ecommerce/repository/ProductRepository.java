@@ -31,4 +31,10 @@ public interface ProductRepository extends JpaRepository<Product, UUID>, JpaSpec
     Page<Product> findByFeaturedTrue(Pageable pageable);
 
     Page<Product> findByCategoryId(UUID categoryId, Pageable pageable);
+
+    /** Products with no category or still in "General" — for the auto-categorizer.
+        Category is join-fetched to avoid an N+1 lazy load per product. */
+    @org.springframework.data.jpa.repository.Query(
+            "select p from Product p left join fetch p.category c where c is null or c.slug = 'general'")
+    java.util.List<Product> findUncategorized();
 }
