@@ -20,16 +20,36 @@ public final class ProductSpecifications {
 
     private ProductSpecifications() {}
 
-    /** Case-insensitive match on name, short description or SKU. */
+    /** Separators that count as a word boundary in a product name/SKU (before the term). */
+    private static final String[] WORD_BOUNDARIES = {" ", "-", "(", "/", ".", ",", "+", "_"};
+
+    /**
+     * Case-insensitive search on name, short description or SKU, matched at WORD BOUNDARIES
+     * (a word must start with the term) rather than as an arbitrary substring. So "ac" matches
+     * "…3STAR AC" / "ACGEI" / "ONIDA -AC-…" but NOT "m<u>ac</u>hine" or "r<u>ac</u>er". A word boundary
+     * is the start of the value or one of {@link #WORD_BOUNDARIES}. Wildcards in the term are
+     * escaped ('!'). Uses plain LIKE (no DB-specific functions).
+     */
     public static Specification<Product> search(String term) {
         if (term == null || term.isBlank()) return null;
-        String like = "%" + term.trim().toLowerCase() + "%";
-        return (root, query, cb) -> {
-            Predicate name = cb.like(cb.lower(root.get("name")), like);
-            Predicate shortDesc = cb.like(cb.lower(root.get("shortDescription")), like);
-            Predicate sku = cb.like(cb.lower(root.get("sku")), like);
-            return cb.or(name, shortDesc, sku);
-        };
+        String t = term.trim().toLowerCase().replace("!", "!!").replace("%", "!%").replace("_", "!_");
+        return (root, query, cb) -> cb.or(
+                wordStartLike(cb, root.get("name"), t),
+                wordStartLike(cb, root.get("shortDescription"), t),
+                wordStartLike(cb, root.get("sku"), t));
+    }
+
+    /** True when a word in {@code field} starts with {@code term}: matches "term%" (start of
+        value) OR "%<sep>term%" for each word-boundary separator. Escape char '!'. */
+    private static Predicate wordStartLike(jakarta.persistence.criteria.CriteriaBuilder cb,
+                                           jakarta.persistence.criteria.Expression<String> field, String term) {
+        jakarta.persistence.criteria.Expression<String> lower = cb.lower(field);
+        java.util.List<Predicate> ors = new java.util.ArrayList<>();
+        ors.add(cb.like(lower, term + "%", '!'));                         // starts with the term
+        for (String sep : WORD_BOUNDARIES) {
+            ors.add(cb.like(lower, "%" + sep + term + "%", '!'));         // term after a separator
+        }
+        return cb.or(ors.toArray(new Predicate[0]));
     }
 
     public static Specification<Product> inCategorySlug(String slug) {
