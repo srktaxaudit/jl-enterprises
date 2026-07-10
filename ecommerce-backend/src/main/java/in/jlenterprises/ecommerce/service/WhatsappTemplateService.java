@@ -1,6 +1,7 @@
 package in.jlenterprises.ecommerce.service;
 
 import in.jlenterprises.ecommerce.dto.whatsapp.TemplateDto;
+import in.jlenterprises.ecommerce.dto.whatsapp.TemplateSyncResult;
 import in.jlenterprises.ecommerce.request.whatsapp.TemplateRequest;
 
 import java.util.List;
@@ -12,4 +13,7 @@ public interface WhatsappTemplateService {
     TemplateDto create(TemplateRequest request);
     TemplateDto update(UUID id, TemplateRequest request);
     void delete(UUID id);
+
+    /** Pull message templates from the configured Meta WABA and upsert them locally. */
+    TemplateSyncResult syncFromMeta();
 }
