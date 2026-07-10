@@ -2,7 +2,7 @@
   "use strict";
 
   const NAV = [
-    ["Overview",[["Dashboard","📊","admin.html"],["Sales Analytics","📈","admin-analytics.html"],["New Sale (POS)","🧾","admin-pos.html","ORDER_MANAGER"],["Orders","📥","admin-orders.html","ORDER_MANAGER,CUSTOMER_SUPPORT"]]],
+    ["Overview",[["Dashboard","📊","admin.html"],["New Sale (POS)","🧾","admin-pos.html","ORDER_MANAGER"],["Orders","📥","admin-orders.html","ORDER_MANAGER,CUSTOMER_SUPPORT"]]],
     ["Catalog & Sales",[["Products","📦","admin-products.html","PRODUCT_MANAGER"],["Inventory","🗂️","admin-inventory.html","INVENTORY_MANAGER"],["Offers & Deals","🏷️","admin-offers.html","MARKETING_MANAGER"],["Homepage Banners","🎞️","admin-banners.html","MARKETING_MANAGER"]]],
     ["Engage",[["Customers (CRM)","👥","admin-customers.html","MANAGER"],["Reviews","⭐","admin-reviews.html","MARKETING_MANAGER,CUSTOMER_SUPPORT"],["Service Bookings","🔧","admin-service.html","CUSTOMER_SUPPORT"],["Exchange Requests","♻️","admin-exchanges.html","CUSTOMER_SUPPORT,MANAGER"],["Contact Enquiries","✉️","admin-enquiries.html","CUSTOMER_SUPPORT"],["EMI Requests","🧾","admin-emi-requests.html","CUSTOMER_SUPPORT"],["WhatsApp Marketing","💬","admin-whatsapp.html","MARKETING_MANAGER"]]],
     ["Human Resources",[["Employees & Payroll","🧑‍🤝‍🧑","admin-hr.html","@hr"]]],
