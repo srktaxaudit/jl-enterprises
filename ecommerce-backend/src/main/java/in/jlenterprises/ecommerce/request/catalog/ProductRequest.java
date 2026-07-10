@@ -25,6 +25,7 @@ public record ProductRequest(
         Boolean featured,
         @Size(max = 200) String metaTitle,
         @Size(max = 300) String metaDescription,
+        @Size(max = 4000) String specifications,
         // ── EMI (all optional; only used when emiAvailable is true) ──
         Boolean emiAvailable,
         @PositiveOrZero Integer emiMonths,

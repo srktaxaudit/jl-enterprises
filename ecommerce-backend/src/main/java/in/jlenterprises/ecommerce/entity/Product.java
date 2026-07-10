@@ -87,6 +87,10 @@ public class Product extends BaseEntity {
     @Column(name = "meta_description", length = 300)
     private String metaDescription;
 
+    /** Structured specs entered as "Key: Value" lines by the admin; shown as a table on the product page. */
+    @Column(name = "specifications", columnDefinition = "text")
+    private String specifications;
+
     // ── EMI (manually set per product by the admin — NO auto-calculation) ──
     /** columnDefinition default keeps ddl-auto's ALTER safe on the existing
         products table on Postgres (the NOT-NULL-with-existing-rows gotcha). */

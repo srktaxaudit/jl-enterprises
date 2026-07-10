@@ -355,6 +355,7 @@ public class ProductServiceImpl implements ProductService {
         if (r.featured() != null) p.setFeatured(r.featured());
         p.setMetaTitle(r.metaTitle());
         p.setMetaDescription(r.metaDescription());
+        p.setSpecifications(r.specifications());
         p.setCategory(r.categoryId() == null ? null : findCategory(r.categoryId()));
         p.setBrand(r.brandId() == null ? null : findBrand(r.brandId()));
         // EMI — stored exactly as the admin enters it; the storefront never auto-calculates.

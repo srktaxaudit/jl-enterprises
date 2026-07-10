@@ -64,6 +64,7 @@
         </div>
         <div class="md:col-span-2"><label class="lbl">Short description</label><input id="shortDescription" maxlength="500" class="inp" /></div>
         <div class="md:col-span-2"><label class="lbl">Description</label><textarea id="description" rows="3" class="inp"></textarea></div>
+        <div class="md:col-span-2"><label class="lbl">Specifications <span class="text-slate-400 font-normal">(one per line, e.g. “Capacity: 1.5 Ton”)</span></label><textarea id="specifications" rows="4" class="inp" placeholder="Capacity: 1.5 Ton&#10;Star Rating: 3 Star&#10;Warranty: 1 year + 10 years compressor"></textarea></div>
         <label class="flex items-center gap-2 text-sm"><input id="featured" type="checkbox" /> Featured</label>
 
         <!-- EMI (manual, per-product — the storefront never auto-calculates) -->
@@ -323,7 +324,7 @@
       $("pid").value=p.id; $("name").value=p.name||""; $("sku").value=p.sku||"";
       $("price").value=p.price??""; $("comparePrice").value=p.comparePrice??"";
       $("categoryId").value=p.categoryId||""; setBrand(p.brandId||"");
-      $("shortDescription").value=p.shortDescription||""; $("description").value=p.description||"";
+      $("shortDescription").value=p.shortDescription||""; $("description").value=p.description||""; $("specifications").value=p.specifications||"";
       $("featured").checked=!!p.featured;
       $("emiAvailable").checked=!!p.emiAvailable;
       $("emiMonths").value=p.emiMonths??""; $("emiAmount").value=p.emiAmount??"";
@@ -350,7 +351,7 @@
       name:$("name").value.trim(), sku:$("sku").value.trim(),
       price:$("price").value, comparePrice:$("comparePrice").value||null,
       categoryId:$("categoryId").value||null, brandId:$("brandId").value||null,
-      shortDescription:$("shortDescription").value.trim()||null, description:$("description").value.trim()||null,
+      shortDescription:$("shortDescription").value.trim()||null, description:$("description").value.trim()||null, specifications:$("specifications").value.trim()||null,
       featured:$("featured").checked, currency:"INR",
       // EMI — sent exactly as typed; empty fields go as null (not saved).
       emiAvailable:$("emiAvailable").checked,

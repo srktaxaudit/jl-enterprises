@@ -63,6 +63,13 @@
   const inr = (n) => "₹" + Math.round(Number(n || 0)).toLocaleString("en-IN");
   const escAttr = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  // Render "Key: Value" lines as table rows (a line without a colon becomes a full-width note).
+  const specRows = (text) => String(text || "").split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l) => {
+    const i = l.indexOf(":");
+    const k = i >= 0 ? l.slice(0, i).trim() : l;
+    const v = i >= 0 ? l.slice(i + 1).trim() : "";
+    return `<tr class="border-t border-slate-100"><td class="py-2 text-slate-500 align-top w-2/5">${escAttr(k)}</td><td class="py-2 text-navy font-medium">${escAttr(v)}</td></tr>`;
+  }).join("");
 
   // Update the head for THIS product (description/OG/canonical) and inject Product
   // JSON-LD so crawlers that render JS get real product data. Also logs a GA view_item.
@@ -155,6 +162,9 @@
             <div class="mt-3"><button id="wishBtn" type="button" class="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-brand"><span id="wishIcon">🤍</span> <span id="wishLabel">Save to wishlist</span></button></div>
           </div>
         </div>
+        ${p.specifications ? `<div class="bg-white border border-slate-200 rounded-2xl p-6 mt-5">
+          <h2 class="text-navy font-semibold mb-3">Specifications</h2>
+          <table class="w-full text-sm">${specRows(p.specifications)}</table></div>` : ""}
         ${p.description ? `<div class="bg-white border border-slate-200 rounded-2xl p-6 mt-5">
           <h2 class="text-navy font-semibold mb-2">Description</h2>
           <p class="text-slate-600 text-sm whitespace-pre-line">${escAttr(p.description)}</p></div>` : ""}

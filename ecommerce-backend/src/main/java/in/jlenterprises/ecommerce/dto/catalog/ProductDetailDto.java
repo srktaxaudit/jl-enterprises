@@ -19,6 +19,7 @@ public record ProductDetailDto(
         boolean featured,
         String metaTitle,
         String metaDescription,
+        String specifications,
         BigDecimal averageRating,
         int reviewCount,
         long viewCount,
