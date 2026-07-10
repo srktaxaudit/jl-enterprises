@@ -226,6 +226,7 @@ const JLStore = {
   /** PageResponse of ProductSummaryDto. Optional search / category / featured filters. */
   products: (opts = {}) => {
     const p = new URLSearchParams({ size: String(opts.size || 40) });
+    if (opts.page) p.set("page", String(opts.page));
     if (opts.search) p.set("search", opts.search);
     if (opts.category) p.set("category", opts.category);
     if (opts.featured) p.set("featured", "true");

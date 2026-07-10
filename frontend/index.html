@@ -240,6 +240,10 @@
     <div id="noResults" style="display:none" class="text-center py-16 text-slate-400">
       😕 No products matched your search.
     </div>
+    <div class="text-center mt-6">
+      <button id="loadMore" type="button" style="display:none"
+        class="bg-white border border-slate-300 hover:border-brand text-navy font-semibold rounded-full px-7 py-2.5 text-sm transition">Load more products</button>
+    </div>
   </section>
 
   <!-- SERVICE BANNER -->
@@ -251,6 +255,33 @@
         <p class="text-teal-50 text-sm">AC, Fridge, Washing Machine, TV &amp; more — our in-house &amp; partner technicians come to you anywhere in Tamil Nadu.</p>
       </div>
       <a href="service.html" class="bg-white text-teal-700 font-bold px-6 py-3 rounded-full whitespace-nowrap shadow-sm transition hover:bg-teal-50 hover:shadow-lg hover:-translate-y-0.5">Book Service →</a>
+    </div>
+  </section>
+
+  <!-- WHY SHOP WITH US (trust) -->
+  <section class="mb-10">
+    <h2 class="text-2xl text-navy font-bold text-center mb-6">Why shop with JL Enterprises?</h2>
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="bg-white border border-slate-200 rounded-2xl p-5 text-center">
+        <div class="text-3xl mb-2">🚚</div>
+        <div class="font-bold text-navy text-sm mb-1">Free delivery</div>
+        <div class="text-[13px] text-slate-500">Doorstep delivery free across Tamil Nadu.</div>
+      </div>
+      <div class="bg-white border border-slate-200 rounded-2xl p-5 text-center">
+        <div class="text-3xl mb-2">💳</div>
+        <div class="font-bold text-navy text-sm mb-1">Easy EMI &amp; COD</div>
+        <div class="text-[13px] text-slate-500">Pay by EMI, UPI/card, or cash on delivery.</div>
+      </div>
+      <div class="bg-white border border-slate-200 rounded-2xl p-5 text-center">
+        <div class="text-3xl mb-2">🔧</div>
+        <div class="font-bold text-navy text-sm mb-1">Doorstep service</div>
+        <div class="text-[13px] text-slate-500">In-house repair, installation &amp; AMC support.</div>
+      </div>
+      <div class="bg-white border border-slate-200 rounded-2xl p-5 text-center">
+        <div class="text-3xl mb-2">🛡️</div>
+        <div class="font-bold text-navy text-sm mb-1">Genuine &amp; warrantied</div>
+        <div class="text-[13px] text-slate-500">Authentic products with manufacturer warranty.</div>
+      </div>
     </div>
   </section>
 
@@ -320,7 +351,6 @@
     const mrp = Number(p.comparePrice || 0);
     const off = pctOff(mrp, price);
     const rating = Math.round(Number(p.averageRating || 0));
-    const emi = Math.max(1, Math.round(price / 21));
     const emoji = JL_CAT_EMOJI[p.categorySlug] || "📦";
     const searchText = escAttr(((p.name || "") + " " + (p.brandName || "") + " " + (p.categorySlug || "")).toLowerCase());
     const media = p.primaryImageUrl
@@ -338,29 +368,39 @@
           <span class="text-xl font-extrabold text-navy">${inr(price)}</span>
           ${mrp>price ? `<span class="text-[13px] text-slate-400 line-through">${inr(mrp)}</span>`:""}
         </div>
-        <div class="text-[12px] text-brand mb-1.5">EMI from ${inr(emi)}/mo</div>
+        ${p.emiAvailable && p.emiAmount ? `<div class="text-[12px] text-brand mb-1.5">EMI from ${inr(p.emiAmount)}/mo</div>` : `<div class="mb-1.5 h-[18px]"></div>`}
         ${jlStockLine(p.availableStock == null ? null : Number(p.availableStock))}
         ${jlCardCartOrOOS(p, emoji, p.availableStock == null ? null : Number(p.availableStock))}
       </div>
     </div>`;
   }
 
-  async function loadProducts() {
+  let homePage = 0;
+  const HOME_PAGE_SIZE = 24;
+  async function loadProducts(append = false) {
     const grid = document.getElementById("products");
-    grid.innerHTML = `<div class="col-span-full text-center py-12">${jlSpinnerHTML({ label: "Loading products…" })}</div>`;
+    const moreBtn = document.getElementById("loadMore");
+    if (!append) grid.innerHTML = `<div class="col-span-full text-center py-12">${jlSpinnerHTML({ label: "Loading products…" })}</div>`;
     try {
-      const page = await JLStore.products();
+      const page = await JLStore.products({ page: homePage, size: HOME_PAGE_SIZE });
       const items = (page && page.content) || [];
       const none = document.getElementById("noResults");
-      if (!items.length) { grid.innerHTML = ""; if (none) none.style.display = "block"; return; }
-      grid.innerHTML = items.map(card).join("");
-      // If the user arrived via ?q=, apply the search filter now that cards exist.
-      const q = new URLSearchParams(location.search).get("q");
-      if (q && window.applySearch) { const si = document.getElementById("searchInput"); if (si) si.value = q; applySearch(q); }
+      if (!append && !items.length) { grid.innerHTML = ""; if (none) none.style.display = "block"; if (moreBtn) moreBtn.style.display = "none"; return; }
+      const html = items.map(card).join("");
+      if (append) grid.insertAdjacentHTML("beforeend", html);
+      else grid.innerHTML = html;
+      // Show "Load more" only while more pages remain.
+      if (moreBtn) moreBtn.style.display = (page && page.last) ? "none" : "inline-block";
+      // If a search filter is active, re-apply it so newly added cards obey it.
+      const si = document.getElementById("searchInput");
+      const q = (si && si.value.trim()) || new URLSearchParams(location.search).get("q");
+      if (q && window.applySearch) { if (si && !si.value) si.value = q; applySearch(q); }
     } catch (e) {
-      grid.innerHTML = `<div class="col-span-full text-center py-12 text-red-500">Couldn't load products right now. Please refresh in a moment.</div>`;
+      if (!append) grid.innerHTML = `<div class="col-span-full text-center py-12 text-red-500">Couldn't load products right now. Please refresh in a moment.</div>`;
+      else if (typeof jlToast === "function") jlToast("Couldn't load more products. Please try again.", { type: "error" });
     }
   }
+  document.getElementById("loadMore").addEventListener("click", () => { homePage++; loadProducts(true); });
   loadProducts();
 
   // ── Homepage offers strip (active coupons) ──

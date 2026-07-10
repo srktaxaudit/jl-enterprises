@@ -23,6 +23,10 @@
   <url><loc>https://jlstores.in/shop-location.html</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>https://jlstores.in/track-order.html</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
   <url><loc>https://jlstores.in/about.html</loc><changefreq>yearly</changefreq><priority>0.4</priority></url>
+  <url><loc>https://jlstores.in/faq.html</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://jlstores.in/returns.html</loc><changefreq>yearly</changefreq><priority>0.4</priority></url>
+  <url><loc>https://jlstores.in/warranty.html</loc><changefreq>yearly</changefreq><priority>0.4</priority></url>
+  <url><loc>https://jlstores.in/shipping.html</loc><changefreq>yearly</changefreq><priority>0.4</priority></url>
   <url><loc>https://jlstores.in/terms.html</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
   <url><loc>https://jlstores.in/privacy.html</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
 </urlset>
