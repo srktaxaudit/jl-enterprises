@@ -8,6 +8,8 @@ import in.jlenterprises.ecommerce.dto.admin.BroadcastResult;
 import in.jlenterprises.ecommerce.dto.whatsapp.AudienceCustomerDto;
 import in.jlenterprises.ecommerce.dto.whatsapp.AudiencePreviewDto;
 import in.jlenterprises.ecommerce.dto.whatsapp.AutomationRuleDto;
+import in.jlenterprises.ecommerce.dto.whatsapp.ChatMessageDto;
+import in.jlenterprises.ecommerce.dto.whatsapp.ConversationDto;
 import in.jlenterprises.ecommerce.dto.whatsapp.CampaignAnalyticsDto;
 import in.jlenterprises.ecommerce.dto.whatsapp.CampaignDetailDto;
 import in.jlenterprises.ecommerce.dto.whatsapp.CampaignDto;
@@ -19,6 +21,7 @@ import in.jlenterprises.ecommerce.dto.whatsapp.TestSendResult;
 import in.jlenterprises.ecommerce.request.whatsapp.AutomationRuleRequest;
 import in.jlenterprises.ecommerce.request.whatsapp.CampaignRequest;
 import in.jlenterprises.ecommerce.request.whatsapp.ConnectionRequest;
+import in.jlenterprises.ecommerce.request.whatsapp.InboxReplyRequest;
 import in.jlenterprises.ecommerce.request.whatsapp.TemplateRequest;
 import in.jlenterprises.ecommerce.request.whatsapp.TestSendRequest;
 import in.jlenterprises.ecommerce.response.ApiResponse;
@@ -26,6 +29,7 @@ import in.jlenterprises.ecommerce.response.PageResponse;
 import in.jlenterprises.ecommerce.service.WhatsappAutomationService;
 import in.jlenterprises.ecommerce.service.WhatsappCampaignService;
 import in.jlenterprises.ecommerce.service.WhatsappConnectionService;
+import in.jlenterprises.ecommerce.service.WhatsappInboxService;
 import in.jlenterprises.ecommerce.service.WhatsappTemplateService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -61,13 +65,41 @@ public class WhatsAppController {
     private final WhatsappTemplateService templates;
     private final WhatsappConnectionService connection;
     private final WhatsappAutomationService automation;
+    private final WhatsappInboxService inbox;
 
     public WhatsAppController(WhatsappCampaignService campaigns, WhatsappTemplateService templates,
-                             WhatsappConnectionService connection, WhatsappAutomationService automation) {
+                             WhatsappConnectionService connection, WhatsappAutomationService automation,
+                             WhatsappInboxService inbox) {
         this.campaigns = campaigns;
         this.templates = templates;
         this.connection = connection;
         this.automation = automation;
+        this.inbox = inbox;
+    }
+
+    // ── Inbox ──
+    @GetMapping("/inbox")
+    @Operation(summary = "Conversations, most recent first")
+    public ApiResponse<PageResponse<ConversationDto>> inbox(@PageableDefault(size = 30) Pageable pageable) {
+        return ApiResponse.success(PageResponse.of(inbox.conversations(pageable)));
+    }
+
+    @GetMapping("/inbox/unread-count")
+    @Operation(summary = "Number of conversations with unread customer messages")
+    public ApiResponse<Long> inboxUnread() {
+        return ApiResponse.success(inbox.unreadConversations());
+    }
+
+    @GetMapping("/inbox/{id}/messages")
+    @Operation(summary = "One thread's latest messages (marks the conversation read)")
+    public ApiResponse<List<ChatMessageDto>> inboxMessages(@PathVariable UUID id) {
+        return ApiResponse.success(inbox.messages(id));
+    }
+
+    @PostMapping("/inbox/{id}/reply")
+    @Operation(summary = "Reply in a thread — free text inside the 24h window, template outside it")
+    public ApiResponse<ChatMessageDto> inboxReply(@PathVariable UUID id, @Valid @RequestBody InboxReplyRequest request) {
+        return ApiResponse.success("Reply sent", inbox.reply(id, request));
     }
 
     // ── Automation ──

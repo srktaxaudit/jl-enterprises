@@ -48,6 +48,7 @@
       <button type="button" class="tab" data-tab="campaigns">Campaigns</button>
       <button type="button" class="tab" data-tab="templates">Templates</button>
       <button type="button" class="tab" data-tab="automation">Automation</button>
+      <button type="button" class="tab" data-tab="inbox">Inbox <span id="inboxBadge" class="hidden chip bg-red-100 text-red-700 ml-0.5"></span></button>
       <button type="button" class="tab" data-tab="delivery">Delivery log</button>
     </div>
 
@@ -234,6 +235,38 @@
       <div id="autoList" class="space-y-3"></div>
     </section>
 
+    <!-- ── INBOX ── -->
+    <section id="tab-inbox" class="hidden">
+      <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden md:grid md:grid-cols-[300px_1fr]">
+        <!-- conversation list -->
+        <div id="convPane" class="border-b md:border-b-0 md:border-r border-slate-200 flex flex-col">
+          <div class="flex items-center gap-2 px-3 py-2 border-b border-slate-100">
+            <span class="text-[13px] font-semibold text-slate-600">Chats</span>
+            <button id="convRefresh" class="ml-auto text-[12px] text-brand hover:underline">↻ Refresh</button>
+          </div>
+          <div id="convList" class="overflow-auto max-h-[420px] md:max-h-[520px] divide-y divide-slate-100">
+            <div class="px-3 py-6 text-center text-slate-400 text-[13px]">Loading…</div>
+          </div>
+        </div>
+        <!-- thread -->
+        <div id="threadPane" class="flex flex-col min-h-[300px]">
+          <div id="threadHeader" class="px-4 py-2.5 border-b border-slate-100 text-[13px] text-slate-400">
+            Select a chat to view the conversation.
+          </div>
+          <div id="threadBody" class="flex-1 overflow-auto max-h-[380px] md:max-h-[430px] px-4 py-3 space-y-2 bg-[#f6f4ef]"></div>
+          <div id="threadFooter" class="hidden border-t border-slate-100 p-3 space-y-2">
+            <div id="windowNote" class="text-[12px]"></div>
+            <div class="flex gap-2 items-end">
+              <select id="replyTemplate" class="inp hidden" style="max-width:220px"></select>
+              <textarea id="replyText" rows="2" class="inp flex-1" maxlength="2000" placeholder="Type a reply…"></textarea>
+              <button id="replySend" class="bg-navy hover:bg-navy-600 text-white font-semibold rounded-lg px-4 py-2.5 text-sm">Send</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="text-[12px] text-slate-400 mt-2">Incoming customer messages arrive via the Meta webhook (Connection tab → webhook setup). Free-text replies work within 24h of the customer's last message; after that WhatsApp requires an approved template.</p>
+    </section>
+
     <!-- ── DELIVERY LOG ── -->
     <section id="tab-delivery" class="hidden">
       <div class="bg-white border border-slate-200 rounded-2xl p-4 mb-4 flex flex-wrap items-end gap-3">
@@ -308,13 +341,106 @@
   document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", ()=>{
     document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
     t.classList.add("active");
-    ["connection","compose","campaigns","templates","automation","delivery"].forEach(n => $("tab-"+n).classList.toggle("hidden", n !== t.dataset.tab));
+    ["connection","compose","campaigns","templates","automation","inbox","delivery"].forEach(n => $("tab-"+n).classList.toggle("hidden", n !== t.dataset.tab));
     if (t.dataset.tab === "connection") loadConnection();
     if (t.dataset.tab === "campaigns") loadCampaigns();
     if (t.dataset.tab === "templates") loadTemplates();
     if (t.dataset.tab === "automation") loadAutomation();
+    if (t.dataset.tab === "inbox") loadInbox();
     if (t.dataset.tab === "delivery") loadDelivery(0);
   }));
+
+  // ── inbox ──
+  let currentConv = null;
+  function fmtChatTime(iso){ if(!iso) return ""; const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleString("en-IN", {day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}); }
+  async function refreshInboxBadge(){
+    try {
+      const n = await jlApi(API + "/inbox/unread-count");
+      $("inboxBadge").textContent = n;
+      $("inboxBadge").classList.toggle("hidden", !n);
+    } catch(_){ /* badge is best-effort */ }
+  }
+  async function loadInbox(){
+    try {
+      const pg = await jlApi(API + "/inbox?size=30");
+      const rows = pg.content || [];
+      window.__convs = rows;
+      $("convList").innerHTML = rows.length ? rows.map(c=>`
+        <button data-id="${c.id}" class="convRow w-full text-left px-3 py-2.5 hover:bg-slate-50 ${currentConv===c.id?"bg-slate-50":""}">
+          <div class="flex items-center gap-2">
+            <span class="font-semibold text-[13px] text-navy truncate">${esc(c.customerName||c.contactName||c.phone)}</span>
+            ${c.unreadCount?`<span class="chip bg-red-100 text-red-700">${c.unreadCount}</span>`:``}
+            <span class="ml-auto text-[10px] text-slate-400 whitespace-nowrap">${esc(fmtChatTime(c.lastMessageAt))}</span>
+          </div>
+          <div class="text-[12px] text-slate-500 truncate mt-0.5">${esc(c.lastPreview||"")}</div>
+        </button>`).join("")
+        : `<div class="px-3 py-6 text-center text-slate-400 text-[13px]">No conversations yet. They appear when customers message your WhatsApp number (webhook must be configured).</div>`;
+      document.querySelectorAll(".convRow").forEach(b=>b.addEventListener("click", ()=>openConv(b.dataset.id)));
+      refreshInboxBadge();
+    } catch(e){ $("convList").innerHTML = `<div class="px-3 py-4 text-red-600 text-[13px]">${esc(e.message||"Failed to load")}</div>`; }
+  }
+  async function openConv(id){
+    currentConv = id;
+    const c = (window.__convs||[]).find(x=>x.id===id);
+    $("threadHeader").innerHTML = c ? `
+      <div class="flex items-center gap-2">
+        <div>
+          <span class="font-semibold text-navy">${esc(c.customerName||c.contactName||c.phone)}</span>
+          <span class="text-[12px] text-slate-400 ml-1">${esc(c.phone)}</span>
+        </div>
+        <span class="ml-auto chip ${c.windowOpen?"bg-green-100 text-green-700":"bg-amber-100 text-amber-700"}">${c.windowOpen?"24h window open":"window closed"}</span>
+      </div>` : "";
+    $("threadBody").innerHTML = `<div class="text-slate-400 text-[13px]">Loading…</div>`;
+    $("threadFooter").classList.remove("hidden");
+    // reply mode: free text while the window is open, template-only after
+    const open = !!(c && c.windowOpen);
+    $("replyText").classList.toggle("hidden", !open);
+    $("replyTemplate").classList.toggle("hidden", open);
+    $("windowNote").innerHTML = open
+      ? `<span class="text-green-600">Customer wrote within 24h — free-text replies allowed.</span>`
+      : `<span class="text-amber-600">24h window closed — replies must use an approved template.</span>`;
+    if (!open) {
+      try {
+        const list = window.__templates && window.__templates.length ? window.__templates : await jlApi(API + "/templates");
+        window.__templates = list;
+        $("replyTemplate").innerHTML = `<option value="">— Pick a template —</option>` + list.map(t=>
+          `<option value="${t.id}">${esc(t.name)}${t.metaStatus?` (${esc(t.metaStatus)})`:""}</option>`).join("");
+      } catch(_){ /* keep whatever options exist */ }
+    }
+    try {
+      const msgs = await jlApi(API + `/inbox/${id}/messages`);
+      $("threadBody").innerHTML = msgs.length ? msgs.map(m=>`
+        <div class="flex ${m.direction==="OUT"?"justify-end":"justify-start"}">
+          <div class="max-w-[80%] rounded-xl px-3 py-2 text-[13px] whitespace-pre-wrap ${m.direction==="OUT"?"bg-[#d9fdd3]":"bg-white border border-slate-200"}">
+            ${esc(m.body)}
+            <div class="text-[10px] text-slate-400 mt-1 text-right">${esc(fmtChatTime(m.eventAt))}
+              ${m.direction==="OUT"?` · <span class="${m.messageStatus==="FAILED"?"text-red-500":""}">${esc(m.messageStatus)}</span>`:``}</div>
+            ${m.error?`<div class="text-[11px] text-red-500 mt-0.5">${esc(m.error)}</div>`:``}
+          </div>
+        </div>`).join("") : `<div class="text-slate-400 text-[13px]">No messages in this chat yet.</div>`;
+      $("threadBody").scrollTop = $("threadBody").scrollHeight;
+      loadInbox(); // refresh unread badges (thread open marks it read)
+    } catch(e){ $("threadBody").innerHTML = `<div class="text-red-600 text-[13px]">${esc(e.message||"Failed to load")}</div>`; }
+  }
+  $("convRefresh").addEventListener("click", loadInbox);
+  $("replySend").addEventListener("click", async ()=>{
+    if (!currentConv) return;
+    const c = (window.__convs||[]).find(x=>x.id===currentConv);
+    const open = !!(c && c.windowOpen);
+    const body = open
+      ? { text: $("replyText").value.trim() || null, templateId: null }
+      : { text: null, templateId: $("replyTemplate").value || null };
+    if (open && !body.text){ jlToast("Type a reply first.", {type:"error"}); return; }
+    if (!open && !body.templateId){ jlToast("Pick a template — the 24h window is closed.", {type:"error"}); return; }
+    jlBtn($("replySend"), true, "…");
+    try {
+      await jlApi(API + `/inbox/${currentConv}/reply`, { method:"POST", body });
+      $("replyText").value = "";
+      openConv(currentConv);
+    } catch(e){ jlToast(e.message||"Send failed", {type:"error"}); }
+    finally { jlBtn($("replySend"), false); }
+  });
+  $("replyText").addEventListener("keydown", (e)=>{ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); $("replySend").click(); } });
 
   // ── automation ──
   const AUTO_META = {
@@ -697,7 +823,7 @@
   jlWireLogout("#logoutBtn");
   jlRequireAdmin().then((a)=>{
     $("adminBadge").textContent = jlDisplayName(a).split(/[\s@.]+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join("")||"JL";
-    loadAnalytics(); loadTemplates(); refreshAudience(); renderPreview();
+    loadAnalytics(); loadTemplates(); refreshAudience(); renderPreview(); refreshInboxBadge();
   });
 </script>
 </body>
