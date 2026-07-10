@@ -11,5 +11,6 @@ public record ConnectionRequest(
         @Size(max = 40) String phoneId,
         @Size(max = 40) String wabaId,
         @Size(max = 6) String defaultCc,
-        @Size(max = 120) String verifyToken
+        @Size(max = 120) String verifyToken,
+        @Size(max = 200) String appSecret
 ) {}

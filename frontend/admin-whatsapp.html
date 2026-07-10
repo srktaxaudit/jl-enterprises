@@ -47,6 +47,9 @@
       <button type="button" class="tab active" data-tab="compose">Compose</button>
       <button type="button" class="tab" data-tab="campaigns">Campaigns</button>
       <button type="button" class="tab" data-tab="templates">Templates</button>
+      <button type="button" class="tab" data-tab="automation">Automation</button>
+      <button type="button" class="tab" data-tab="inbox">Inbox <span id="inboxBadge" class="hidden chip bg-red-100 text-red-700 ml-0.5"></span></button>
+      <button type="button" class="tab" data-tab="delivery">Delivery log</button>
     </div>
 
     <!-- ── CONNECTION ── -->
@@ -76,8 +79,12 @@
             <input id="wCc" class="inp" placeholder="91" maxlength="4" />
           </div>
           <div>
-            <label class="block text-[13px] font-semibold text-slate-600 mb-1">Webhook verify token <span class="text-slate-400 font-normal">(for Phase 2)</span></label>
+            <label class="block text-[13px] font-semibold text-slate-600 mb-1">Webhook verify token <span class="text-slate-400 font-normal">(for webhooks)</span></label>
             <input id="wVerify" class="inp" placeholder="A secret string you also set in Meta" />
+          </div>
+          <div>
+            <label class="block text-[13px] font-semibold text-slate-600 mb-1">App secret <span class="text-slate-400 font-normal">(optional, verifies webhooks)</span></label>
+            <input id="wAppSecret" type="password" class="inp" placeholder="Meta app secret" autocomplete="off" />
           </div>
         </div>
         <div class="flex flex-wrap items-center gap-2 pt-1">
@@ -85,10 +92,12 @@
           <button id="wRefresh" class="border border-slate-300 text-slate-600 hover:bg-slate-50 font-semibold rounded-lg px-4 py-2.5 text-sm">Re-check</button>
           <span id="wMsg" class="text-[13px] text-slate-500 ml-1"></span>
         </div>
-        <p class="text-[12px] text-slate-400 border-t border-slate-100 pt-3">
-          Until a valid token is set, campaigns run in <b>demo mode</b> (logged, not sent). Live marketing also needs an
-          <b>approved template</b> — set the WABA ID, then use <b>↻ Sync from Meta</b> on the Templates tab.
-        </p>
+        <div class="text-[12px] text-slate-500 border-t border-slate-100 pt-3 space-y-1">
+          <div><b class="text-slate-600">Webhook setup (in Meta → WhatsApp → Configuration):</b></div>
+          <div>Callback URL: <code id="webhookUrl" class="bg-slate-100 rounded px-1.5 py-0.5 text-[11px] text-navy select-all">&lt;your API domain&gt;/api/v1/webhooks/whatsapp</code></div>
+          <div>Verify token: the value you set above. Subscribe to the <b>messages</b> field. Delivery statuses then flow into the Delivery log tab.</div>
+          <div class="text-slate-400 pt-1">Until a valid token is set, campaigns run in <b>demo mode</b> (logged, not sent). Live marketing also needs an <b>approved template</b> — set the WABA ID, then <b>↻ Sync from Meta</b> on Templates.</div>
+        </div>
       </div>
     </section>
 
@@ -122,6 +131,7 @@
               <option value="VERIFIED_OPTED_IN">Opted-in + verified phone</option>
               <option value="HAS_ORDERED">Opted-in past buyers</option>
               <option value="EVERYONE_WITH_PHONE">Everyone with a phone (test)</option>
+              <option value="MANUAL">🎯 Choose recipients (hand-pick)</option>
             </select>
             <p id="audienceInfo" class="text-[12px] text-slate-500 mt-2">…</p>
           </div>
@@ -129,6 +139,49 @@
             <label class="block text-[13px] font-semibold text-slate-600 mb-1">Preview</label>
             <div id="preview" class="wa-preview text-[13px] bg-[#e7ffdb] border border-green-200 rounded-lg p-3 min-h-[72px] whitespace-pre-wrap text-slate-700"></div>
           </div>
+        </div>
+
+        <!-- hand-pick recipient picker (shown when Audience = MANUAL) -->
+        <div id="pickerPanel" class="hidden border border-slate-200 rounded-xl p-4 bg-slate-50/60 space-y-3">
+          <div class="flex flex-wrap items-end gap-3">
+            <div>
+              <label class="block text-[12px] font-semibold text-slate-500 mb-1">Bought from category</label>
+              <select id="pCategory" class="inp" style="min-width:170px"><option value="">Any category</option></select>
+            </div>
+            <div>
+              <label class="block text-[12px] font-semibold text-slate-500 mb-1">City</label>
+              <select id="pCity" class="inp" style="min-width:140px"><option value="">Any city</option></select>
+            </div>
+            <div>
+              <label class="block text-[12px] font-semibold text-slate-500 mb-1">Search</label>
+              <input id="pSearch" class="inp" style="min-width:170px" placeholder="Name or phone" />
+            </div>
+            <button id="pLoad" class="bg-navy hover:bg-navy-600 text-white font-semibold rounded-lg px-4 py-2 text-sm">Find customers</button>
+          </div>
+          <div class="flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-slate-600">
+            <label class="flex items-center gap-1.5"><input type="checkbox" id="pOptedIn" checked /> Opted-in</label>
+            <label class="flex items-center gap-1.5"><input type="checkbox" id="pVerified" /> Phone verified</label>
+            <label class="flex items-center gap-1.5"><input type="checkbox" id="pOrdered" /> Has ordered</label>
+            <label class="flex items-center gap-1.5"><input type="checkbox" id="pNeverOrdered" /> Never ordered</label>
+            <label class="flex items-center gap-1.5"><input type="checkbox" id="pEmi" /> EMI customers</label>
+          </div>
+          <div class="bg-white border border-slate-200 rounded-lg">
+            <div class="flex items-center gap-2 px-3 py-2 border-b border-slate-100 text-[13px]">
+              <label class="flex items-center gap-1.5 font-semibold text-slate-600"><input type="checkbox" id="pAll" /> Select all shown</label>
+              <span id="pCount" class="ml-auto text-slate-500">0 selected</span>
+            </div>
+            <div id="pList" class="max-h-[260px] overflow-auto divide-y divide-slate-100">
+              <div class="px-3 py-5 text-center text-slate-400 text-[13px]">Use the filters above, then “Find customers”.</div>
+            </div>
+            <div class="flex items-center justify-between px-3 py-2 border-t border-slate-100 text-[12px] text-slate-500">
+              <span id="pInfo">—</span>
+              <span class="flex gap-2">
+                <button id="pPrev" class="border border-slate-300 rounded-lg px-3 py-1 font-semibold hover:bg-slate-50 disabled:opacity-40">Prev</button>
+                <button id="pNext" class="border border-slate-300 rounded-lg px-3 py-1 font-semibold hover:bg-slate-50 disabled:opacity-40">Next</button>
+              </span>
+            </div>
+          </div>
+          <p class="text-[12px] text-slate-400">Selections are kept while you page through and filter. Ticked customers receive the campaign.</p>
         </div>
 
         <div class="flex flex-wrap items-center gap-2 pt-1">
@@ -170,6 +223,95 @@
       </div>
       <div id="templateList" class="space-y-3"></div>
     </section>
+
+    <!-- ── AUTOMATION ── -->
+    <section id="tab-automation" class="hidden">
+      <div class="bg-white border border-slate-200 rounded-2xl p-4 mb-4 text-[13px] text-slate-500">
+        Send an automatic WhatsApp message to the customer when a store event happens.
+        Pick an <b>approved template</b> for each event and switch it on. Templates can use
+        <b>{{name}}</b>, <b>{{order}}</b> and <b>{{amount}}</b> — live sends pass them as the
+        template's 3 body variables ({{1}}=name, {{2}}=order no, {{3}}=amount).
+      </div>
+      <div id="autoList" class="space-y-3"></div>
+    </section>
+
+    <!-- ── INBOX ── -->
+    <section id="tab-inbox" class="hidden">
+      <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden md:grid md:grid-cols-[300px_1fr]">
+        <!-- conversation list -->
+        <div id="convPane" class="border-b md:border-b-0 md:border-r border-slate-200 flex flex-col">
+          <div class="flex items-center gap-2 px-3 py-2 border-b border-slate-100">
+            <span class="text-[13px] font-semibold text-slate-600">Chats</span>
+            <button id="convRefresh" class="ml-auto text-[12px] text-brand hover:underline">↻ Refresh</button>
+          </div>
+          <div id="convList" class="overflow-auto max-h-[420px] md:max-h-[520px] divide-y divide-slate-100">
+            <div class="px-3 py-6 text-center text-slate-400 text-[13px]">Loading…</div>
+          </div>
+        </div>
+        <!-- thread -->
+        <div id="threadPane" class="flex flex-col min-h-[300px]">
+          <div id="threadHeader" class="px-4 py-2.5 border-b border-slate-100 text-[13px] text-slate-400">
+            Select a chat to view the conversation.
+          </div>
+          <div id="threadBody" class="flex-1 overflow-auto max-h-[380px] md:max-h-[430px] px-4 py-3 space-y-2 bg-[#f6f4ef]"></div>
+          <div id="threadFooter" class="hidden border-t border-slate-100 p-3 space-y-2">
+            <div id="windowNote" class="text-[12px]"></div>
+            <div class="flex gap-2 items-end">
+              <select id="replyTemplate" class="inp hidden" style="max-width:220px"></select>
+              <textarea id="replyText" rows="2" class="inp flex-1" maxlength="2000" placeholder="Type a reply…"></textarea>
+              <button id="replySend" class="bg-navy hover:bg-navy-600 text-white font-semibold rounded-lg px-4 py-2.5 text-sm">Send</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="text-[12px] text-slate-400 mt-2">Incoming customer messages arrive via the Meta webhook (Connection tab → webhook setup). Free-text replies work within 24h of the customer's last message; after that WhatsApp requires an approved template.</p>
+    </section>
+
+    <!-- ── DELIVERY LOG ── -->
+    <section id="tab-delivery" class="hidden">
+      <div class="bg-white border border-slate-200 rounded-2xl p-4 mb-4 flex flex-wrap items-end gap-3">
+        <div>
+          <label class="block text-[12px] font-semibold text-slate-500 mb-1">Status</label>
+          <select id="dlStatus" class="inp" style="min-width:150px">
+            <option value="">All statuses</option>
+            <option value="QUEUED">Queued</option>
+            <option value="SENT">Sent</option>
+            <option value="DELIVERED">Delivered</option>
+            <option value="READ">Read</option>
+            <option value="FAILED">Failed</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[12px] font-semibold text-slate-500 mb-1">Phone</label>
+          <input id="dlPhone" class="inp" style="min-width:180px" placeholder="Search a number" />
+        </div>
+        <button id="dlApply" class="bg-navy hover:bg-navy-600 text-white font-semibold rounded-lg px-4 py-2 text-sm">Filter</button>
+        <button id="dlReset" class="border border-slate-300 text-slate-600 hover:bg-slate-50 font-semibold rounded-lg px-3 py-2 text-sm">Reset</button>
+      </div>
+      <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-[13px]">
+            <thead class="bg-slate-50 text-slate-500 text-[11px] uppercase">
+              <tr>
+                <th class="text-left font-semibold px-3 py-2">When</th>
+                <th class="text-left font-semibold px-3 py-2">Recipient</th>
+                <th class="text-left font-semibold px-3 py-2">Campaign</th>
+                <th class="text-left font-semibold px-3 py-2">Status</th>
+                <th class="text-left font-semibold px-3 py-2">Detail</th>
+              </tr>
+            </thead>
+            <tbody id="dlRows"></tbody>
+          </table>
+        </div>
+        <div class="flex items-center justify-between px-3 py-2 border-t border-slate-100 text-[12px] text-slate-500">
+          <span id="dlInfo">—</span>
+          <span class="flex gap-2">
+            <button id="dlPrev" class="border border-slate-300 rounded-lg px-3 py-1 font-semibold hover:bg-slate-50 disabled:opacity-40">Prev</button>
+            <button id="dlNext" class="border border-slate-300 rounded-lg px-3 py-1 font-semibold hover:bg-slate-50 disabled:opacity-40">Next</button>
+          </span>
+        </div>
+      </div>
+    </section>
   </div>
 
   <!-- campaign detail modal -->
@@ -186,7 +328,7 @@
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c)=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
   const $ = (id) => document.getElementById(id);
   const API = "/api/v1/admin/whatsapp";
-  const AUD_LABEL = { ALL_OPTED_IN:"Opted-in customers", VERIFIED_OPTED_IN:"Opted-in + verified", HAS_ORDERED:"Opted-in past buyers", EVERYONE_WITH_PHONE:"Everyone with a phone" };
+  const AUD_LABEL = { ALL_OPTED_IN:"Opted-in customers", VERIFIED_OPTED_IN:"Opted-in + verified", HAS_ORDERED:"Opted-in past buyers", EVERYONE_WITH_PHONE:"Everyone with a phone", MANUAL:"Hand-picked recipients" };
 
   function campaignTone(s){ return ({ COMPLETED:"bg-green-100 text-green-700", SENDING:"bg-amber-100 text-amber-700",
     FAILED:"bg-red-100 text-red-700", CANCELLED:"bg-slate-100 text-slate-500", DRAFT:"bg-blue-100 text-blue-700", SCHEDULED:"bg-indigo-100 text-indigo-700" }[s] || "bg-slate-100 text-slate-600"); }
@@ -199,11 +341,153 @@
   document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", ()=>{
     document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
     t.classList.add("active");
-    ["connection","compose","campaigns","templates"].forEach(n => $("tab-"+n).classList.toggle("hidden", n !== t.dataset.tab));
+    ["connection","compose","campaigns","templates","automation","inbox","delivery"].forEach(n => $("tab-"+n).classList.toggle("hidden", n !== t.dataset.tab));
     if (t.dataset.tab === "connection") loadConnection();
     if (t.dataset.tab === "campaigns") loadCampaigns();
     if (t.dataset.tab === "templates") loadTemplates();
+    if (t.dataset.tab === "automation") loadAutomation();
+    if (t.dataset.tab === "inbox") loadInbox();
+    if (t.dataset.tab === "delivery") loadDelivery(0);
   }));
+
+  // ── inbox ──
+  let currentConv = null;
+  function fmtChatTime(iso){ if(!iso) return ""; const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleString("en-IN", {day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}); }
+  async function refreshInboxBadge(){
+    try {
+      const n = await jlApi(API + "/inbox/unread-count");
+      $("inboxBadge").textContent = n;
+      $("inboxBadge").classList.toggle("hidden", !n);
+    } catch(_){ /* badge is best-effort */ }
+  }
+  async function loadInbox(){
+    try {
+      const pg = await jlApi(API + "/inbox?size=30");
+      const rows = pg.content || [];
+      window.__convs = rows;
+      $("convList").innerHTML = rows.length ? rows.map(c=>`
+        <button data-id="${c.id}" class="convRow w-full text-left px-3 py-2.5 hover:bg-slate-50 ${currentConv===c.id?"bg-slate-50":""}">
+          <div class="flex items-center gap-2">
+            <span class="font-semibold text-[13px] text-navy truncate">${esc(c.customerName||c.contactName||c.phone)}</span>
+            ${c.unreadCount?`<span class="chip bg-red-100 text-red-700">${c.unreadCount}</span>`:``}
+            <span class="ml-auto text-[10px] text-slate-400 whitespace-nowrap">${esc(fmtChatTime(c.lastMessageAt))}</span>
+          </div>
+          <div class="text-[12px] text-slate-500 truncate mt-0.5">${esc(c.lastPreview||"")}</div>
+        </button>`).join("")
+        : `<div class="px-3 py-6 text-center text-slate-400 text-[13px]">No conversations yet. They appear when customers message your WhatsApp number (webhook must be configured).</div>`;
+      document.querySelectorAll(".convRow").forEach(b=>b.addEventListener("click", ()=>openConv(b.dataset.id)));
+      refreshInboxBadge();
+    } catch(e){ $("convList").innerHTML = `<div class="px-3 py-4 text-red-600 text-[13px]">${esc(e.message||"Failed to load")}</div>`; }
+  }
+  async function openConv(id){
+    currentConv = id;
+    const c = (window.__convs||[]).find(x=>x.id===id);
+    $("threadHeader").innerHTML = c ? `
+      <div class="flex items-center gap-2">
+        <div>
+          <span class="font-semibold text-navy">${esc(c.customerName||c.contactName||c.phone)}</span>
+          <span class="text-[12px] text-slate-400 ml-1">${esc(c.phone)}</span>
+        </div>
+        <span class="ml-auto chip ${c.windowOpen?"bg-green-100 text-green-700":"bg-amber-100 text-amber-700"}">${c.windowOpen?"24h window open":"window closed"}</span>
+      </div>` : "";
+    $("threadBody").innerHTML = `<div class="text-slate-400 text-[13px]">Loading…</div>`;
+    $("threadFooter").classList.remove("hidden");
+    // reply mode: free text while the window is open, template-only after
+    const open = !!(c && c.windowOpen);
+    $("replyText").classList.toggle("hidden", !open);
+    $("replyTemplate").classList.toggle("hidden", open);
+    $("windowNote").innerHTML = open
+      ? `<span class="text-green-600">Customer wrote within 24h — free-text replies allowed.</span>`
+      : `<span class="text-amber-600">24h window closed — replies must use an approved template.</span>`;
+    if (!open) {
+      try {
+        const list = window.__templates && window.__templates.length ? window.__templates : await jlApi(API + "/templates");
+        window.__templates = list;
+        $("replyTemplate").innerHTML = `<option value="">— Pick a template —</option>` + list.map(t=>
+          `<option value="${t.id}">${esc(t.name)}${t.metaStatus?` (${esc(t.metaStatus)})`:""}</option>`).join("");
+      } catch(_){ /* keep whatever options exist */ }
+    }
+    try {
+      const msgs = await jlApi(API + `/inbox/${id}/messages`);
+      $("threadBody").innerHTML = msgs.length ? msgs.map(m=>`
+        <div class="flex ${m.direction==="OUT"?"justify-end":"justify-start"}">
+          <div class="max-w-[80%] rounded-xl px-3 py-2 text-[13px] whitespace-pre-wrap ${m.direction==="OUT"?"bg-[#d9fdd3]":"bg-white border border-slate-200"}">
+            ${esc(m.body)}
+            <div class="text-[10px] text-slate-400 mt-1 text-right">${esc(fmtChatTime(m.eventAt))}
+              ${m.direction==="OUT"?` · <span class="${m.messageStatus==="FAILED"?"text-red-500":""}">${esc(m.messageStatus)}</span>`:``}</div>
+            ${m.error?`<div class="text-[11px] text-red-500 mt-0.5">${esc(m.error)}</div>`:``}
+          </div>
+        </div>`).join("") : `<div class="text-slate-400 text-[13px]">No messages in this chat yet.</div>`;
+      $("threadBody").scrollTop = $("threadBody").scrollHeight;
+      loadInbox(); // refresh unread badges (thread open marks it read)
+    } catch(e){ $("threadBody").innerHTML = `<div class="text-red-600 text-[13px]">${esc(e.message||"Failed to load")}</div>`; }
+  }
+  $("convRefresh").addEventListener("click", loadInbox);
+  $("replySend").addEventListener("click", async ()=>{
+    if (!currentConv) return;
+    const c = (window.__convs||[]).find(x=>x.id===currentConv);
+    const open = !!(c && c.windowOpen);
+    const body = open
+      ? { text: $("replyText").value.trim() || null, templateId: null }
+      : { text: null, templateId: $("replyTemplate").value || null };
+    if (open && !body.text){ jlToast("Type a reply first.", {type:"error"}); return; }
+    if (!open && !body.templateId){ jlToast("Pick a template — the 24h window is closed.", {type:"error"}); return; }
+    jlBtn($("replySend"), true, "…");
+    try {
+      await jlApi(API + `/inbox/${currentConv}/reply`, { method:"POST", body });
+      $("replyText").value = "";
+      openConv(currentConv);
+    } catch(e){ jlToast(e.message||"Send failed", {type:"error"}); }
+    finally { jlBtn($("replySend"), false); }
+  });
+  $("replyText").addEventListener("keydown", (e)=>{ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); $("replySend").click(); } });
+
+  // ── automation ──
+  const AUTO_META = {
+    ORDER_PLACED:        ["🛒 Order placed",     "Confirmation as soon as a customer places an order."],
+    PAYMENT_RECEIVED:    ["💳 Payment received", "Thank-you when an online or manual payment is confirmed."],
+    ORDER_SHIPPED:       ["📦 Order shipped",    "When staff mark the order as shipped."],
+    ORDER_OUT_FOR_DELIVERY:["🚚 Out for delivery","When the order goes out for delivery."],
+    ORDER_DELIVERED:     ["✅ Order delivered",  "When the order is marked delivered."],
+    ORDER_CANCELLED:     ["✖ Order cancelled",   "When an order is cancelled (by staff or the customer)."],
+    ABANDONED_CHECKOUT:  ["🕗 Abandoned checkout","Nudge when an unpaid online order auto-expires — invite them to complete the purchase."]
+  };
+  async function loadAutomation(){
+    $("autoList").innerHTML = `<div class="text-slate-400 text-sm">Loading…</div>`;
+    try {
+      const [rules, tmpls] = await Promise.all([jlApi(API + "/automation"), jlApi(API + "/templates")]);
+      window.__templates = tmpls;
+      $("autoList").innerHTML = rules.map(r => {
+        const [title, desc] = AUTO_META[r.event] || [r.event, ""];
+        const opts = `<option value="">— No template —</option>` + tmpls.map(t =>
+          `<option value="${t.id}" ${t.id===r.templateId?"selected":""}>${esc(t.name)}${t.metaStatus?` (${esc(t.metaStatus)})`:""}</option>`).join("");
+        return `
+        <div class="bg-white border border-slate-200 rounded-2xl p-4 flex flex-wrap items-center gap-3" data-event="${r.event}">
+          <div class="min-w-[220px] flex-1">
+            <div class="font-semibold text-navy">${title}</div>
+            <div class="text-[12px] text-slate-400 mt-0.5">${desc}</div>
+            ${(r.sentCount||r.failedCount) ? `<div class="text-[11px] text-slate-400 mt-1">${r.sentCount} sent · ${r.failedCount} failed</div>` : ``}
+          </div>
+          <select class="inp aTmpl" style="max-width:230px">${opts}</select>
+          <label class="flex items-center gap-2 text-[13px] font-semibold ${r.enabled?"text-green-600":"text-slate-400"}">
+            <input type="checkbox" class="aOn" ${r.enabled?"checked":""} /> ${r.enabled?"ON":"OFF"}
+          </label>
+        </div>`;
+      }).join("");
+      document.querySelectorAll("#autoList [data-event]").forEach(row => {
+        const save = async () => {
+          const body = { enabled: row.querySelector(".aOn").checked, templateId: row.querySelector(".aTmpl").value || null };
+          try {
+            const r = await jlApi(API + "/automation/" + row.dataset.event, { method:"PUT", body });
+            jlToast(AUTO_META[r.event][0] + (r.enabled ? " is ON" : " is off"), { type: r.enabled ? "success" : "info" });
+            loadAutomation();
+          } catch(e){ jlToast(e.message||"Could not save", {type:"error"}); loadAutomation(); }
+        };
+        row.querySelector(".aOn").addEventListener("change", save);
+        row.querySelector(".aTmpl").addEventListener("change", save);
+      });
+    } catch(e){ $("autoList").innerHTML = `<div class="text-red-600 text-sm">${esc(e.message||"Failed to load")}</div>`; }
+  }
 
   // ── connection ──
   function qualityTone(q){ return ({ GREEN:"text-green-600", YELLOW:"text-amber-600", RED:"text-red-600" }[q] || "text-slate-500"); }
@@ -232,9 +516,10 @@
   }
   $("wSave").addEventListener("click", async ()=>{
     const body = { token:$("wToken").value.trim()||null, phoneId:$("wPhoneId").value.trim()||null,
-      wabaId:$("wWaba").value.trim()||null, defaultCc:$("wCc").value.trim()||null, verifyToken:$("wVerify").value.trim()||null };
+      wabaId:$("wWaba").value.trim()||null, defaultCc:$("wCc").value.trim()||null,
+      verifyToken:$("wVerify").value.trim()||null, appSecret:$("wAppSecret").value.trim()||null };
     jlBtn($("wSave"), true, "Saving…");
-    try { const c = await jlApi(API + "/connection", { method:"POST", body }); $("wToken").value=""; renderConn(c);
+    try { const c = await jlApi(API + "/connection", { method:"POST", body }); $("wToken").value=""; $("wAppSecret").value=""; renderConn(c);
       jlToast(c.tokenValid ? "Connected!" : ("Saved — " + (c.message||"")), { type: c.tokenValid ? "success" : "info" }); }
     catch(e){ jlToast(e.message||"Save failed", {type:"error"}); } finally { jlBtn($("wSave"), false); }
   });
@@ -246,6 +531,43 @@
     finally { jlBtn($("wDetect"), false); }
   });
   $("wRefresh").addEventListener("click", loadConnection);
+  // Show the exact callback URL for Meta's webhook config.
+  if ($("webhookUrl") && window.JL_API_BASE) $("webhookUrl").textContent = window.JL_API_BASE + "/api/v1/webhooks/whatsapp";
+
+  // ── delivery log ──
+  let dlPage = 0, dlTotalPages = 1;
+  function fmtTime(iso){ if(!iso) return ""; const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleString("en-IN", {day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}); }
+  async function loadDelivery(page){
+    dlPage = page || 0;
+    $("dlRows").innerHTML = `<tr><td colspan="5" class="px-3 py-4 text-slate-400">Loading…</td></tr>`;
+    const params = new URLSearchParams({ page: dlPage, size: 30 });
+    const st = $("dlStatus").value; if (st) params.set("status", st);
+    const ph = $("dlPhone").value.trim(); if (ph) params.set("phone", ph);
+    try {
+      const pg = await jlApi(API + "/delivery-log?" + params.toString());
+      const rows = pg.content || [];
+      dlTotalPages = pg.totalPages || 1;
+      if (!rows.length) {
+        $("dlRows").innerHTML = `<tr><td colspan="5" class="px-3 py-6 text-center text-slate-400">No messages found.</td></tr>`;
+      } else {
+        $("dlRows").innerHTML = rows.map(r=>`
+          <tr class="border-t border-slate-100">
+            <td class="px-3 py-2 text-slate-500 whitespace-nowrap">${esc(fmtTime(r.createdAt))}</td>
+            <td class="px-3 py-2"><div class="font-medium text-slate-700">${esc(r.recipientName||"—")}</div><div class="text-[11px] text-slate-400">${esc(r.phone||"")}</div></td>
+            <td class="px-3 py-2 text-slate-600">${esc(r.campaignName||"—")}</td>
+            <td class="px-3 py-2"><span class="chip ${msgTone(r.messageStatus)}">${esc(r.messageStatus)}</span></td>
+            <td class="px-3 py-2 text-[11px] text-slate-400 max-w-[220px] truncate" title="${esc(r.error||r.providerMessageId||"")}">${esc(r.error||r.providerMessageId||"")}</td>
+          </tr>`).join("");
+      }
+      $("dlInfo").textContent = `Page ${dlPage+1} of ${dlTotalPages} · ${pg.totalElements} message(s)`;
+      $("dlPrev").disabled = pg.first; $("dlNext").disabled = pg.last;
+    } catch(e){ $("dlRows").innerHTML = `<tr><td colspan="5" class="px-3 py-4 text-red-600">${esc(e.message||"Failed to load")}</td></tr>`; }
+  }
+  $("dlApply").addEventListener("click", ()=>loadDelivery(0));
+  $("dlReset").addEventListener("click", ()=>{ $("dlStatus").value=""; $("dlPhone").value=""; loadDelivery(0); });
+  $("dlPhone").addEventListener("keydown", (e)=>{ if(e.key==="Enter") loadDelivery(0); });
+  $("dlPrev").addEventListener("click", ()=>{ if(dlPage>0) loadDelivery(dlPage-1); });
+  $("dlNext").addEventListener("click", ()=>{ if(dlPage<dlTotalPages-1) loadDelivery(dlPage+1); });
 
   // ── analytics strip ──
   async function loadAnalytics(){
@@ -268,6 +590,9 @@
   let audTimer;
   async function refreshAudience(){
     const type = $("cAudience").value;
+    const manual = type === "MANUAL";
+    $("pickerPanel").classList.toggle("hidden", !manual);
+    if (manual) { initPicker(); updatePickCount(); return; }
     $("audienceInfo").textContent = "Counting…";
     try {
       const p = await jlApi(API + "/audience/preview?type=" + type);
@@ -275,6 +600,78 @@
       $("audienceInfo").innerHTML = `<b class="text-navy">${p.count}</b> recipient(s)` + (names ? ` · e.g. ${names}` : "");
     } catch(e){ $("audienceInfo").textContent = "Couldn't count audience."; }
   }
+
+  // ── hand-pick recipient picker ──
+  const pSel = new Map();               // id -> name (kept across pages/filters)
+  let pPage = 0, pTotalPages = 1, pickerInited = false;
+  function updatePickCount(){
+    $("pCount").textContent = `${pSel.size} selected`;
+    if ($("cAudience").value === "MANUAL")
+      $("audienceInfo").innerHTML = `<b class="text-navy">${pSel.size}</b> hand-picked recipient(s)`;
+  }
+  async function initPicker(){
+    if (pickerInited) return; pickerInited = true;
+    try {
+      const cats = await jlApi("/api/v1/categories");
+      $("pCategory").innerHTML = `<option value="">Any category</option>` +
+        (cats||[]).map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join("");
+    } catch(_){ /* dropdown stays "Any" */ }
+    try {
+      const cities = await jlApi(API + "/audience/cities");
+      $("pCity").innerHTML = `<option value="">Any city</option>` +
+        (cities||[]).map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join("");
+    } catch(_){ /* dropdown stays "Any" */ }
+  }
+  async function loadPicker(page){
+    pPage = page || 0;
+    $("pList").innerHTML = `<div class="px-3 py-4 text-slate-400 text-[13px]">Loading…</div>`;
+    const params = new URLSearchParams({ page: pPage, size: 50 });
+    if ($("pCategory").value) params.set("categoryId", $("pCategory").value);
+    if ($("pCity").value) params.set("city", $("pCity").value);
+    if ($("pOptedIn").checked) params.set("optedIn", "true");
+    if ($("pVerified").checked) params.set("phoneVerified", "true");
+    if ($("pOrdered").checked && !$("pNeverOrdered").checked) params.set("ordered", "true");
+    if ($("pNeverOrdered").checked && !$("pOrdered").checked) params.set("ordered", "false");
+    if ($("pEmi").checked) params.set("emi", "true");
+    const q = $("pSearch").value.trim(); if (q) params.set("search", q);
+    try {
+      const pg = await jlApi(API + "/audience/customers?" + params.toString());
+      const rows = pg.content || [];
+      pTotalPages = pg.totalPages || 1;
+      $("pList").innerHTML = rows.length ? rows.map(r=>`
+        <label class="flex items-center gap-2.5 px-3 py-2 text-[13px] hover:bg-slate-50 cursor-pointer">
+          <input type="checkbox" class="pRow" data-id="${r.id}" data-name="${esc(r.name||"")}" ${pSel.has(r.id)?"checked":""} />
+          <span class="font-medium text-slate-700">${esc(r.name||"—")}</span>
+          <span class="text-slate-400">${esc(r.phone||"")}</span>
+          ${r.city?`<span class="text-[11px] text-slate-400">· ${esc(r.city)}</span>`:``}
+          <span class="ml-auto flex gap-1">
+            ${r.optedIn?`<span class="chip bg-green-100 text-green-700">opt-in</span>`:``}
+            ${r.hasOrdered?`<span class="chip bg-blue-100 text-blue-700">buyer</span>`:``}
+          </span>
+        </label>`).join("")
+        : `<div class="px-3 py-5 text-center text-slate-400 text-[13px]">No customers match these filters.</div>`;
+      $("pInfo").textContent = `Page ${pPage+1} of ${pTotalPages} · ${pg.totalElements} match(es)`;
+      $("pPrev").disabled = pg.first; $("pNext").disabled = pg.last;
+      $("pAll").checked = rows.length > 0 && rows.every(r=>pSel.has(r.id));
+      document.querySelectorAll(".pRow").forEach(cb=>cb.addEventListener("change", ()=>{
+        if (cb.checked) pSel.set(cb.dataset.id, cb.dataset.name); else pSel.delete(cb.dataset.id);
+        updatePickCount();
+      }));
+    } catch(e){ $("pList").innerHTML = `<div class="px-3 py-4 text-red-600 text-[13px]">${esc(e.message||"Failed to load")}</div>`; }
+  }
+  $("pLoad").addEventListener("click", ()=>loadPicker(0));
+  $("pSearch").addEventListener("keydown", (e)=>{ if(e.key==="Enter") loadPicker(0); });
+  $("pPrev").addEventListener("click", ()=>{ if(pPage>0) loadPicker(pPage-1); });
+  $("pNext").addEventListener("click", ()=>{ if(pPage<pTotalPages-1) loadPicker(pPage+1); });
+  $("pOrdered").addEventListener("change", ()=>{ if($("pOrdered").checked) $("pNeverOrdered").checked=false; });
+  $("pNeverOrdered").addEventListener("change", ()=>{ if($("pNeverOrdered").checked) $("pOrdered").checked=false; });
+  $("pAll").addEventListener("change", ()=>{
+    document.querySelectorAll(".pRow").forEach(cb=>{
+      cb.checked = $("pAll").checked;
+      if (cb.checked) pSel.set(cb.dataset.id, cb.dataset.name); else pSel.delete(cb.dataset.id);
+    });
+    updatePickCount();
+  });
   $("cBody").addEventListener("input", renderPreview);
   $("cAudience").addEventListener("change", refreshAudience);
   $("tokName").addEventListener("click", ()=>{ const el=$("cBody"); el.value += (el.value && !el.value.endsWith(" ") ? " " : "") + "{{name}}"; renderPreview(); el.focus(); });
@@ -289,7 +686,13 @@
     const bodyText = $("cBody").value.trim();
     if(!name){ jlToast("Give the campaign a name.", {type:"error"}); return null; }
     if(!bodyText && !$("cTemplate").value){ jlToast("Write a message or pick a template.", {type:"error"}); return null; }
-    return { name, bodyText, templateId: $("cTemplate").value || null, audienceType: $("cAudience").value };
+    const audienceType = $("cAudience").value;
+    const payload = { name, bodyText, templateId: $("cTemplate").value || null, audienceType };
+    if (audienceType === "MANUAL") {
+      if (!pSel.size){ jlToast("Tick at least one recipient in the picker.", {type:"error"}); return null; }
+      payload.recipientCustomerIds = [...pSel.keys()];
+    }
+    return payload;
   }
   $("draftBtn").addEventListener("click", async ()=>{
     const body = await buildPayload(); if(!body) return;
@@ -308,7 +711,7 @@
       resetCompose(); loadAnalytics(); openDetail(sent.id);
     } catch(e){ jlToast(e.message||"Send failed", {type:"error"}); } finally { jlBtn($("sendBtn"), false); }
   });
-  function resetCompose(){ $("cName").value=""; $("cBody").value=""; $("cTemplate").value=""; renderPreview(); }
+  function resetCompose(){ $("cName").value=""; $("cBody").value=""; $("cTemplate").value=""; pSel.clear(); updatePickCount(); renderPreview(); }
 
   $("testBtn").addEventListener("click", async ()=>{
     const phone = $("testPhone").value.trim();
@@ -420,7 +823,7 @@
   jlWireLogout("#logoutBtn");
   jlRequireAdmin().then((a)=>{
     $("adminBadge").textContent = jlDisplayName(a).split(/[\s@.]+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join("")||"JL";
-    loadAnalytics(); loadTemplates(); refreshAudience(); renderPreview();
+    loadAnalytics(); loadTemplates(); refreshAudience(); renderPreview(); refreshInboxBadge();
   });
 </script>
 </body>

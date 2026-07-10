@@ -1,29 +1,41 @@
 package in.jlenterprises.ecommerce.controller.admin;
 
 import in.jlenterprises.ecommerce.constant.WhatsappAudienceType;
+import in.jlenterprises.ecommerce.constant.WhatsappAutomationEvent;
+import in.jlenterprises.ecommerce.constant.WhatsappMessageStatus;
 import in.jlenterprises.ecommerce.dto.admin.BroadcastRequest;
 import in.jlenterprises.ecommerce.dto.admin.BroadcastResult;
+import in.jlenterprises.ecommerce.dto.whatsapp.AudienceCustomerDto;
 import in.jlenterprises.ecommerce.dto.whatsapp.AudiencePreviewDto;
+import in.jlenterprises.ecommerce.dto.whatsapp.AutomationRuleDto;
+import in.jlenterprises.ecommerce.dto.whatsapp.ChatMessageDto;
+import in.jlenterprises.ecommerce.dto.whatsapp.ConversationDto;
 import in.jlenterprises.ecommerce.dto.whatsapp.CampaignAnalyticsDto;
 import in.jlenterprises.ecommerce.dto.whatsapp.CampaignDetailDto;
 import in.jlenterprises.ecommerce.dto.whatsapp.CampaignDto;
 import in.jlenterprises.ecommerce.dto.whatsapp.ConnectionStatusDto;
+import in.jlenterprises.ecommerce.dto.whatsapp.DeliveryLogDto;
 import in.jlenterprises.ecommerce.dto.whatsapp.TemplateDto;
 import in.jlenterprises.ecommerce.dto.whatsapp.TemplateSyncResult;
 import in.jlenterprises.ecommerce.dto.whatsapp.TestSendResult;
+import in.jlenterprises.ecommerce.request.whatsapp.AutomationRuleRequest;
 import in.jlenterprises.ecommerce.request.whatsapp.CampaignRequest;
 import in.jlenterprises.ecommerce.request.whatsapp.ConnectionRequest;
+import in.jlenterprises.ecommerce.request.whatsapp.InboxReplyRequest;
 import in.jlenterprises.ecommerce.request.whatsapp.TemplateRequest;
 import in.jlenterprises.ecommerce.request.whatsapp.TestSendRequest;
 import in.jlenterprises.ecommerce.response.ApiResponse;
 import in.jlenterprises.ecommerce.response.PageResponse;
+import in.jlenterprises.ecommerce.service.WhatsappAutomationService;
 import in.jlenterprises.ecommerce.service.WhatsappCampaignService;
 import in.jlenterprises.ecommerce.service.WhatsappConnectionService;
+import in.jlenterprises.ecommerce.service.WhatsappInboxService;
 import in.jlenterprises.ecommerce.service.WhatsappTemplateService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -38,6 +50,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -51,12 +64,56 @@ public class WhatsAppController {
     private final WhatsappCampaignService campaigns;
     private final WhatsappTemplateService templates;
     private final WhatsappConnectionService connection;
+    private final WhatsappAutomationService automation;
+    private final WhatsappInboxService inbox;
 
     public WhatsAppController(WhatsappCampaignService campaigns, WhatsappTemplateService templates,
-                             WhatsappConnectionService connection) {
+                             WhatsappConnectionService connection, WhatsappAutomationService automation,
+                             WhatsappInboxService inbox) {
         this.campaigns = campaigns;
         this.templates = templates;
         this.connection = connection;
+        this.automation = automation;
+        this.inbox = inbox;
+    }
+
+    // ── Inbox ──
+    @GetMapping("/inbox")
+    @Operation(summary = "Conversations, most recent first")
+    public ApiResponse<PageResponse<ConversationDto>> inbox(@PageableDefault(size = 30) Pageable pageable) {
+        return ApiResponse.success(PageResponse.of(inbox.conversations(pageable)));
+    }
+
+    @GetMapping("/inbox/unread-count")
+    @Operation(summary = "Number of conversations with unread customer messages")
+    public ApiResponse<Long> inboxUnread() {
+        return ApiResponse.success(inbox.unreadConversations());
+    }
+
+    @GetMapping("/inbox/{id}/messages")
+    @Operation(summary = "One thread's latest messages (marks the conversation read)")
+    public ApiResponse<List<ChatMessageDto>> inboxMessages(@PathVariable UUID id) {
+        return ApiResponse.success(inbox.messages(id));
+    }
+
+    @PostMapping("/inbox/{id}/reply")
+    @Operation(summary = "Reply in a thread — free text inside the 24h window, template outside it")
+    public ApiResponse<ChatMessageDto> inboxReply(@PathVariable UUID id, @Valid @RequestBody InboxReplyRequest request) {
+        return ApiResponse.success("Reply sent", inbox.reply(id, request));
+    }
+
+    // ── Automation ──
+    @GetMapping("/automation")
+    @Operation(summary = "All automation events with their rule state")
+    public ApiResponse<List<AutomationRuleDto>> automationRules() {
+        return ApiResponse.success(automation.list());
+    }
+
+    @PutMapping("/automation/{event}")
+    @Operation(summary = "Enable/disable an event and set its template")
+    public ApiResponse<AutomationRuleDto> updateAutomationRule(@PathVariable WhatsappAutomationEvent event,
+                                                               @Valid @RequestBody AutomationRuleRequest request) {
+        return ApiResponse.success("Automation updated", automation.update(event, request));
     }
 
     // ── Connection ──
@@ -162,10 +219,44 @@ public class WhatsAppController {
         return ApiResponse.success(campaigns.previewAudience(type, city));
     }
 
+    @GetMapping("/audience/customers")
+    @Operation(summary = "Filtered customer list for the broadcast picker (category/city/segments/search)")
+    public ApiResponse<PageResponse<AudienceCustomerDto>> audienceCustomers(
+            @RequestParam(required = false) UUID categoryId,
+            @RequestParam(required = false) String city,
+            @RequestParam(required = false) Boolean optedIn,
+            @RequestParam(required = false) Boolean phoneVerified,
+            @RequestParam(required = false) Boolean ordered,
+            @RequestParam(required = false) Boolean emi,
+            @RequestParam(required = false) String search,
+            @PageableDefault(size = 50) Pageable pageable) {
+        return ApiResponse.success(PageResponse.of(
+                campaigns.audienceCustomers(categoryId, city, optedIn, phoneVerified, ordered, emi, search, pageable)));
+    }
+
+    @GetMapping("/audience/cities")
+    @Operation(summary = "Distinct saved customer cities (for the picker's city dropdown)")
+    public ApiResponse<List<String>> audienceCities() {
+        return ApiResponse.success(campaigns.audienceCities());
+    }
+
     @GetMapping("/analytics")
     @Operation(summary = "Overall WhatsApp marketing analytics")
     public ApiResponse<CampaignAnalyticsDto> analytics() {
         return ApiResponse.success(campaigns.analytics());
+    }
+
+    // ── Delivery log ──
+    @GetMapping("/delivery-log")
+    @Operation(summary = "Filtered, paged delivery log across all campaigns")
+    public ApiResponse<PageResponse<DeliveryLogDto>> deliveryLog(
+            @RequestParam(required = false) WhatsappMessageStatus status,
+            @RequestParam(required = false) UUID campaignId,
+            @RequestParam(required = false) String phone,
+            @RequestParam(required = false) Instant from,
+            @RequestParam(required = false) Instant to,
+            @PageableDefault(size = 30, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+        return ApiResponse.success(PageResponse.of(campaigns.deliveryLog(status, campaignId, phone, from, to, pageable)));
     }
 
     @PostMapping("/test-send")

@@ -55,4 +55,29 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
     /** Users holding any of the given roles (e.g. admins) — for internal admin alerts. */
     @Query("select distinct u from User u join u.roles r where r.name in :names")
     List<User> findByRoleNames(@Param("names") Collection<RoleName> names);
+
+    // ── Broadcast audience picker facets (Phase 3) ──
+    /** Ids of users who have placed at least one order. */
+    @Query("select distinct o.user.id from Order o")
+    List<UUID> findUserIdsWithOrders();
+
+    /** Ids of users who have bought at least one product in the given category. */
+    @Query("select distinct o.user.id from Order o join o.items it where it.product.category.id = :categoryId")
+    List<UUID> findUserIdsWhoBoughtCategory(@Param("categoryId") UUID categoryId);
+
+    /** Ids of users with a saved address in the given city (case-insensitive). */
+    @Query("select distinct a.user.id from Address a where lower(a.city) = lower(:city)")
+    List<UUID> findUserIdsInCity(@Param("city") String city);
+
+    /** Distinct non-blank saved cities, for the picker's city dropdown. */
+    @Query("select distinct a.city from Address a where a.city is not null and a.city <> '' order by a.city")
+    List<String> findDistinctCities();
+
+    /** Phone numbers that submitted an EMI request (matched to users by last-10 digits). */
+    @Query("select distinct e.phone from EmiRequest e where e.phone is not null")
+    List<String> findEmiRequestPhones();
+
+    /** [userId, city] pairs (first saved city per user) for the given users — labels the picker rows. */
+    @Query("select a.user.id, min(a.city) from Address a where a.user.id in :ids group by a.user.id")
+    List<Object[]> findCitiesForUsers(@Param("ids") Collection<UUID> ids);
 }

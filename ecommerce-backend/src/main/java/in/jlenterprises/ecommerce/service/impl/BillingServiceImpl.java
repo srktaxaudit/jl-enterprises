@@ -6,6 +6,7 @@ import in.jlenterprises.ecommerce.constant.OrderStatus;
 import in.jlenterprises.ecommerce.constant.PaymentMethod;
 import in.jlenterprises.ecommerce.constant.PaymentStatus;
 import in.jlenterprises.ecommerce.constant.TransactionType;
+import in.jlenterprises.ecommerce.constant.WhatsappAutomationEvent;
 import in.jlenterprises.ecommerce.dto.admin.BillingRowDto;
 import in.jlenterprises.ecommerce.dto.admin.BillingSummaryDto;
 import in.jlenterprises.ecommerce.dto.order.InvoiceDto;
@@ -21,6 +22,7 @@ import in.jlenterprises.ecommerce.repository.OrderRepository;
 import in.jlenterprises.ecommerce.repository.PaymentRepository;
 import in.jlenterprises.ecommerce.service.AccountingService;
 import in.jlenterprises.ecommerce.service.BillingService;
+import in.jlenterprises.ecommerce.service.WhatsappAutomationService;
 import in.jlenterprises.ecommerce.util.GstUtil;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
@@ -46,15 +48,17 @@ public class BillingServiceImpl implements BillingService {
     private final OrderMapper orderMapper;
     private final BillingConfig billingConfig;
     private final AccountingService accountingService;
+    private final WhatsappAutomationService whatsappAutomation;
 
     public BillingServiceImpl(OrderRepository orderRepository, PaymentRepository paymentRepository,
                               OrderMapper orderMapper, BillingConfig billingConfig,
-                              AccountingService accountingService) {
+                              AccountingService accountingService, WhatsappAutomationService whatsappAutomation) {
         this.orderRepository = orderRepository;
         this.paymentRepository = paymentRepository;
         this.orderMapper = orderMapper;
         this.billingConfig = billingConfig;
         this.accountingService = accountingService;
+        this.whatsappAutomation = whatsappAutomation;
     }
 
     @Override
@@ -135,6 +139,7 @@ public class BillingServiceImpl implements BillingService {
             order.setOrderStatus(OrderStatus.CONFIRMED);
             orderRepository.save(order);
         }
+        whatsappAutomation.fire(WhatsappAutomationEvent.PAYMENT_RECEIVED, order);
         Transaction txn = new Transaction();
         txn.setPayment(payment);
         txn.setType(TransactionType.CHARGE);
