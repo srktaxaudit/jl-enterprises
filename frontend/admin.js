@@ -21,6 +21,26 @@
   } catch (_) { /* best-effort */ }
 })();
 
+// Give the small row-action buttons (Edit / Hide / Delete / View / toggle) a
+// bigger, rounded, easy-to-tap hit area with subtle hover + press feedback.
+// Injected once here so every admin list page benefits without per-page edits.
+(function jlStyleActionButtons() {
+  const css =
+    "button[data-edit],button[data-del],button[data-toggle],button[data-view]{" +
+      "display:inline-flex;align-items:center;justify-content:center;" +
+      "min-height:30px;padding:4px 11px;border-radius:8px;line-height:1.15;" +
+      "transition:background-color .15s ease,transform .08s ease;}" +
+    "button[data-edit]:hover,button[data-view]:hover{background:rgba(87,108,188,.12);}" +
+    "button[data-toggle]:hover{background:rgba(100,116,139,.14);}" +
+    "button[data-del]:hover{background:rgba(239,68,68,.12);}" +
+    "button[data-edit]:active,button[data-del]:active,button[data-toggle]:active,button[data-view]:active{transform:scale(.93);}" +
+    "button[data-edit]:focus-visible,button[data-del]:focus-visible,button[data-toggle]:focus-visible,button[data-view]:focus-visible{outline:2px solid #576cbc;outline-offset:2px;}";
+  const s = document.createElement("style");
+  s.setAttribute("data-jl", "action-buttons");
+  s.textContent = css;
+  (document.head || document.documentElement).appendChild(s);
+})();
+
 // Admin pages are rendered inside one persistent dashboard shell.  Keep direct
 // bookmarks working by promoting standalone pages into that shell; pages loaded
 // by the shell's iframe are left alone.
