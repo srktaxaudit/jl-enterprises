@@ -134,6 +134,13 @@
           <tbody id="rows"><tr><td colspan="6" class="py-4 text-slate-400">Loading…</td></tr></tbody>
         </table>
       </div>
+      <div class="flex items-center justify-between gap-3 mt-4 text-sm">
+        <span id="pageInfo" class="text-slate-400"></span>
+        <div class="flex gap-2">
+          <button id="prev" type="button" class="rounded-lg border border-slate-300 px-3 py-1.5 disabled:opacity-40" disabled>← Prev</button>
+          <button id="next" type="button" class="rounded-lg border border-slate-300 px-3 py-1.5 disabled:opacity-40" disabled>Next →</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -147,6 +154,7 @@
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c)=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
   const $ = (id) => document.getElementById(id);
   let CATEGORIES = [], BRANDS = [];
+  const state = { page: 0, size: 50, totalPages: 1 };
 
   function flash(t, ok=true){ const el=$("msg"); el.textContent=t;
     el.className="mb-4 text-[13px] rounded-lg px-3 py-2 "+(ok?"bg-green-50 text-green-700 border border-green-200":"bg-red-50 text-red-700 border border-red-200");
@@ -217,13 +225,14 @@
     const cat = $("catFilter").value, stock = $("stockFilter").value, emi = $("emiFilter").value, sort = $("sortSel").value;
     body.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:20px">${jlSpinnerHTML()}</td></tr>`;
     try {
-      const page = await jlApi("/api/v1/admin/products?size=50"
+      const page = await jlApi(`/api/v1/admin/products?page=${state.page}&size=${state.size}`
         + (search?`&search=${encodeURIComponent(search)}`:"")
         + (cat?`&category=${encodeURIComponent(cat)}`:"")
         + (stock?`&inStock=${stock}`:"")
         + (emi?`&emiAvailable=${emi}`:"")
         + (sort?`&sort=${sort}`:""));
       if (seq !== loadSeq) return;   // a newer search/filter started — drop this stale result
+      state.totalPages = page.totalPages || 1;
       const rows = page.content || [];
       body.innerHTML = rows.length ? rows.map(p=>`
         <tr class="border-t border-slate-100">
@@ -237,6 +246,10 @@
             <button data-del="${p.id}" class="text-[12px] text-red-600">Delete</button>
           </td>
         </tr>`).join("") : `<tr><td colspan="6" class="py-4 text-slate-400">No products.</td></tr>`;
+      const total = page.totalElements != null ? page.totalElements : rows.length;
+      $("pageInfo").textContent = total ? `${total} product${total===1?"":"s"} · page ${state.page+1} of ${state.totalPages}` : "";
+      $("prev").disabled = page.first != null ? page.first : state.page === 0;
+      $("next").disabled = page.last != null ? page.last : state.page >= state.totalPages - 1;
     } catch(e){ if (seq !== loadSeq) return; body.innerHTML = `<tr><td colspan="6" class="py-4 text-red-600">Could not load (${esc(e.message)}).</td></tr>`; }
   }
 
@@ -372,8 +385,11 @@
     } catch(e){ flash(e.message||"Action failed", false); }
   });
 
-  let timer; $("search").addEventListener("input", (e)=>{ clearTimeout(timer); const v=e.target.value.trim(); timer=setTimeout(()=>load(v),300); });
-  ["catFilter","stockFilter","emiFilter","sortSel"].forEach(id => $(id).addEventListener("change", ()=>load()));
+  // Any new search/filter/sort resets to the first page.
+  let timer; $("search").addEventListener("input", ()=>{ clearTimeout(timer); timer=setTimeout(()=>{ state.page=0; load(); },300); });
+  ["catFilter","stockFilter","emiFilter","sortSel"].forEach(id => $(id).addEventListener("change", ()=>{ state.page=0; load(); }));
+  $("prev").addEventListener("click", ()=>{ if(state.page>0){ state.page--; load(); } });
+  $("next").addEventListener("click", ()=>{ if(state.page < state.totalPages-1){ state.page++; load(); } });
 
   // One-click: file General/uncategorised products into the right department by name.
   $("autoCatBtn").addEventListener("click", async (e)=>{
