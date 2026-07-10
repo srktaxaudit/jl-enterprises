@@ -418,15 +418,17 @@
     try { banners = await JLStore.banners("HERO"); } catch (_) { return; }
     if (!banners || !banners.length) return;   // none → keep the static hero
     const box = document.getElementById("heroBanners");
-    const slideInner = (b) => {
-      const img = `<img src="${escAttr(b.imageUrl)}" alt="${escAttr(b.title || "")}" class="w-full h-full object-cover" />`;
-      return b.linkUrl ? `<a href="${escAttr(b.linkUrl)}" class="block w-full h-full">${img}</a>` : img;
-    };
+    // Render at the image's NATURAL aspect ratio so the whole banner shows (no crop).
+    // Single → full image; multiple → an invisible sizer sets the height and slides cross-fade over it.
+    const A = (b, inner, cls) => b.linkUrl
+      ? `<a href="${escAttr(b.linkUrl)}" class="${cls}">${inner}</a>` : inner;
     if (banners.length === 1) {
-      box.innerHTML = `<div class="rounded-3xl overflow-hidden h-44 sm:h-56 md:h-72">${slideInner(banners[0])}</div>`;
+      const b = banners[0];
+      box.innerHTML = `<div class="rounded-3xl overflow-hidden">${A(b, `<img src="${escAttr(b.imageUrl)}" alt="${escAttr(b.title || "")}" class="block w-full h-auto" />`, "block")}</div>`;
     } else {
-      box.innerHTML = `<div class="relative rounded-3xl overflow-hidden h-44 sm:h-56 md:h-72">
-        ${banners.map((b, i) => `<div class="jl-slide" style="position:absolute;inset:0;opacity:${i === 0 ? 1 : 0};transition:opacity .6s">${slideInner(b)}</div>`).join("")}
+      box.innerHTML = `<div class="relative rounded-3xl overflow-hidden">
+        <img src="${escAttr(banners[0].imageUrl)}" alt="" aria-hidden="true" class="block w-full h-auto invisible" />
+        ${banners.map((b, i) => `<div class="jl-slide" style="position:absolute;inset:0;opacity:${i === 0 ? 1 : 0};transition:opacity .6s">${A(b, `<img src="${escAttr(b.imageUrl)}" alt="${escAttr(b.title || "")}" class="w-full h-full object-cover" />`, "block w-full h-full")}</div>`).join("")}
         <div style="position:absolute;bottom:10px;left:0;right:0;display:flex;gap:6px;justify-content:center;z-index:2">
           ${banners.map((b, i) => `<button data-dot="${i}" aria-label="Show banner ${i + 1}" style="width:9px;height:9px;border-radius:50%;border:0;cursor:pointer;background:${i === 0 ? "#fff" : "rgba(255,255,255,.55)"}"></button>`).join("")}
         </div></div>`;
@@ -452,15 +454,17 @@
     if (!banners || !banners.length) return;   // none → strip stays hidden
     const wrap = document.getElementById("stripBannersWrap");
     const box = document.getElementById("stripBanners");
-    const slideInner = (b) => {
-      const img = `<img src="${escAttr(b.imageUrl)}" alt="${escAttr(b.title || "")}" class="w-full h-full object-cover" />`;
-      return b.linkUrl ? `<a href="${escAttr(b.linkUrl)}" class="block w-full h-full">${img}</a>` : img;
-    };
+    // Natural aspect ratio → the whole strip image shows (no crop). Single → full
+    // image; multiple → an invisible sizer sets the height and slides cross-fade over it.
+    const A = (b, inner, cls) => b.linkUrl
+      ? `<a href="${escAttr(b.linkUrl)}" class="${cls}">${inner}</a>` : inner;
     if (banners.length === 1) {
-      box.innerHTML = `<div class="rounded-2xl overflow-hidden h-24 sm:h-28 md:h-32">${slideInner(banners[0])}</div>`;
+      const b = banners[0];
+      box.innerHTML = `<div class="rounded-2xl overflow-hidden">${A(b, `<img src="${escAttr(b.imageUrl)}" alt="${escAttr(b.title || "")}" class="block w-full h-auto" />`, "block")}</div>`;
     } else {
-      box.innerHTML = `<div class="relative rounded-2xl overflow-hidden h-24 sm:h-28 md:h-32">
-        ${banners.map((b, i) => `<div class="jl-strip-slide" style="position:absolute;inset:0;opacity:${i === 0 ? 1 : 0};transition:opacity .6s">${slideInner(b)}</div>`).join("")}
+      box.innerHTML = `<div class="relative rounded-2xl overflow-hidden">
+        <img src="${escAttr(banners[0].imageUrl)}" alt="" aria-hidden="true" class="block w-full h-auto invisible" />
+        ${banners.map((b, i) => `<div class="jl-strip-slide" style="position:absolute;inset:0;opacity:${i === 0 ? 1 : 0};transition:opacity .6s">${A(b, `<img src="${escAttr(b.imageUrl)}" alt="${escAttr(b.title || "")}" class="w-full h-full object-cover" />`, "block w-full h-full")}</div>`).join("")}
         <div style="position:absolute;bottom:8px;left:0;right:0;display:flex;gap:6px;justify-content:center;z-index:2">
           ${banners.map((b, i) => `<button data-sdot="${i}" aria-label="Show promo ${i + 1}" style="width:8px;height:8px;border-radius:50%;border:0;cursor:pointer;background:${i === 0 ? "#fff" : "rgba(255,255,255,.55)"}"></button>`).join("")}
         </div></div>`;
