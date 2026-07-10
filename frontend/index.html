@@ -136,10 +136,11 @@
     .jl-spin-slow { animation: jlSpinSlow 14s linear infinite; }
     @media (prefers-reduced-motion: reduce) { .jl-float, .jl-spin-slow { animation: none; } }
   </style>
-  <!-- Admin-managed hero banners (replace the static hero below when configured) -->
-  <section id="heroBanners" class="hidden my-5"></section>
+  <!-- Admin-managed hero banners replace ONLY the main (left) panel; the promo cards on the right stay. -->
   <section id="staticHero" class="grid md:grid-cols-[1fr_320px] gap-4 my-5">
-    <div class="relative overflow-hidden rounded-3xl p-8 md:p-10 text-white min-h-[280px] bg-gradient-to-br from-navy via-navy-600 to-brand">
+    <div class="min-h-[280px]">
+      <section id="heroBanners" class="hidden h-full"></section>
+      <div id="staticHeroMain" class="relative overflow-hidden rounded-3xl p-8 md:p-10 text-white min-h-[280px] h-full bg-gradient-to-br from-navy via-navy-600 to-brand">
       <!-- decorative glow blobs fill the panel with depth -->
       <div class="pointer-events-none absolute -top-16 -right-10 w-72 h-72 rounded-full bg-brand/30 blur-3xl"></div>
       <div class="pointer-events-none absolute -bottom-24 right-40 w-64 h-64 rounded-full bg-orange/20 blur-3xl"></div>
@@ -170,6 +171,7 @@
             </div>
           </div>
         </div>
+      </div>
       </div>
     </div>
     <div class="flex flex-col gap-4">
@@ -432,8 +434,9 @@
       box.addEventListener("mouseenter", () => clearInterval(timer));
     }
     box.classList.remove("hidden");
-    const staticHero = document.getElementById("staticHero");
-    if (staticHero) staticHero.classList.add("hidden");
+    // Replace ONLY the main hero panel — the "Furniture Fest"/"Exchange" promo cards stay.
+    const staticMain = document.getElementById("staticHeroMain");
+    if (staticMain) staticMain.classList.add("hidden");
   }
   loadHeroBanners();
 
