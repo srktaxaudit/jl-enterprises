@@ -35,6 +35,13 @@
     "button[data-del]:hover{background:rgba(239,68,68,.12);}" +
     "button[data-edit]:active,button[data-del]:active,button[data-toggle]:active,button[data-view]:active,button[data-orders]:active,button[data-pwd]:active{transform:scale(.93);}" +
     "button[data-edit]:focus-visible,button[data-del]:focus-visible,button[data-toggle]:focus-visible,button[data-view]:focus-visible,button[data-orders]:focus-visible,button[data-pwd]:focus-visible{outline:2px solid #576cbc;outline-offset:2px;}" +
+    // Team page: the "+ Role" (filled) and "Enable / Disable" (outlined) buttons — add hover + press.
+    "button[data-assign],button[data-enable]{cursor:pointer;transition:background-color .15s ease,border-color .15s ease,transform .08s ease;}" +
+    "button[data-assign]:hover{background:#19376d;}" +
+    "button[data-enable][data-on='true']:hover{background:rgba(22,163,74,.10);border-color:#16a34a;}" +
+    "button[data-enable][data-on='false']:hover{background:rgba(220,38,38,.10);border-color:#dc2626;}" +
+    "button[data-assign]:active,button[data-enable]:active{transform:scale(.94);}" +
+    "button[data-assign]:focus-visible,button[data-enable]:focus-visible{outline:2px solid #576cbc;outline-offset:2px;}" +
     // Pagination (Prev / Next) buttons across admin pages all carry the disabled:opacity-40 utility.
     "button[class*='disabled:opacity-40']{cursor:pointer;transition:background-color .15s ease,border-color .15s ease,transform .08s ease;}" +
     "button[class*='disabled:opacity-40']:not(:disabled):hover{border-color:#576cbc;background:rgba(87,108,188,.08);}" +
