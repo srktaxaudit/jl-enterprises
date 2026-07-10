@@ -95,8 +95,9 @@
     return "admin-shell.html?page=" + encodeURIComponent(next);
   }
 
-  // If already logged in, skip the form.
-  JLAuth.me().then(() => location.replace(nextPage())).catch(() => {});
+  // If already logged in AS STAFF, skip the form. A lingering non-staff (customer)
+  // session must not auto-enter the admin — it stays on the login screen.
+  JLAuth.me().then((u) => { if (jlIsStaff(u)) location.replace(nextPage()); }).catch(() => {});
 
   // Real-time inline validation.
   jlField(document.getElementById("email"), [jlV.required(), jlV.email()]);
@@ -109,8 +110,14 @@
     btn.disabled = true;
     btn.textContent = "Signing in…";
     try {
-      await JLAuth.login(document.getElementById("email").value.trim(),
-                         document.getElementById("password").value);
+      const user = await JLAuth.login(document.getElementById("email").value.trim(),
+                                      document.getElementById("password").value);
+      // Staff login is for staff accounts only. A customer account is rejected here
+      // (its just-issued tokens are cleared) so store credentials don't work in the admin.
+      if (!jlIsStaff(user)) {
+        await JLAuth.logout();
+        throw { message: "This isn't a staff account. Please log in from the store instead." };
+      }
       location.replace(nextPage());
     } catch (e) {
       errorBox.textContent = e.message || "Login failed";

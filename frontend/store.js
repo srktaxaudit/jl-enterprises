@@ -94,6 +94,17 @@ const JL_CAT_EMOJI = {
    — no cookies — matching the backend CORS config (allowCredentials=false). */
 const JL_CTOK = "jl_cust_access", JL_CREFRESH = "jl_cust_refresh", JL_CUSER = "jl_cust_user";
 
+// Roles that grant admin-panel access. Such accounts must sign in at the admin login,
+// not the storefront — mirrors admin.js's STAFF_ROLES so the two logins stay complementary.
+const JL_STAFF_ROLES = [
+  "ROLE_SUPER_ADMIN", "ROLE_ADMIN", "ROLE_MANAGER",
+  "ROLE_INVENTORY_MANAGER", "ROLE_ORDER_MANAGER", "ROLE_PRODUCT_MANAGER",
+  "ROLE_MARKETING_MANAGER", "ROLE_CUSTOMER_SUPPORT", "ROLE_ACCOUNTANT",
+];
+function jlUserIsStaff(user) {
+  return !!user && (user.roles || []).some((r) => JL_STAFF_ROLES.includes(r));
+}
+
 /** Authenticated JSON call (customer bearer token). Shares the retry/backoff in
     jlFetchJson so auth flows also survive a free-tier cold start. */
 function jlAuthApi(path, body, method) {

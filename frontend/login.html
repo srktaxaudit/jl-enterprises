@@ -108,8 +108,12 @@
     // Shown while a cold free-tier backend spins up (see jlAuthApi retry)
     window.JL_ON_WAKE = () => { if (btn.disabled) btn.textContent = "Waking up the server… please wait"; };
 
-    // Already logged in? Skip straight to the destination.
-    if (JLCustomer.isLoggedIn()) location.replace(next || "index.html");
+    // Already logged in as a customer? Skip straight to the destination. A lingering
+    // staff session must not auto-enter the store — clear it and stay on the login.
+    if (JLCustomer.isLoggedIn()) {
+      if (jlUserIsStaff(JLCustomer.user())) JLCustomer.logout();
+      else location.replace(next || "index.html");
+    }
 
     // Forgot password → email a reset link (backend always replies success, so we
     // can't confirm the address exists — that's intentional, to avoid user enumeration).
@@ -173,7 +177,15 @@
       if (!user || !pass) { showError("Please enter your email/mobile and password."); return; }
       btn.disabled = true; const old = btn.textContent; btn.textContent = "Logging in…";
       try {
-        await JLCustomer.login(user, pass, true);
+        const d = await JLCustomer.login(user, pass, true);
+        // The storefront login is for customers only. A staff/admin account is rejected
+        // here (its just-issued session is cleared) so admin credentials don't work here.
+        if (jlUserIsStaff(d && d.user)) {
+          JLCustomer.logout();
+          btn.disabled = false; btn.textContent = old;
+          showError("This is a staff account — please sign in from the admin login.");
+          return;
+        }
         showSuccess(form, "loginSuccess");
         setTimeout(() => location.replace(next || "index.html"), 700);
       } catch (err) {
