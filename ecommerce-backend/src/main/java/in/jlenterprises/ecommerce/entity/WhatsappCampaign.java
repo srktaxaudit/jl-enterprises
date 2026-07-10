@@ -45,6 +45,10 @@ public class WhatsappCampaign extends BaseEntity {
     @Column(name = "city_filter", length = 80)
     private String cityFilter;
 
+    /** Comma-separated user ids when audienceType = MANUAL (hand-picked recipients). */
+    @Column(name = "manual_recipient_ids", columnDefinition = "text")
+    private String manualRecipientIds;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "campaign_status", nullable = false, length = 20)
     private WhatsappCampaignStatus campaignStatus = WhatsappCampaignStatus.DRAFT;
