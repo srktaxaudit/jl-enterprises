@@ -2,7 +2,13 @@ package in.jlenterprises.ecommerce.service.impl;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import in.jlenterprises.ecommerce.constant.WhatsappMessageStatus;
+import in.jlenterprises.ecommerce.entity.User;
+import in.jlenterprises.ecommerce.entity.WhatsappChatMessage;
+import in.jlenterprises.ecommerce.entity.WhatsappConversation;
 import in.jlenterprises.ecommerce.entity.WhatsappMessageLog;
+import in.jlenterprises.ecommerce.repository.UserRepository;
+import in.jlenterprises.ecommerce.repository.WhatsappChatMessageRepository;
+import in.jlenterprises.ecommerce.repository.WhatsappConversationRepository;
 import in.jlenterprises.ecommerce.repository.WhatsappMessageLogRepository;
 import in.jlenterprises.ecommerce.service.WhatsappCampaignService;
 import in.jlenterprises.ecommerce.service.WhatsappWebhookService;
@@ -13,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -23,10 +30,18 @@ public class WhatsappWebhookServiceImpl implements WhatsappWebhookService {
 
     private final WhatsappMessageLogRepository logRepo;
     private final WhatsappCampaignService campaigns;
+    private final WhatsappConversationRepository conversationRepo;
+    private final WhatsappChatMessageRepository chatRepo;
+    private final UserRepository userRepo;
 
-    public WhatsappWebhookServiceImpl(WhatsappMessageLogRepository logRepo, WhatsappCampaignService campaigns) {
+    public WhatsappWebhookServiceImpl(WhatsappMessageLogRepository logRepo, WhatsappCampaignService campaigns,
+                                      WhatsappConversationRepository conversationRepo,
+                                      WhatsappChatMessageRepository chatRepo, UserRepository userRepo) {
         this.logRepo = logRepo;
         this.campaigns = campaigns;
+        this.conversationRepo = conversationRepo;
+        this.chatRepo = chatRepo;
+        this.userRepo = userRepo;
     }
 
     @Override
@@ -41,13 +56,20 @@ public class WhatsappWebhookServiceImpl implements WhatsappWebhookService {
                 JsonNode changes = entry.path("changes");
                 if (!changes.isArray()) continue;
                 for (JsonNode change : changes) {
-                    JsonNode statuses = change.path("value").path("statuses");
+                    JsonNode value = change.path("value");
+                    JsonNode statuses = value.path("statuses");
                     if (statuses.isArray()) {
                         for (JsonNode s : statuses) {
                             if (applyStatus(s, affectedCampaigns)) updated++;
                         }
                     }
-                    // change.path("value").path("messages") = inbound messages -> Phase 5 (Inbox). Ignored here.
+                    JsonNode messages = value.path("messages");
+                    if (messages.isArray()) {
+                        String contactName = extractContactName(value);
+                        for (JsonNode m : messages) {
+                            if (applyInbound(m, contactName)) updated++;
+                        }
+                    }
                 }
             }
         }
@@ -68,7 +90,7 @@ public class WhatsappWebhookServiceImpl implements WhatsappWebhookService {
         if (providerId == null || next == null) return false;
 
         WhatsappMessageLog m = logRepo.findByProviderMessageId(providerId).orElse(null);
-        if (m == null) return false;
+        if (m == null) return applyChatStatus(providerId, next, s);
 
         Instant ts = parseTimestamp(s.path("timestamp"));
         if (shouldAdvance(m.getMessageStatus(), next)) {
@@ -91,6 +113,80 @@ public class WhatsappWebhookServiceImpl implements WhatsappWebhookService {
         logRepo.save(m);
         if (m.getCampaign() != null) affected.add(m.getCampaign().getId());
         return true;
+    }
+
+    /** Status update for an Inbox chat reply (Phase 5). Returns true when a chat message matched. */
+    private boolean applyChatStatus(String providerId, WhatsappMessageStatus next, JsonNode s) {
+        WhatsappChatMessage m = chatRepo.findByProviderMessageId(providerId).orElse(null);
+        if (m == null) return false;
+        if (shouldAdvance(m.getMessageStatus(), next)) {
+            m.setMessageStatus(next);
+            if (next == WhatsappMessageStatus.FAILED) m.setError(extractError(s));
+            chatRepo.save(m);
+        }
+        return true;
+    }
+
+    /** Store one inbound customer message and roll it up onto its conversation (Phase 5 Inbox). */
+    private boolean applyInbound(JsonNode m, String contactName) {
+        String providerId = text(m, "id");
+        String from = text(m, "from");
+        if (from == null || from.isBlank()) return false;
+        if (providerId != null && chatRepo.existsByProviderMessageId(providerId)) return false; // webhook retry
+
+        String type = m.path("type").asText("text");
+        String body = "text".equals(type)
+                ? m.path("text").path("body").asText("")
+                : ("button".equals(type)
+                        ? m.path("button").path("text").asText("[button reply]")
+                        : "[" + type + " message]");
+        if (body.isBlank()) body = "[" + type + " message]";
+        if (body.length() > 2000) body = body.substring(0, 2000);
+        Instant at = parseTimestamp(m.path("timestamp"));
+
+        WhatsappConversation conv = conversationRepo.findByPhone(from).orElseGet(() -> {
+            WhatsappConversation c = new WhatsappConversation();
+            c.setPhone(from);
+            c.setUserId(matchUserId(from));
+            return c;
+        });
+        if (contactName != null && !contactName.isBlank()) conv.setContactName(contactName);
+        conv.setLastMessageAt(at);
+        conv.setLastInboundAt(at);
+        conv.setLastPreview(body.length() > 200 ? body.substring(0, 200) : body);
+        conv.setUnreadCount(conv.getUnreadCount() + 1);
+        conv = conversationRepo.save(conv);
+
+        WhatsappChatMessage msg = new WhatsappChatMessage();
+        msg.setConversation(conv);
+        msg.setDirection("IN");
+        msg.setMessageType(type.length() > 20 ? type.substring(0, 20) : type);
+        msg.setBody(body);
+        msg.setProviderMessageId(providerId);
+        msg.setMessageStatus(WhatsappMessageStatus.DELIVERED);
+        msg.setEventAt(at);
+        chatRepo.save(msg);
+        return true;
+    }
+
+    /** Best-effort: map the sender's number to a store customer by its last 10 digits. */
+    private UUID matchUserId(String phone) {
+        try {
+            String d = phone.replaceAll("[^0-9]", "");
+            if (d.length() < 10) return null;
+            List<User> users = userRepo.findByPhoneLast10(d.substring(d.length() - 10));
+            return users.isEmpty() ? null : users.get(0).getId();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static String extractContactName(JsonNode value) {
+        JsonNode contacts = value.path("contacts");
+        if (contacts.isArray() && !contacts.isEmpty()) {
+            return contacts.get(0).path("profile").path("name").asText(null);
+        }
+        return null;
     }
 
     /** Forward-only transitions (queued<sent<delivered<read); FAILED only applies before delivery. */
