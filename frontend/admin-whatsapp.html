@@ -47,6 +47,7 @@
       <button type="button" class="tab active" data-tab="compose">Compose</button>
       <button type="button" class="tab" data-tab="campaigns">Campaigns</button>
       <button type="button" class="tab" data-tab="templates">Templates</button>
+      <button type="button" class="tab" data-tab="automation">Automation</button>
       <button type="button" class="tab" data-tab="delivery">Delivery log</button>
     </div>
 
@@ -222,6 +223,17 @@
       <div id="templateList" class="space-y-3"></div>
     </section>
 
+    <!-- ── AUTOMATION ── -->
+    <section id="tab-automation" class="hidden">
+      <div class="bg-white border border-slate-200 rounded-2xl p-4 mb-4 text-[13px] text-slate-500">
+        Send an automatic WhatsApp message to the customer when a store event happens.
+        Pick an <b>approved template</b> for each event and switch it on. Templates can use
+        <b>{{name}}</b>, <b>{{order}}</b> and <b>{{amount}}</b> — live sends pass them as the
+        template's 3 body variables ({{1}}=name, {{2}}=order no, {{3}}=amount).
+      </div>
+      <div id="autoList" class="space-y-3"></div>
+    </section>
+
     <!-- ── DELIVERY LOG ── -->
     <section id="tab-delivery" class="hidden">
       <div class="bg-white border border-slate-200 rounded-2xl p-4 mb-4 flex flex-wrap items-end gap-3">
@@ -296,12 +308,60 @@
   document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", ()=>{
     document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
     t.classList.add("active");
-    ["connection","compose","campaigns","templates","delivery"].forEach(n => $("tab-"+n).classList.toggle("hidden", n !== t.dataset.tab));
+    ["connection","compose","campaigns","templates","automation","delivery"].forEach(n => $("tab-"+n).classList.toggle("hidden", n !== t.dataset.tab));
     if (t.dataset.tab === "connection") loadConnection();
     if (t.dataset.tab === "campaigns") loadCampaigns();
     if (t.dataset.tab === "templates") loadTemplates();
+    if (t.dataset.tab === "automation") loadAutomation();
     if (t.dataset.tab === "delivery") loadDelivery(0);
   }));
+
+  // ── automation ──
+  const AUTO_META = {
+    ORDER_PLACED:        ["🛒 Order placed",     "Confirmation as soon as a customer places an order."],
+    PAYMENT_RECEIVED:    ["💳 Payment received", "Thank-you when an online or manual payment is confirmed."],
+    ORDER_SHIPPED:       ["📦 Order shipped",    "When staff mark the order as shipped."],
+    ORDER_OUT_FOR_DELIVERY:["🚚 Out for delivery","When the order goes out for delivery."],
+    ORDER_DELIVERED:     ["✅ Order delivered",  "When the order is marked delivered."],
+    ORDER_CANCELLED:     ["✖ Order cancelled",   "When an order is cancelled (by staff or the customer)."],
+    ABANDONED_CHECKOUT:  ["🕗 Abandoned checkout","Nudge when an unpaid online order auto-expires — invite them to complete the purchase."]
+  };
+  async function loadAutomation(){
+    $("autoList").innerHTML = `<div class="text-slate-400 text-sm">Loading…</div>`;
+    try {
+      const [rules, tmpls] = await Promise.all([jlApi(API + "/automation"), jlApi(API + "/templates")]);
+      window.__templates = tmpls;
+      $("autoList").innerHTML = rules.map(r => {
+        const [title, desc] = AUTO_META[r.event] || [r.event, ""];
+        const opts = `<option value="">— No template —</option>` + tmpls.map(t =>
+          `<option value="${t.id}" ${t.id===r.templateId?"selected":""}>${esc(t.name)}${t.metaStatus?` (${esc(t.metaStatus)})`:""}</option>`).join("");
+        return `
+        <div class="bg-white border border-slate-200 rounded-2xl p-4 flex flex-wrap items-center gap-3" data-event="${r.event}">
+          <div class="min-w-[220px] flex-1">
+            <div class="font-semibold text-navy">${title}</div>
+            <div class="text-[12px] text-slate-400 mt-0.5">${desc}</div>
+            ${(r.sentCount||r.failedCount) ? `<div class="text-[11px] text-slate-400 mt-1">${r.sentCount} sent · ${r.failedCount} failed</div>` : ``}
+          </div>
+          <select class="inp aTmpl" style="max-width:230px">${opts}</select>
+          <label class="flex items-center gap-2 text-[13px] font-semibold ${r.enabled?"text-green-600":"text-slate-400"}">
+            <input type="checkbox" class="aOn" ${r.enabled?"checked":""} /> ${r.enabled?"ON":"OFF"}
+          </label>
+        </div>`;
+      }).join("");
+      document.querySelectorAll("#autoList [data-event]").forEach(row => {
+        const save = async () => {
+          const body = { enabled: row.querySelector(".aOn").checked, templateId: row.querySelector(".aTmpl").value || null };
+          try {
+            const r = await jlApi(API + "/automation/" + row.dataset.event, { method:"PUT", body });
+            jlToast(AUTO_META[r.event][0] + (r.enabled ? " is ON" : " is off"), { type: r.enabled ? "success" : "info" });
+            loadAutomation();
+          } catch(e){ jlToast(e.message||"Could not save", {type:"error"}); loadAutomation(); }
+        };
+        row.querySelector(".aOn").addEventListener("change", save);
+        row.querySelector(".aTmpl").addEventListener("change", save);
+      });
+    } catch(e){ $("autoList").innerHTML = `<div class="text-red-600 text-sm">${esc(e.message||"Failed to load")}</div>`; }
+  }
 
   // ── connection ──
   function qualityTone(q){ return ({ GREEN:"text-green-600", YELLOW:"text-amber-600", RED:"text-red-600" }[q] || "text-slate-500"); }

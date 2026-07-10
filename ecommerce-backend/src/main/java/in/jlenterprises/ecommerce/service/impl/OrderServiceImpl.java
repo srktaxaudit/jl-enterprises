@@ -4,6 +4,7 @@ import in.jlenterprises.ecommerce.audit.Auditable;
 import in.jlenterprises.ecommerce.constant.NotificationType;
 import in.jlenterprises.ecommerce.constant.OrderStatus;
 import in.jlenterprises.ecommerce.constant.PaymentStatus;
+import in.jlenterprises.ecommerce.constant.WhatsappAutomationEvent;
 import in.jlenterprises.ecommerce.dto.order.InvoiceDto;
 import in.jlenterprises.ecommerce.dto.order.OrderDto;
 import in.jlenterprises.ecommerce.dto.order.OrderSummaryDto;
@@ -31,6 +32,7 @@ import in.jlenterprises.ecommerce.request.order.PlaceOrderRequest;
 import in.jlenterprises.ecommerce.service.CouponService;
 import in.jlenterprises.ecommerce.service.NotificationService;
 import in.jlenterprises.ecommerce.service.OrderService;
+import in.jlenterprises.ecommerce.service.WhatsappAutomationService;
 import in.jlenterprises.ecommerce.util.OrderNumberGenerator;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -61,13 +63,15 @@ public class OrderServiceImpl implements OrderService {
     private final OrderMapper orderMapper;
     private final BillingConfig billingConfig;
     private final in.jlenterprises.ecommerce.service.ExchangeService exchangeService;
+    private final WhatsappAutomationService whatsappAutomation;
 
     public OrderServiceImpl(OrderRepository orderRepository, CartRepository cartRepository,
                             AddressRepository addressRepository, InventoryRepository inventoryRepository,
                             PaymentRepository paymentRepository, CouponService couponService,
                             NotificationService notificationService, OrderNumberGenerator orderNumberGenerator,
                             OrderMapper orderMapper, BillingConfig billingConfig,
-                            in.jlenterprises.ecommerce.service.ExchangeService exchangeService) {
+                            in.jlenterprises.ecommerce.service.ExchangeService exchangeService,
+                            WhatsappAutomationService whatsappAutomation) {
         this.orderRepository = orderRepository;
         this.cartRepository = cartRepository;
         this.addressRepository = addressRepository;
@@ -79,6 +83,7 @@ public class OrderServiceImpl implements OrderService {
         this.orderMapper = orderMapper;
         this.billingConfig = billingConfig;
         this.exchangeService = exchangeService;
+        this.whatsappAutomation = whatsappAutomation;
     }
 
     @Override
@@ -198,6 +203,7 @@ public class OrderServiceImpl implements OrderService {
         notificationService.notifyAdmins(NotificationType.ORDER, "New order placed",
                 "Order " + saved.getOrderNumber() + " for " + saved.getCurrency() + " " + saved.getGrandTotal()
                         + " was placed by " + user.getEmail() + ".", "/admin-orders.html");
+        whatsappAutomation.fire(WhatsappAutomationEvent.ORDER_PLACED, saved);
 
         return orderMapper.toDto(saved);
     }
@@ -242,6 +248,7 @@ public class OrderServiceImpl implements OrderService {
                     "Order " + order.getOrderNumber() + " was auto-cancelled and its stock released — "
                             + "the online payment was not completed.",
                     "/admin-orders.html", "Orders", order.getId(), "ORDER");
+            whatsappAutomation.fire(WhatsappAutomationEvent.ABANDONED_CHECKOUT, order);
         }
         if (!abandoned.isEmpty()) orderRepository.saveAll(abandoned);
         return abandoned.size();
@@ -342,6 +349,14 @@ public class OrderServiceImpl implements OrderService {
         notificationService.notifyUser(order.getUser().getId(), NotificationType.ORDER,
                 "Order update", "Your order " + order.getOrderNumber() + " is now " + status + ".",
                 "/orders/" + order.getId());
+        WhatsappAutomationEvent event = switch (status) {
+            case SHIPPED -> WhatsappAutomationEvent.ORDER_SHIPPED;
+            case OUT_FOR_DELIVERY -> WhatsappAutomationEvent.ORDER_OUT_FOR_DELIVERY;
+            case DELIVERED -> WhatsappAutomationEvent.ORDER_DELIVERED;
+            case CANCELLED -> WhatsappAutomationEvent.ORDER_CANCELLED;
+            default -> null;
+        };
+        if (event != null) whatsappAutomation.fire(event, order);
         return orderMapper.toDto(orderRepository.save(order));
     }
 

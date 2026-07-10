@@ -49,6 +49,10 @@ public class WhatsappCampaign extends BaseEntity {
     @Column(name = "manual_recipient_ids", columnDefinition = "text")
     private String manualRecipientIds;
 
+    /** Set on the per-event container campaigns that collect automation sends (Phase 4). */
+    @Column(name = "automation_event", length = 40)
+    private String automationEvent;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "campaign_status", nullable = false, length = 20)
     private WhatsappCampaignStatus campaignStatus = WhatsappCampaignStatus.DRAFT;

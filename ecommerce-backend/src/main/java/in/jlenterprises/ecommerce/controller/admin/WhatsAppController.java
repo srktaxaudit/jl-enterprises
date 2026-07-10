@@ -1,11 +1,13 @@
 package in.jlenterprises.ecommerce.controller.admin;
 
 import in.jlenterprises.ecommerce.constant.WhatsappAudienceType;
+import in.jlenterprises.ecommerce.constant.WhatsappAutomationEvent;
 import in.jlenterprises.ecommerce.constant.WhatsappMessageStatus;
 import in.jlenterprises.ecommerce.dto.admin.BroadcastRequest;
 import in.jlenterprises.ecommerce.dto.admin.BroadcastResult;
 import in.jlenterprises.ecommerce.dto.whatsapp.AudienceCustomerDto;
 import in.jlenterprises.ecommerce.dto.whatsapp.AudiencePreviewDto;
+import in.jlenterprises.ecommerce.dto.whatsapp.AutomationRuleDto;
 import in.jlenterprises.ecommerce.dto.whatsapp.CampaignAnalyticsDto;
 import in.jlenterprises.ecommerce.dto.whatsapp.CampaignDetailDto;
 import in.jlenterprises.ecommerce.dto.whatsapp.CampaignDto;
@@ -14,12 +16,14 @@ import in.jlenterprises.ecommerce.dto.whatsapp.DeliveryLogDto;
 import in.jlenterprises.ecommerce.dto.whatsapp.TemplateDto;
 import in.jlenterprises.ecommerce.dto.whatsapp.TemplateSyncResult;
 import in.jlenterprises.ecommerce.dto.whatsapp.TestSendResult;
+import in.jlenterprises.ecommerce.request.whatsapp.AutomationRuleRequest;
 import in.jlenterprises.ecommerce.request.whatsapp.CampaignRequest;
 import in.jlenterprises.ecommerce.request.whatsapp.ConnectionRequest;
 import in.jlenterprises.ecommerce.request.whatsapp.TemplateRequest;
 import in.jlenterprises.ecommerce.request.whatsapp.TestSendRequest;
 import in.jlenterprises.ecommerce.response.ApiResponse;
 import in.jlenterprises.ecommerce.response.PageResponse;
+import in.jlenterprises.ecommerce.service.WhatsappAutomationService;
 import in.jlenterprises.ecommerce.service.WhatsappCampaignService;
 import in.jlenterprises.ecommerce.service.WhatsappConnectionService;
 import in.jlenterprises.ecommerce.service.WhatsappTemplateService;
@@ -56,12 +60,28 @@ public class WhatsAppController {
     private final WhatsappCampaignService campaigns;
     private final WhatsappTemplateService templates;
     private final WhatsappConnectionService connection;
+    private final WhatsappAutomationService automation;
 
     public WhatsAppController(WhatsappCampaignService campaigns, WhatsappTemplateService templates,
-                             WhatsappConnectionService connection) {
+                             WhatsappConnectionService connection, WhatsappAutomationService automation) {
         this.campaigns = campaigns;
         this.templates = templates;
         this.connection = connection;
+        this.automation = automation;
+    }
+
+    // ── Automation ──
+    @GetMapping("/automation")
+    @Operation(summary = "All automation events with their rule state")
+    public ApiResponse<List<AutomationRuleDto>> automationRules() {
+        return ApiResponse.success(automation.list());
+    }
+
+    @PutMapping("/automation/{event}")
+    @Operation(summary = "Enable/disable an event and set its template")
+    public ApiResponse<AutomationRuleDto> updateAutomationRule(@PathVariable WhatsappAutomationEvent event,
+                                                               @Valid @RequestBody AutomationRuleRequest request) {
+        return ApiResponse.success("Automation updated", automation.update(event, request));
     }
 
     // ── Connection ──
