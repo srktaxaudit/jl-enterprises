@@ -3,6 +3,7 @@ package in.jlenterprises.ecommerce.service;
 import in.jlenterprises.ecommerce.constant.WhatsappAudienceType;
 import in.jlenterprises.ecommerce.constant.WhatsappMessageStatus;
 import in.jlenterprises.ecommerce.dto.admin.BroadcastResult;
+import in.jlenterprises.ecommerce.dto.whatsapp.AudienceCustomerDto;
 import in.jlenterprises.ecommerce.dto.whatsapp.AudiencePreviewDto;
 import in.jlenterprises.ecommerce.dto.whatsapp.CampaignAnalyticsDto;
 import in.jlenterprises.ecommerce.dto.whatsapp.CampaignDetailDto;
@@ -37,4 +38,12 @@ public interface WhatsappCampaignService {
     /** Filtered, paged global delivery log. */
     Page<DeliveryLogDto> deliveryLog(WhatsappMessageStatus status, UUID campaignId, String phone,
                                      Instant from, Instant to, Pageable pageable);
+
+    /** Filtered, paged customers for the broadcast audience picker (Phase 3). */
+    Page<AudienceCustomerDto> audienceCustomers(UUID categoryId, String city, Boolean optedIn,
+                                                Boolean phoneVerified, Boolean ordered, Boolean emi,
+                                                String search, Pageable pageable);
+
+    /** Distinct saved cities for the picker's city dropdown. */
+    java.util.List<String> audienceCities();
 }

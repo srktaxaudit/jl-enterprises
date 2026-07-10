@@ -5,6 +5,7 @@ import in.jlenterprises.ecommerce.constant.WhatsappAudienceType;
 import in.jlenterprises.ecommerce.constant.WhatsappCampaignStatus;
 import in.jlenterprises.ecommerce.constant.WhatsappMessageStatus;
 import in.jlenterprises.ecommerce.dto.admin.BroadcastResult;
+import in.jlenterprises.ecommerce.dto.whatsapp.AudienceCustomerDto;
 import in.jlenterprises.ecommerce.dto.whatsapp.AudiencePreviewDto;
 import in.jlenterprises.ecommerce.dto.whatsapp.CampaignAnalyticsDto;
 import in.jlenterprises.ecommerce.dto.whatsapp.CampaignDetailDto;
@@ -27,13 +28,19 @@ import in.jlenterprises.ecommerce.service.WhatsappCampaignService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class WhatsappCampaignServiceImpl implements WhatsappCampaignService {
@@ -65,7 +72,32 @@ public class WhatsappCampaignServiceImpl implements WhatsappCampaignService {
             case VERIFIED_OPTED_IN -> userRepo.findByWhatsappOptInTrueAndPhoneVerifiedTrueAndPhoneNotNull();
             case HAS_ORDERED -> userRepo.findOptedInWithOrders();
             case EVERYONE_WITH_PHONE -> userRepo.findByPhoneNotNull();
+            case MANUAL -> List.of(); // manual recipients come from the campaign, not the type — see resolveRecipients
         };
+    }
+
+    /** The actual recipients for a campaign: hand-picked ids for MANUAL, else the audience type. */
+    private List<User> resolveRecipients(WhatsappCampaign c) {
+        if (c.getAudienceType() == WhatsappAudienceType.MANUAL) {
+            List<UUID> ids = parseIds(c.getManualRecipientIds());
+            if (ids.isEmpty()) return List.of();
+            return userRepo.findAllById(ids).stream()
+                    .filter(u -> u.getPhone() != null && !u.getPhone().isBlank())
+                    .toList();
+        }
+        return resolveAudience(c.getAudienceType());
+    }
+
+    private static List<UUID> parseIds(String csv) {
+        if (csv == null || csv.isBlank()) return List.of();
+        List<UUID> out = new ArrayList<>();
+        for (String s : csv.split(",")) {
+            String t = s.trim();
+            if (!t.isEmpty()) {
+                try { out.add(UUID.fromString(t)); } catch (IllegalArgumentException ignore) { /* skip bad id */ }
+            }
+        }
+        return out;
     }
 
     @Override
@@ -97,6 +129,15 @@ public class WhatsappCampaignServiceImpl implements WhatsappCampaignService {
         c.setAudienceType(r.audienceType());
         c.setCityFilter(r.cityFilter() == null || r.cityFilter().isBlank() ? null : r.cityFilter().trim());
 
+        if (r.audienceType() == WhatsappAudienceType.MANUAL) {
+            List<UUID> ids = r.recipientCustomerIds() == null ? List.of()
+                    : r.recipientCustomerIds().stream().filter(java.util.Objects::nonNull).distinct().toList();
+            if (ids.isEmpty()) {
+                throw new BusinessException("Pick at least one recipient for a hand-picked broadcast.");
+            }
+            c.setManualRecipientIds(ids.stream().map(UUID::toString).collect(Collectors.joining(",")));
+        }
+
         if (r.templateId() != null) {
             WhatsappTemplate t = templateRepo.findById(r.templateId())
                     .orElseThrow(() -> ResourceNotFoundException.of("WhatsappTemplate", r.templateId()));
@@ -120,7 +161,7 @@ public class WhatsappCampaignServiceImpl implements WhatsappCampaignService {
                 && c.getCampaignStatus() != WhatsappCampaignStatus.SCHEDULED) {
             throw new BusinessException("This campaign has already been sent.");
         }
-        List<User> recipients = resolveAudience(c.getAudienceType());
+        List<User> recipients = resolveRecipients(c);
         if (recipients.isEmpty()) {
             throw new BusinessException("No customers match this audience yet.");
         }
@@ -332,6 +373,75 @@ public class WhatsappCampaignServiceImpl implements WhatsappCampaignService {
         return new DeliveryLogDto(m.getId(), c == null ? null : c.getId(), c == null ? null : c.getName(),
                 m.getRecipientName(), m.getPhone(), m.getMessageStatus(), m.getProviderMessageId(),
                 m.getError(), m.getAttempts(), m.getCreatedAt(), m.getSentAt(), m.getDeliveredAt(), m.getReadAt());
+    }
+
+    // ── Broadcast audience picker (Phase 3) ──
+    @Override
+    @Transactional(readOnly = true)
+    public Page<AudienceCustomerDto> audienceCustomers(UUID categoryId, String city, Boolean optedIn,
+                                                       Boolean phoneVerified, Boolean ordered, Boolean emi,
+                                                       String search, Pageable pageable) {
+        // Base: everyone contactable. Filters intersect id-sets (one query per active facet) —
+        // audience sizes here are retailer-scale (thousands), so in-memory intersection is fine
+        // and matches how the enum audiences already load full lists.
+        List<User> users = userRepo.findByPhoneNotNull();
+
+        Set<UUID> orderedIds = new HashSet<>(userRepo.findUserIdsWithOrders());
+        if (Boolean.TRUE.equals(optedIn)) users = users.stream().filter(User::isWhatsappOptIn).toList();
+        if (Boolean.TRUE.equals(phoneVerified)) users = users.stream().filter(User::isPhoneVerified).toList();
+        if (ordered != null) {
+            users = users.stream().filter(u -> orderedIds.contains(u.getId()) == ordered).toList();
+        }
+        if (categoryId != null) {
+            Set<UUID> catIds = new HashSet<>(userRepo.findUserIdsWhoBoughtCategory(categoryId));
+            users = users.stream().filter(u -> catIds.contains(u.getId())).toList();
+        }
+        if (city != null && !city.isBlank()) {
+            Set<UUID> cityIds = new HashSet<>(userRepo.findUserIdsInCity(city.trim()));
+            users = users.stream().filter(u -> cityIds.contains(u.getId())).toList();
+        }
+        if (Boolean.TRUE.equals(emi)) {
+            Set<String> emiLast10 = userRepo.findEmiRequestPhones().stream()
+                    .map(WhatsappCampaignServiceImpl::last10).filter(java.util.Objects::nonNull)
+                    .collect(Collectors.toSet());
+            users = users.stream().filter(u -> emiLast10.contains(last10(u.getPhone()))).toList();
+        }
+        if (search != null && !search.isBlank()) {
+            String q = search.trim().toLowerCase();
+            users = users.stream().filter(u ->
+                    nameOf(u).toLowerCase().contains(q)
+                    || (u.getPhone() != null && u.getPhone().replaceAll("[^0-9]", "").contains(q.replaceAll("[^0-9]", "")) && !q.replaceAll("[^0-9]", "").isEmpty())
+            ).toList();
+        }
+
+        List<User> sorted = users.stream().sorted(Comparator.comparing(this::nameOf, String.CASE_INSENSITIVE_ORDER)).toList();
+        int start = (int) Math.min(pageable.getOffset(), sorted.size());
+        int end = Math.min(start + pageable.getPageSize(), sorted.size());
+        List<User> slice = sorted.subList(start, end);
+
+        // Label just the visible page with each customer's saved city.
+        java.util.Map<UUID, String> cityOf = new java.util.HashMap<>();
+        if (!slice.isEmpty()) {
+            for (Object[] row : userRepo.findCitiesForUsers(slice.stream().map(User::getId).toList())) {
+                cityOf.put((UUID) row[0], (String) row[1]);
+            }
+        }
+        List<AudienceCustomerDto> content = slice.stream().map(u -> new AudienceCustomerDto(
+                u.getId(), nameOf(u), u.getPhone(), cityOf.get(u.getId()),
+                u.isWhatsappOptIn(), u.isPhoneVerified(), orderedIds.contains(u.getId()))).toList();
+        return new PageImpl<>(content, pageable, sorted.size());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<String> audienceCities() {
+        return userRepo.findDistinctCities();
+    }
+
+    private static String last10(String phone) {
+        if (phone == null) return null;
+        String d = phone.replaceAll("[^0-9]", "");
+        return d.length() < 10 ? null : d.substring(d.length() - 10);
     }
 
     // ── helpers ──

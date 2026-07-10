@@ -129,6 +129,7 @@
               <option value="VERIFIED_OPTED_IN">Opted-in + verified phone</option>
               <option value="HAS_ORDERED">Opted-in past buyers</option>
               <option value="EVERYONE_WITH_PHONE">Everyone with a phone (test)</option>
+              <option value="MANUAL">🎯 Choose recipients (hand-pick)</option>
             </select>
             <p id="audienceInfo" class="text-[12px] text-slate-500 mt-2">…</p>
           </div>
@@ -136,6 +137,49 @@
             <label class="block text-[13px] font-semibold text-slate-600 mb-1">Preview</label>
             <div id="preview" class="wa-preview text-[13px] bg-[#e7ffdb] border border-green-200 rounded-lg p-3 min-h-[72px] whitespace-pre-wrap text-slate-700"></div>
           </div>
+        </div>
+
+        <!-- hand-pick recipient picker (shown when Audience = MANUAL) -->
+        <div id="pickerPanel" class="hidden border border-slate-200 rounded-xl p-4 bg-slate-50/60 space-y-3">
+          <div class="flex flex-wrap items-end gap-3">
+            <div>
+              <label class="block text-[12px] font-semibold text-slate-500 mb-1">Bought from category</label>
+              <select id="pCategory" class="inp" style="min-width:170px"><option value="">Any category</option></select>
+            </div>
+            <div>
+              <label class="block text-[12px] font-semibold text-slate-500 mb-1">City</label>
+              <select id="pCity" class="inp" style="min-width:140px"><option value="">Any city</option></select>
+            </div>
+            <div>
+              <label class="block text-[12px] font-semibold text-slate-500 mb-1">Search</label>
+              <input id="pSearch" class="inp" style="min-width:170px" placeholder="Name or phone" />
+            </div>
+            <button id="pLoad" class="bg-navy hover:bg-navy-600 text-white font-semibold rounded-lg px-4 py-2 text-sm">Find customers</button>
+          </div>
+          <div class="flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-slate-600">
+            <label class="flex items-center gap-1.5"><input type="checkbox" id="pOptedIn" checked /> Opted-in</label>
+            <label class="flex items-center gap-1.5"><input type="checkbox" id="pVerified" /> Phone verified</label>
+            <label class="flex items-center gap-1.5"><input type="checkbox" id="pOrdered" /> Has ordered</label>
+            <label class="flex items-center gap-1.5"><input type="checkbox" id="pNeverOrdered" /> Never ordered</label>
+            <label class="flex items-center gap-1.5"><input type="checkbox" id="pEmi" /> EMI customers</label>
+          </div>
+          <div class="bg-white border border-slate-200 rounded-lg">
+            <div class="flex items-center gap-2 px-3 py-2 border-b border-slate-100 text-[13px]">
+              <label class="flex items-center gap-1.5 font-semibold text-slate-600"><input type="checkbox" id="pAll" /> Select all shown</label>
+              <span id="pCount" class="ml-auto text-slate-500">0 selected</span>
+            </div>
+            <div id="pList" class="max-h-[260px] overflow-auto divide-y divide-slate-100">
+              <div class="px-3 py-5 text-center text-slate-400 text-[13px]">Use the filters above, then “Find customers”.</div>
+            </div>
+            <div class="flex items-center justify-between px-3 py-2 border-t border-slate-100 text-[12px] text-slate-500">
+              <span id="pInfo">—</span>
+              <span class="flex gap-2">
+                <button id="pPrev" class="border border-slate-300 rounded-lg px-3 py-1 font-semibold hover:bg-slate-50 disabled:opacity-40">Prev</button>
+                <button id="pNext" class="border border-slate-300 rounded-lg px-3 py-1 font-semibold hover:bg-slate-50 disabled:opacity-40">Next</button>
+              </span>
+            </div>
+          </div>
+          <p class="text-[12px] text-slate-400">Selections are kept while you page through and filter. Ticked customers receive the campaign.</p>
         </div>
 
         <div class="flex flex-wrap items-center gap-2 pt-1">
@@ -239,7 +283,7 @@
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c)=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
   const $ = (id) => document.getElementById(id);
   const API = "/api/v1/admin/whatsapp";
-  const AUD_LABEL = { ALL_OPTED_IN:"Opted-in customers", VERIFIED_OPTED_IN:"Opted-in + verified", HAS_ORDERED:"Opted-in past buyers", EVERYONE_WITH_PHONE:"Everyone with a phone" };
+  const AUD_LABEL = { ALL_OPTED_IN:"Opted-in customers", VERIFIED_OPTED_IN:"Opted-in + verified", HAS_ORDERED:"Opted-in past buyers", EVERYONE_WITH_PHONE:"Everyone with a phone", MANUAL:"Hand-picked recipients" };
 
   function campaignTone(s){ return ({ COMPLETED:"bg-green-100 text-green-700", SENDING:"bg-amber-100 text-amber-700",
     FAILED:"bg-red-100 text-red-700", CANCELLED:"bg-slate-100 text-slate-500", DRAFT:"bg-blue-100 text-blue-700", SCHEDULED:"bg-indigo-100 text-indigo-700" }[s] || "bg-slate-100 text-slate-600"); }
@@ -360,6 +404,9 @@
   let audTimer;
   async function refreshAudience(){
     const type = $("cAudience").value;
+    const manual = type === "MANUAL";
+    $("pickerPanel").classList.toggle("hidden", !manual);
+    if (manual) { initPicker(); updatePickCount(); return; }
     $("audienceInfo").textContent = "Counting…";
     try {
       const p = await jlApi(API + "/audience/preview?type=" + type);
@@ -367,6 +414,78 @@
       $("audienceInfo").innerHTML = `<b class="text-navy">${p.count}</b> recipient(s)` + (names ? ` · e.g. ${names}` : "");
     } catch(e){ $("audienceInfo").textContent = "Couldn't count audience."; }
   }
+
+  // ── hand-pick recipient picker ──
+  const pSel = new Map();               // id -> name (kept across pages/filters)
+  let pPage = 0, pTotalPages = 1, pickerInited = false;
+  function updatePickCount(){
+    $("pCount").textContent = `${pSel.size} selected`;
+    if ($("cAudience").value === "MANUAL")
+      $("audienceInfo").innerHTML = `<b class="text-navy">${pSel.size}</b> hand-picked recipient(s)`;
+  }
+  async function initPicker(){
+    if (pickerInited) return; pickerInited = true;
+    try {
+      const cats = await jlApi("/api/v1/categories");
+      $("pCategory").innerHTML = `<option value="">Any category</option>` +
+        (cats||[]).map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join("");
+    } catch(_){ /* dropdown stays "Any" */ }
+    try {
+      const cities = await jlApi(API + "/audience/cities");
+      $("pCity").innerHTML = `<option value="">Any city</option>` +
+        (cities||[]).map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join("");
+    } catch(_){ /* dropdown stays "Any" */ }
+  }
+  async function loadPicker(page){
+    pPage = page || 0;
+    $("pList").innerHTML = `<div class="px-3 py-4 text-slate-400 text-[13px]">Loading…</div>`;
+    const params = new URLSearchParams({ page: pPage, size: 50 });
+    if ($("pCategory").value) params.set("categoryId", $("pCategory").value);
+    if ($("pCity").value) params.set("city", $("pCity").value);
+    if ($("pOptedIn").checked) params.set("optedIn", "true");
+    if ($("pVerified").checked) params.set("phoneVerified", "true");
+    if ($("pOrdered").checked && !$("pNeverOrdered").checked) params.set("ordered", "true");
+    if ($("pNeverOrdered").checked && !$("pOrdered").checked) params.set("ordered", "false");
+    if ($("pEmi").checked) params.set("emi", "true");
+    const q = $("pSearch").value.trim(); if (q) params.set("search", q);
+    try {
+      const pg = await jlApi(API + "/audience/customers?" + params.toString());
+      const rows = pg.content || [];
+      pTotalPages = pg.totalPages || 1;
+      $("pList").innerHTML = rows.length ? rows.map(r=>`
+        <label class="flex items-center gap-2.5 px-3 py-2 text-[13px] hover:bg-slate-50 cursor-pointer">
+          <input type="checkbox" class="pRow" data-id="${r.id}" data-name="${esc(r.name||"")}" ${pSel.has(r.id)?"checked":""} />
+          <span class="font-medium text-slate-700">${esc(r.name||"—")}</span>
+          <span class="text-slate-400">${esc(r.phone||"")}</span>
+          ${r.city?`<span class="text-[11px] text-slate-400">· ${esc(r.city)}</span>`:``}
+          <span class="ml-auto flex gap-1">
+            ${r.optedIn?`<span class="chip bg-green-100 text-green-700">opt-in</span>`:``}
+            ${r.hasOrdered?`<span class="chip bg-blue-100 text-blue-700">buyer</span>`:``}
+          </span>
+        </label>`).join("")
+        : `<div class="px-3 py-5 text-center text-slate-400 text-[13px]">No customers match these filters.</div>`;
+      $("pInfo").textContent = `Page ${pPage+1} of ${pTotalPages} · ${pg.totalElements} match(es)`;
+      $("pPrev").disabled = pg.first; $("pNext").disabled = pg.last;
+      $("pAll").checked = rows.length > 0 && rows.every(r=>pSel.has(r.id));
+      document.querySelectorAll(".pRow").forEach(cb=>cb.addEventListener("change", ()=>{
+        if (cb.checked) pSel.set(cb.dataset.id, cb.dataset.name); else pSel.delete(cb.dataset.id);
+        updatePickCount();
+      }));
+    } catch(e){ $("pList").innerHTML = `<div class="px-3 py-4 text-red-600 text-[13px]">${esc(e.message||"Failed to load")}</div>`; }
+  }
+  $("pLoad").addEventListener("click", ()=>loadPicker(0));
+  $("pSearch").addEventListener("keydown", (e)=>{ if(e.key==="Enter") loadPicker(0); });
+  $("pPrev").addEventListener("click", ()=>{ if(pPage>0) loadPicker(pPage-1); });
+  $("pNext").addEventListener("click", ()=>{ if(pPage<pTotalPages-1) loadPicker(pPage+1); });
+  $("pOrdered").addEventListener("change", ()=>{ if($("pOrdered").checked) $("pNeverOrdered").checked=false; });
+  $("pNeverOrdered").addEventListener("change", ()=>{ if($("pNeverOrdered").checked) $("pOrdered").checked=false; });
+  $("pAll").addEventListener("change", ()=>{
+    document.querySelectorAll(".pRow").forEach(cb=>{
+      cb.checked = $("pAll").checked;
+      if (cb.checked) pSel.set(cb.dataset.id, cb.dataset.name); else pSel.delete(cb.dataset.id);
+    });
+    updatePickCount();
+  });
   $("cBody").addEventListener("input", renderPreview);
   $("cAudience").addEventListener("change", refreshAudience);
   $("tokName").addEventListener("click", ()=>{ const el=$("cBody"); el.value += (el.value && !el.value.endsWith(" ") ? " " : "") + "{{name}}"; renderPreview(); el.focus(); });
@@ -381,7 +500,13 @@
     const bodyText = $("cBody").value.trim();
     if(!name){ jlToast("Give the campaign a name.", {type:"error"}); return null; }
     if(!bodyText && !$("cTemplate").value){ jlToast("Write a message or pick a template.", {type:"error"}); return null; }
-    return { name, bodyText, templateId: $("cTemplate").value || null, audienceType: $("cAudience").value };
+    const audienceType = $("cAudience").value;
+    const payload = { name, bodyText, templateId: $("cTemplate").value || null, audienceType };
+    if (audienceType === "MANUAL") {
+      if (!pSel.size){ jlToast("Tick at least one recipient in the picker.", {type:"error"}); return null; }
+      payload.recipientCustomerIds = [...pSel.keys()];
+    }
+    return payload;
   }
   $("draftBtn").addEventListener("click", async ()=>{
     const body = await buildPayload(); if(!body) return;
@@ -400,7 +525,7 @@
       resetCompose(); loadAnalytics(); openDetail(sent.id);
     } catch(e){ jlToast(e.message||"Send failed", {type:"error"}); } finally { jlBtn($("sendBtn"), false); }
   });
-  function resetCompose(){ $("cName").value=""; $("cBody").value=""; $("cTemplate").value=""; renderPreview(); }
+  function resetCompose(){ $("cName").value=""; $("cBody").value=""; $("cTemplate").value=""; pSel.clear(); updatePickCount(); renderPreview(); }
 
   $("testBtn").addEventListener("click", async ()=>{
     const phone = $("testPhone").value.trim();

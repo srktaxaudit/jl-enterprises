@@ -4,6 +4,7 @@ import in.jlenterprises.ecommerce.constant.WhatsappAudienceType;
 import in.jlenterprises.ecommerce.constant.WhatsappMessageStatus;
 import in.jlenterprises.ecommerce.dto.admin.BroadcastRequest;
 import in.jlenterprises.ecommerce.dto.admin.BroadcastResult;
+import in.jlenterprises.ecommerce.dto.whatsapp.AudienceCustomerDto;
 import in.jlenterprises.ecommerce.dto.whatsapp.AudiencePreviewDto;
 import in.jlenterprises.ecommerce.dto.whatsapp.CampaignAnalyticsDto;
 import in.jlenterprises.ecommerce.dto.whatsapp.CampaignDetailDto;
@@ -164,6 +165,27 @@ public class WhatsAppController {
     public ApiResponse<AudiencePreviewDto> audiencePreview(@RequestParam WhatsappAudienceType type,
                                                            @RequestParam(required = false) String city) {
         return ApiResponse.success(campaigns.previewAudience(type, city));
+    }
+
+    @GetMapping("/audience/customers")
+    @Operation(summary = "Filtered customer list for the broadcast picker (category/city/segments/search)")
+    public ApiResponse<PageResponse<AudienceCustomerDto>> audienceCustomers(
+            @RequestParam(required = false) UUID categoryId,
+            @RequestParam(required = false) String city,
+            @RequestParam(required = false) Boolean optedIn,
+            @RequestParam(required = false) Boolean phoneVerified,
+            @RequestParam(required = false) Boolean ordered,
+            @RequestParam(required = false) Boolean emi,
+            @RequestParam(required = false) String search,
+            @PageableDefault(size = 50) Pageable pageable) {
+        return ApiResponse.success(PageResponse.of(
+                campaigns.audienceCustomers(categoryId, city, optedIn, phoneVerified, ordered, emi, search, pageable)));
+    }
+
+    @GetMapping("/audience/cities")
+    @Operation(summary = "Distinct saved customer cities (for the picker's city dropdown)")
+    public ApiResponse<List<String>> audienceCities() {
+        return ApiResponse.success(campaigns.audienceCities());
     }
 
     @GetMapping("/analytics")
