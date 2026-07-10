@@ -313,6 +313,16 @@ function jlRenderAuthNav() {
   const hasOrders = header.querySelector('a[href="my-orders.html"]');
   const linkHTML = (emoji, label) => `<span class="text-xl">${emoji}</span>${label}`;
 
+  // Add an "Account" link for logged-in users (once), before the Cart link.
+  if (nav && !header.querySelector('a[href="account.html"]')) {
+    const acc = document.createElement("a");
+    acc.className = "flex flex-col items-center text-[11px]";
+    acc.setAttribute("href", "account.html");
+    acc.innerHTML = linkHTML("👤", "Account");
+    const cart = nav.querySelector('a[href="cart.html"]');
+    if (cart) nav.insertBefore(acc, cart); else nav.appendChild(acc);
+  }
+
   if (signup) {                       // full header → signup becomes "My Orders"
     signup.setAttribute("href", "my-orders.html");
     signup.innerHTML = linkHTML("📦", "My Orders");

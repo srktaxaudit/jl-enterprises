@@ -92,6 +92,7 @@
     <div class="space-y-5">
       <div class="bg-white border border-slate-200 rounded-2xl p-5">
         <h3 class="text-navy font-semibold mb-4">📍 Delivery Address</h3>
+        <div id="savedAddr" class="hidden mb-4 space-y-2"></div>
         <form id="coForm" novalidate class="grid sm:grid-cols-2 gap-3.5">
           <div>
             <label class="co-label" for="coName">Full Name *</label>
@@ -372,6 +373,35 @@
     const pref = localStorage.getItem("jl_pref_address");
     if (pref) $("coLine1").value = pref;
 
+    // ── Saved-address picker: choose a saved address or enter a new one ──
+    let CHOSEN_ADDR_ID = null, CHOSEN_ADDR = null;
+    (async function loadSavedAddresses() {
+      let list = [];
+      try { list = await jlAuthApi("/api/v1/addresses", null, "GET"); } catch (_) { return; }
+      if (!list || !list.length) return;   // no saved addresses → keep the manual form
+      const box = $("savedAddr");
+      const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+      const def = list.find((a) => a.defaultAddress) || list[0];
+      box.innerHTML = list.map((a) => `
+        <label class="flex items-start gap-2.5 border ${a.id===def.id?"border-brand":"border-slate-200"} rounded-xl p-3 cursor-pointer text-sm">
+          <input type="radio" name="savedAddr" value="${a.id}" class="mt-1" ${a.id===def.id?"checked":""} />
+          <span><b class="text-navy">${esc(a.fullName||"")}</b> · ${esc(a.phone||"")}<br>
+          <span class="text-slate-500">${esc([a.line1,a.line2,a.city,a.state,a.postalCode].filter(Boolean).join(", "))}</span></span>
+        </label>`).join("") +
+        `<label class="flex items-center gap-2.5 border border-dashed border-slate-300 rounded-xl p-3 cursor-pointer text-sm text-slate-600">
+          <input type="radio" name="savedAddr" value="__new__" class="mt-0.5" /> ➕ Deliver to a new address</label>`;
+      box.classList.remove("hidden");
+      const applyChoice = () => {
+        const val = (box.querySelector('input[name="savedAddr"]:checked') || {}).value;
+        if (val && val !== "__new__") { CHOSEN_ADDR_ID = val; CHOSEN_ADDR = list.find((a) => String(a.id) === val); $("coForm").classList.add("hidden"); }
+        else { CHOSEN_ADDR_ID = null; CHOSEN_ADDR = null; $("coForm").classList.remove("hidden"); }
+        box.querySelectorAll("label").forEach((l) => { const r = l.querySelector("input"); l.classList.toggle("border-brand", r && r.checked && r.value !== "__new__"); });
+      };
+      box.addEventListener("change", applyChoice);
+      $("coForm").classList.add("hidden");   // default: use the pre-selected saved address
+      CHOSEN_ADDR_ID = def.id; CHOSEN_ADDR = def;
+    })();
+
     // Real-time inline validation on the delivery-address fields (complements the
     // existing bad()/showError checks in the place-order handler below).
     jlField($("coName"), [jlV.required("Please enter the recipient name."), jlV.name()]);
@@ -472,25 +502,37 @@
     // 5) Place order: sync cart → create address → place order (COD or online)
     $("coPlace").addEventListener("click", async () => {
       clearBad(); showError("");
-      const vres = jlValidate($("coForm"), {
-        coName: [jlV.required("Please enter the recipient name."), jlV.name()],
-        coPhone: [jlV.required("Please enter a mobile number."), jlV.integer(), jlV.phoneIN()],
-        coLine1: [jlV.required("Please enter the delivery address.")],
-        coCity: [jlV.required("Please enter the city / town."), jlV.name()],
-        coPin: [jlV.required("Please enter a pincode."), jlV.integer(), jlV.pincodeIN()],
-      });
-      if (!vres.valid) return;
-      const name = $("coName").value.trim();
-      const phoneDigits = $("coPhone").value.replace(/\D/g, "").replace(/^91(?=\d{10}$)/, "");
-      const line1 = $("coLine1").value.trim();
-      const city = $("coCity").value.trim();
-      const pin = $("coPin").value.replace(/\D/g, "");
-
-      if (!name) return bad($("coName"));
-      if (!/^[6-9]\d{9}$/.test(phoneDigits)) { showError("Enter a valid 10-digit mobile number."); return bad($("coPhone")); }
-      if (!line1) return bad($("coLine1"));
-      if (!city) return bad($("coCity"));
-      if (!/^\d{6}$/.test(pin)) { showError("Enter a valid 6-digit pincode."); return bad($("coPin")); }
+      let name, phoneDigits, newAddrPayload = null;
+      if (CHOSEN_ADDR_ID && CHOSEN_ADDR) {
+        // Using a saved address — no form validation needed.
+        name = CHOSEN_ADDR.fullName || "";
+        phoneDigits = (CHOSEN_ADDR.phone || "").replace(/\D/g, "").replace(/^91(?=\d{10}$)/, "");
+      } else {
+        const vres = jlValidate($("coForm"), {
+          coName: [jlV.required("Please enter the recipient name."), jlV.name()],
+          coPhone: [jlV.required("Please enter a mobile number."), jlV.integer(), jlV.phoneIN()],
+          coLine1: [jlV.required("Please enter the delivery address.")],
+          coCity: [jlV.required("Please enter the city / town."), jlV.name()],
+          coPin: [jlV.required("Please enter a pincode."), jlV.integer(), jlV.pincodeIN()],
+        });
+        if (!vres.valid) return;
+        name = $("coName").value.trim();
+        phoneDigits = $("coPhone").value.replace(/\D/g, "").replace(/^91(?=\d{10}$)/, "");
+        const line1 = $("coLine1").value.trim();
+        const city = $("coCity").value.trim();
+        const pin = $("coPin").value.replace(/\D/g, "");
+        if (!name) return bad($("coName"));
+        if (!/^[6-9]\d{9}$/.test(phoneDigits)) { showError("Enter a valid 10-digit mobile number."); return bad($("coPhone")); }
+        if (!line1) return bad($("coLine1"));
+        if (!city) return bad($("coCity"));
+        if (!/^\d{6}$/.test(pin)) { showError("Enter a valid 6-digit pincode."); return bad($("coPin")); }
+        newAddrPayload = {
+          fullName: name, phone: "+91" + phoneDigits,
+          line1, line2: $("coLine2").value.trim(),
+          city, state: $("coState").value.trim() || "Tamil Nadu",
+          postalCode: pin, country: "India",
+        };
+      }
 
       const btn = $("coPlace");
       btn.disabled = true; const old = btn.textContent; btn.textContent = "Placing order…";
@@ -499,12 +541,7 @@
         if (sync.added === 0) {
           throw { message: "None of your items could be added — they may be out of stock. Please review your cart." };
         }
-        const addr = await JLCheckout.addAddress({
-          fullName: name, phone: "+91" + phoneDigits,
-          line1, line2: $("coLine2").value.trim(),
-          city, state: $("coState").value.trim() || "Tamil Nadu",
-          postalCode: pin, country: "India",
-        });
+        const addr = CHOSEN_ADDR_ID ? { id: CHOSEN_ADDR_ID } : await JLCheckout.addAddress(newAddrPayload);
         const method = (document.querySelector('input[name="pay"]:checked') || {}).value || "COD";
         window.jlTrack && jlTrack("begin_checkout", { currency: "INR", value: subtotal });
         const order = await JLCheckout.placeOrder(addr.id, $("coNotes").value.trim(), method,

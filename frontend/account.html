@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex" />
+<title>My Account — JL Enterprises</title>
+<meta name="description" content="Manage your JL Enterprises account — profile, password and saved delivery addresses." />
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = { theme: { extend: { colors: {
+    navy: { DEFAULT: "#0b2447", 600: "#19376d" }, brand: { DEFAULT: "#576cbc", sky: "#a5d7e8" },
+    orange: { DEFAULT: "#f97316", 600: "#ea580c" }, amber: { DEFAULT: "#fbbf24" } },
+    boxShadow: { card: "0 12px 30px rgba(15,23,42,.12)" } } } };
+</script>
+<link rel="stylesheet" href="style.css" />
+<style> body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background:#eef1f6; }
+  .inp{width:100%;border:1.5px solid #cbd5e1;border-radius:10px;padding:10px 12px;font-size:14px;outline:none;background:#fff}
+  .inp:focus{border-color:#576cbc;box-shadow:0 0 0 3px rgba(87,108,188,.15)}
+  label.fld{display:block;font-size:13px;font-weight:600;color:#475569;margin-bottom:5px}
+  .no-scrollbar::-webkit-scrollbar { display:none; } .no-scrollbar { -ms-overflow-style:none; scrollbar-width:none; } </style>
+</head>
+<body class="text-slate-800">
+
+<header class="bg-white border-b border-slate-200 sticky top-0 z-40">
+  <div class="max-w-[1440px] mx-auto px-5 flex items-center gap-5 py-3">
+    <a href="index.html" class="flex items-center gap-2.5 shrink-0">
+      <div class="w-12 h-10 rounded-lg bg-gradient-to-br from-navy to-brand text-white font-extrabold flex items-center justify-center text-lg">JL</div>
+      <div class="leading-tight hidden sm:block"><div class="font-extrabold text-navy">JL ENTERPRISES</div>
+        <div class="text-[10px] font-semibold text-slate-400 tracking-wider">HOME APPLIANCES · THOOTHUKUDI</div></div>
+    </a>
+    <div class="flex-1"></div>
+    <nav class="flex items-center gap-4 text-slate-600">
+      <a href="my-orders.html" class="flex flex-col items-center text-[11px]"><span class="text-xl">📦</span>Orders</a>
+      <a href="cart.html" class="relative flex flex-col items-center text-[11px]"><span class="text-xl">🛒</span>Cart<span id="cartBadge" class="hidden absolute -top-1.5 -right-2 bg-orange text-white text-[11px] font-bold w-[18px] h-[18px] rounded-full items-center justify-center">0</span></a>
+      <button id="logoutBtn" class="flex flex-col items-center text-[11px] text-slate-600"><span class="text-xl">⎋</span>Logout</button>
+    </nav>
+  </div>
+</header>
+
+<main class="max-w-[900px] mx-auto px-5 py-7">
+  <h1 class="text-2xl text-navy font-bold mb-1">My Account</h1>
+  <p class="text-slate-400 text-sm mb-6" id="hello">Manage your profile, password and delivery addresses.</p>
+
+  <div class="grid md:grid-cols-2 gap-6 items-start">
+    <!-- PROFILE -->
+    <section class="bg-white border border-slate-200 rounded-2xl p-5">
+      <h2 class="text-navy font-bold mb-4">👤 Profile</h2>
+      <form id="profileForm" novalidate>
+        <div class="grid sm:grid-cols-2 gap-3">
+          <div><label class="fld">First name</label><input id="firstName" data-jl="name" class="inp" /></div>
+          <div><label class="fld">Last name</label><input id="lastName" data-jl="name" class="inp" /></div>
+        </div>
+        <div class="mt-3"><label class="fld">Email</label><input id="email" class="inp bg-slate-50" readonly /></div>
+        <div class="mt-3"><label class="fld">Mobile number</label><input id="phone" data-jl="digits" data-jl-maxlength="10" maxlength="10" inputmode="numeric" class="inp" /></div>
+        <label class="flex items-center gap-2 mt-3 text-sm text-slate-600"><input type="checkbox" id="whatsappOptIn" class="w-4 h-4" /> Send me order updates &amp; offers on WhatsApp</label>
+        <button type="submit" class="mt-4 w-full bg-navy hover:bg-orange text-white font-bold py-2.5 rounded-lg text-sm transition">Save profile</button>
+      </form>
+    </section>
+
+    <!-- PASSWORD -->
+    <section class="bg-white border border-slate-200 rounded-2xl p-5">
+      <h2 class="text-navy font-bold mb-4">🔒 Change password</h2>
+      <form id="passwordForm" novalidate>
+        <div><label class="fld">Current password</label><input id="currentPassword" type="password" autocomplete="current-password" class="inp" /></div>
+        <div class="mt-3"><label class="fld">New password</label><input id="newPassword" type="password" autocomplete="new-password" class="inp" /></div>
+        <p class="text-[12px] text-slate-400 mt-1">Min 8 characters incl. upper, lower, number &amp; symbol.</p>
+        <button type="submit" class="mt-4 w-full bg-navy hover:bg-orange text-white font-bold py-2.5 rounded-lg text-sm transition">Update password</button>
+      </form>
+    </section>
+  </div>
+
+  <!-- ADDRESS BOOK -->
+  <section class="bg-white border border-slate-200 rounded-2xl p-5 mt-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-navy font-bold">📍 Saved addresses</h2>
+      <button id="addAddrBtn" class="text-[13px] font-semibold text-brand hover:underline">+ Add address</button>
+    </div>
+    <div id="addrList" class="grid sm:grid-cols-2 gap-3"></div>
+
+    <form id="addrForm" class="hidden mt-4 border-t border-slate-100 pt-4">
+      <input type="hidden" id="addrId" />
+      <div class="grid sm:grid-cols-2 gap-3">
+        <div><label class="fld">Full name</label><input id="aName" data-jl="name" class="inp" /></div>
+        <div><label class="fld">Mobile</label><input id="aPhone" data-jl="digits" data-jl-maxlength="10" maxlength="10" inputmode="numeric" class="inp" /></div>
+        <div class="sm:col-span-2"><label class="fld">Address line 1</label><input id="aLine1" class="inp" placeholder="House / building, street" /></div>
+        <div class="sm:col-span-2"><label class="fld">Address line 2</label><input id="aLine2" class="inp" placeholder="Area / landmark (optional)" /></div>
+        <div><label class="fld">City / Town</label><input id="aCity" data-jl="name" class="inp" /></div>
+        <div><label class="fld">Pincode</label><input id="aPin" data-jl="digits" data-jl-maxlength="6" maxlength="6" inputmode="numeric" class="inp" /></div>
+        <div><label class="fld">State</label><input id="aState" class="inp" value="Tamil Nadu" /></div>
+      </div>
+      <label class="flex items-center gap-2 mt-3 text-sm text-slate-600"><input type="checkbox" id="aDefault" class="w-4 h-4" /> Make this my default address</label>
+      <div class="flex gap-2 mt-4">
+        <button type="submit" class="bg-navy hover:bg-orange text-white font-bold px-5 py-2 rounded-lg text-sm transition">Save address</button>
+        <button type="button" id="addrCancel" class="text-slate-500 px-3 text-sm">Cancel</button>
+      </div>
+    </form>
+  </section>
+</main>
+
+<script src="jl-ui.js"></script>
+<script src="config.js"></script>
+<script src="store.js"></script>
+<script src="script.js"></script>
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+
+  // Guard: customers only.
+  if (!JLCustomer.isLoggedIn()) { location.replace("login.html?next=account.html"); return; }
+
+  $("logoutBtn").addEventListener("click", () => { JLCustomer.logout(); location.replace("index.html"); });
+
+  // ── Profile ──
+  async function loadProfile() {
+    try {
+      const u = await jlAuthApi("/api/v1/auth/me", null, "GET");
+      $("firstName").value = u.firstName || ""; $("lastName").value = u.lastName || "";
+      $("email").value = u.email || ""; $("phone").value = (u.phone || "").replace(/\D/g, "").slice(-10);
+      $("whatsappOptIn").checked = !!u.whatsappOptIn;
+      $("hello").textContent = "Welcome back, " + (u.firstName || u.email) + " 👋";
+    } catch (e) {
+      if (e.status === 401) { location.replace("login.html?next=account.html"); return; }
+      jlToast(e.message || "Couldn't load your profile.", { type: "error" });
+    }
+  }
+  const PROFILE_RULES = { firstName: [jlV.name()], lastName: [jlV.name()], phone: [jlV.phoneIN()] };
+  $("profileForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!jlValidate($("profileForm"), PROFILE_RULES).valid) return;
+    const body = {
+      firstName: $("firstName").value.trim() || null, lastName: $("lastName").value.trim() || null,
+      phone: $("phone").value.trim() ? "+91" + $("phone").value.replace(/\D/g, "").slice(-10) : null,
+      whatsappOptIn: $("whatsappOptIn").checked,
+    };
+    try { await jlAuthApi("/api/v1/auth/me", body, "PUT"); jlToast("Profile saved.", { type: "success" }); loadProfile(); }
+    catch (err) { if (err.errors) jlShowServerErrors($("profileForm"), err.errors); jlToast(err.message || "Couldn't save.", { type: "error" }); }
+  });
+
+  // ── Password ──
+  $("passwordForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const cur = $("currentPassword").value, nw = $("newPassword").value;
+    if (!cur || !nw) { jlToast("Enter your current and new password.", { type: "warn" }); return; }
+    const strong = jlV.strongPassword()(nw);
+    if (strong) { jlSetError($("newPassword"), strong); return; }
+    try {
+      await jlAuthApi("/api/v1/auth/change-password", { currentPassword: cur, newPassword: nw }, "POST");
+      $("passwordForm").reset();
+      jlToast("Password updated.", { type: "success" });
+    } catch (err) { jlToast(err.message || "Couldn't change password.", { type: "error" }); }
+  });
+
+  // ── Address book ──
+  const ADDR = "/api/v1/addresses";
+  function addrCard(a) {
+    return `<div class="border ${a.defaultAddress ? "border-brand" : "border-slate-200"} rounded-xl p-3.5 text-sm relative">
+      ${a.defaultAddress ? '<span class="absolute top-2.5 right-2.5 text-[10px] font-bold text-brand bg-brand/10 px-2 py-0.5 rounded-full">DEFAULT</span>' : ""}
+      <div class="font-semibold text-navy">${esc(a.fullName || "")}</div>
+      <div class="text-slate-500">${esc(a.phone || "")}</div>
+      <div class="text-slate-600 mt-1">${esc([a.line1, a.line2, a.city, a.state, a.postalCode].filter(Boolean).join(", "))}</div>
+      <div class="flex gap-3 mt-2 text-[12px]">
+        <button data-edit="${a.id}" class="text-brand font-semibold">Edit</button>
+        ${a.defaultAddress ? "" : `<button data-default="${a.id}" class="text-slate-500">Set default</button>`}
+        <button data-del="${a.id}" class="text-red-500">Delete</button>
+      </div>
+    </div>`;
+  }
+  async function loadAddresses() {
+    const box = $("addrList");
+    box.innerHTML = `<div class="col-span-full text-slate-400 text-sm py-3">${jlSpinnerHTML({ label: "Loading addresses" })}</div>`;
+    try {
+      const list = await jlAuthApi(ADDR, null, "GET");
+      box.innerHTML = (list && list.length) ? list.map(addrCard).join("")
+        : '<div class="col-span-full text-slate-400 text-sm py-2">No saved addresses yet. Add one to speed up checkout.</div>';
+    } catch (e) { box.innerHTML = `<div class="col-span-full text-red-500 text-sm py-2">Couldn't load addresses.</div>`; }
+  }
+  function openAddrForm(a) {
+    $("addrId").value = a ? a.id : "";
+    $("aName").value = a ? (a.fullName || "") : ""; $("aPhone").value = a ? (a.phone || "").replace(/\D/g, "").slice(-10) : "";
+    $("aLine1").value = a ? (a.line1 || "") : ""; $("aLine2").value = a ? (a.line2 || "") : "";
+    $("aCity").value = a ? (a.city || "") : ""; $("aPin").value = a ? (a.postalCode || "") : "";
+    $("aState").value = a ? (a.state || "Tamil Nadu") : "Tamil Nadu"; $("aDefault").checked = a ? !!a.defaultAddress : false;
+    $("addrForm").classList.remove("hidden"); $("aName").focus();
+  }
+  $("addAddrBtn").addEventListener("click", () => openAddrForm(null));
+  $("addrCancel").addEventListener("click", () => { $("addrForm").classList.add("hidden"); $("addrForm").reset(); });
+
+  $("addrList").addEventListener("click", async (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    try {
+      if (b.dataset.edit) {
+        const list = await jlAuthApi(ADDR, null, "GET");
+        const a = (list || []).find((x) => String(x.id) === b.dataset.edit);
+        if (a) openAddrForm(a);
+      } else if (b.dataset.default) {
+        await jlAuthApi(`${ADDR}/${b.dataset.default}/default`, null, "PUT"); jlToast("Default address updated.", { type: "success" }); loadAddresses();
+      } else if (b.dataset.del) {
+        if (!(await jlConfirm("Delete this address?", { danger: true, confirmText: "Delete" }))) return;
+        await jlAuthApi(`${ADDR}/${b.dataset.del}`, null, "DELETE"); jlToast("Address deleted.", { type: "success" }); loadAddresses();
+      }
+    } catch (err) { jlToast(err.message || "Action failed.", { type: "error" }); }
+  });
+
+  const ADDR_RULES = { aName: [jlV.required(), jlV.name()], aPhone: [jlV.required(), jlV.phoneIN()], aLine1: [jlV.required()], aCity: [jlV.required()], aPin: [jlV.required(), jlV.pincodeIN()] };
+  $("addrForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!jlValidate($("addrForm"), ADDR_RULES).valid) return;
+    const body = {
+      type: "BOTH", fullName: $("aName").value.trim(), phone: "+91" + $("aPhone").value.replace(/\D/g, "").slice(-10),
+      line1: $("aLine1").value.trim(), line2: $("aLine2").value.trim() || null, city: $("aCity").value.trim(),
+      state: $("aState").value.trim() || "Tamil Nadu", postalCode: $("aPin").value.trim(), country: "India",
+      defaultAddress: $("aDefault").checked,
+    };
+    const id = $("addrId").value;
+    try {
+      await (id ? jlAuthApi(`${ADDR}/${id}`, body, "PUT") : jlAuthApi(ADDR, body, "POST"));
+      $("addrForm").classList.add("hidden"); $("addrForm").reset();
+      jlToast(id ? "Address updated." : "Address saved.", { type: "success" });
+      loadAddresses();
+    } catch (err) { if (err.errors) jlShowServerErrors($("addrForm"), err.errors); jlToast(err.message || "Couldn't save address.", { type: "error" }); }
+  });
+
+  jlAutoRestrict();
+  loadProfile();
+  loadAddresses();
+})();
+</script>
+</body>
+</html>
