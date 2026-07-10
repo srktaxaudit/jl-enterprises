@@ -20,9 +20,11 @@ import in.jlenterprises.ecommerce.payment.PaymentStrategyFactory;
 import in.jlenterprises.ecommerce.repository.OrderRepository;
 import in.jlenterprises.ecommerce.repository.PaymentRepository;
 import in.jlenterprises.ecommerce.request.payment.PaymentConfirmRequest;
+import in.jlenterprises.ecommerce.constant.WhatsappAutomationEvent;
 import in.jlenterprises.ecommerce.service.AccountingService;
 import in.jlenterprises.ecommerce.service.NotificationService;
 import in.jlenterprises.ecommerce.service.PaymentService;
+import in.jlenterprises.ecommerce.service.WhatsappAutomationService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -39,15 +41,17 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentStrategyFactory strategyFactory;
     private final NotificationService notificationService;
     private final AccountingService accountingService;
+    private final WhatsappAutomationService whatsappAutomation;
 
     public PaymentServiceImpl(OrderRepository orderRepository, PaymentRepository paymentRepository,
                               PaymentStrategyFactory strategyFactory, NotificationService notificationService,
-                              AccountingService accountingService) {
+                              AccountingService accountingService, WhatsappAutomationService whatsappAutomation) {
         this.orderRepository = orderRepository;
         this.paymentRepository = paymentRepository;
         this.strategyFactory = strategyFactory;
         this.notificationService = notificationService;
         this.accountingService = accountingService;
+        this.whatsappAutomation = whatsappAutomation;
     }
 
     /** After the current transaction commits, post the sale to the books (best-effort). */
@@ -125,6 +129,7 @@ public class PaymentServiceImpl implements PaymentService {
                     "Payment received from " + (payerName == null || payerName.isBlank() ? order.getUser().getEmail() : payerName)
                             + " for order " + order.getOrderNumber() + " (" + order.getCurrency() + " " + payment.getAmount() + ").",
                     "/admin-orders.html", "Orders", order.getId(), "ORDER");
+            whatsappAutomation.fire(WhatsappAutomationEvent.PAYMENT_RECEIVED, order);
             postSaleAfterCommit(order.getId());
         } else {
             payment.setPaymentStatus(PaymentStatus.FAILED);
