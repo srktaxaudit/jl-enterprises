@@ -1,6 +1,7 @@
 package in.jlenterprises.ecommerce.controller.admin;
 
 import in.jlenterprises.ecommerce.constant.WhatsappAudienceType;
+import in.jlenterprises.ecommerce.constant.WhatsappMessageStatus;
 import in.jlenterprises.ecommerce.dto.admin.BroadcastRequest;
 import in.jlenterprises.ecommerce.dto.admin.BroadcastResult;
 import in.jlenterprises.ecommerce.dto.whatsapp.AudiencePreviewDto;
@@ -8,6 +9,7 @@ import in.jlenterprises.ecommerce.dto.whatsapp.CampaignAnalyticsDto;
 import in.jlenterprises.ecommerce.dto.whatsapp.CampaignDetailDto;
 import in.jlenterprises.ecommerce.dto.whatsapp.CampaignDto;
 import in.jlenterprises.ecommerce.dto.whatsapp.ConnectionStatusDto;
+import in.jlenterprises.ecommerce.dto.whatsapp.DeliveryLogDto;
 import in.jlenterprises.ecommerce.dto.whatsapp.TemplateDto;
 import in.jlenterprises.ecommerce.dto.whatsapp.TemplateSyncResult;
 import in.jlenterprises.ecommerce.dto.whatsapp.TestSendResult;
@@ -24,6 +26,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -38,6 +41,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -166,6 +170,19 @@ public class WhatsAppController {
     @Operation(summary = "Overall WhatsApp marketing analytics")
     public ApiResponse<CampaignAnalyticsDto> analytics() {
         return ApiResponse.success(campaigns.analytics());
+    }
+
+    // ── Delivery log ──
+    @GetMapping("/delivery-log")
+    @Operation(summary = "Filtered, paged delivery log across all campaigns")
+    public ApiResponse<PageResponse<DeliveryLogDto>> deliveryLog(
+            @RequestParam(required = false) WhatsappMessageStatus status,
+            @RequestParam(required = false) UUID campaignId,
+            @RequestParam(required = false) String phone,
+            @RequestParam(required = false) Instant from,
+            @RequestParam(required = false) Instant to,
+            @PageableDefault(size = 30, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+        return ApiResponse.success(PageResponse.of(campaigns.deliveryLog(status, campaignId, phone, from, to, pageable)));
     }
 
     @PostMapping("/test-send")

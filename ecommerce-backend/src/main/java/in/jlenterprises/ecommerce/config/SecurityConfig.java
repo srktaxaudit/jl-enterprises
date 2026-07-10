@@ -96,6 +96,9 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(PUBLIC_DOCS).permitAll()
                 .requestMatchers(PUBLIC_AUTH).permitAll()
+                // Meta WhatsApp webhook (GET handshake + POST events) — Meta calls it directly,
+                // authenticated instead by the verify token + optional X-Hub-Signature-256.
+                .requestMatchers("/api/v1/webhooks/whatsapp").permitAll()
                 // Public catalog reads (products/categories/brands GETs) are opened per-controller
                 // via method security; everything else requires authentication.
                 .requestMatchers(org.springframework.http.HttpMethod.GET,

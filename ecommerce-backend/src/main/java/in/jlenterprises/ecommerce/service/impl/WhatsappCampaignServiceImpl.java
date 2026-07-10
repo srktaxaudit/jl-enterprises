@@ -9,6 +9,7 @@ import in.jlenterprises.ecommerce.dto.whatsapp.AudiencePreviewDto;
 import in.jlenterprises.ecommerce.dto.whatsapp.CampaignAnalyticsDto;
 import in.jlenterprises.ecommerce.dto.whatsapp.CampaignDetailDto;
 import in.jlenterprises.ecommerce.dto.whatsapp.CampaignDto;
+import in.jlenterprises.ecommerce.dto.whatsapp.DeliveryLogDto;
 import in.jlenterprises.ecommerce.dto.whatsapp.MessageLogDto;
 import in.jlenterprises.ecommerce.entity.User;
 import in.jlenterprises.ecommerce.entity.WhatsappCampaign;
@@ -281,8 +282,8 @@ public class WhatsappCampaignServiceImpl implements WhatsappCampaignService {
         }
     }
 
-    /** Recompute campaign counts from its logs and set the terminal status. */
-    private void recount(WhatsappCampaign c) {
+    /** Tally sent/delivered/read/failed from the campaign's logs onto the campaign (no status change). */
+    private void tallyCounts(WhatsappCampaign c) {
         List<WhatsappMessageLog> logs = logRepo.findByCampaign_IdOrderByCreatedAtAsc(c.getId());
         int sent = 0, delivered = 0, read = 0, failed = 0;
         for (WhatsappMessageLog m : logs) {
@@ -298,7 +299,39 @@ public class WhatsappCampaignServiceImpl implements WhatsappCampaignService {
         c.setDeliveredCount(delivered);
         c.setReadCount(read);
         c.setFailedCount(failed);
-        c.setCampaignStatus(sent == 0 && failed > 0 ? WhatsappCampaignStatus.FAILED : WhatsappCampaignStatus.COMPLETED);
+    }
+
+    /** Recompute campaign counts from its logs and set the terminal status (used right after a send). */
+    private void recount(WhatsappCampaign c) {
+        tallyCounts(c);
+        c.setCampaignStatus(c.getSentCount() == 0 && c.getFailedCount() > 0
+                ? WhatsappCampaignStatus.FAILED : WhatsappCampaignStatus.COMPLETED);
+    }
+
+    // ── Delivery-status webhook roll-up + delivery log (Phase 2) ──
+    @Override
+    @Transactional
+    public void recomputeCounts(UUID campaignId) {
+        WhatsappCampaign c = campaignRepo.findById(campaignId).orElse(null);
+        if (c == null) return;
+        // Counts only — a webhook arriving after the send must not flip the terminal status.
+        tallyCounts(c);
+        campaignRepo.save(c);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<DeliveryLogDto> deliveryLog(WhatsappMessageStatus status, UUID campaignId, String phone,
+                                            Instant from, Instant to, org.springframework.data.domain.Pageable pageable) {
+        String p = (phone == null || phone.isBlank()) ? null : phone.trim();
+        return logRepo.search(status, campaignId, p, from, to, pageable).map(this::toDeliveryDto);
+    }
+
+    private DeliveryLogDto toDeliveryDto(WhatsappMessageLog m) {
+        WhatsappCampaign c = m.getCampaign();
+        return new DeliveryLogDto(m.getId(), c == null ? null : c.getId(), c == null ? null : c.getName(),
+                m.getRecipientName(), m.getPhone(), m.getMessageStatus(), m.getProviderMessageId(),
+                m.getError(), m.getAttempts(), m.getCreatedAt(), m.getSentAt(), m.getDeliveredAt(), m.getReadAt());
     }
 
     // ── helpers ──

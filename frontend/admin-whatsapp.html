@@ -47,6 +47,7 @@
       <button type="button" class="tab active" data-tab="compose">Compose</button>
       <button type="button" class="tab" data-tab="campaigns">Campaigns</button>
       <button type="button" class="tab" data-tab="templates">Templates</button>
+      <button type="button" class="tab" data-tab="delivery">Delivery log</button>
     </div>
 
     <!-- ── CONNECTION ── -->
@@ -76,8 +77,12 @@
             <input id="wCc" class="inp" placeholder="91" maxlength="4" />
           </div>
           <div>
-            <label class="block text-[13px] font-semibold text-slate-600 mb-1">Webhook verify token <span class="text-slate-400 font-normal">(for Phase 2)</span></label>
+            <label class="block text-[13px] font-semibold text-slate-600 mb-1">Webhook verify token <span class="text-slate-400 font-normal">(for webhooks)</span></label>
             <input id="wVerify" class="inp" placeholder="A secret string you also set in Meta" />
+          </div>
+          <div>
+            <label class="block text-[13px] font-semibold text-slate-600 mb-1">App secret <span class="text-slate-400 font-normal">(optional, verifies webhooks)</span></label>
+            <input id="wAppSecret" type="password" class="inp" placeholder="Meta app secret" autocomplete="off" />
           </div>
         </div>
         <div class="flex flex-wrap items-center gap-2 pt-1">
@@ -85,10 +90,12 @@
           <button id="wRefresh" class="border border-slate-300 text-slate-600 hover:bg-slate-50 font-semibold rounded-lg px-4 py-2.5 text-sm">Re-check</button>
           <span id="wMsg" class="text-[13px] text-slate-500 ml-1"></span>
         </div>
-        <p class="text-[12px] text-slate-400 border-t border-slate-100 pt-3">
-          Until a valid token is set, campaigns run in <b>demo mode</b> (logged, not sent). Live marketing also needs an
-          <b>approved template</b> — set the WABA ID, then use <b>↻ Sync from Meta</b> on the Templates tab.
-        </p>
+        <div class="text-[12px] text-slate-500 border-t border-slate-100 pt-3 space-y-1">
+          <div><b class="text-slate-600">Webhook setup (in Meta → WhatsApp → Configuration):</b></div>
+          <div>Callback URL: <code id="webhookUrl" class="bg-slate-100 rounded px-1.5 py-0.5 text-[11px] text-navy select-all">&lt;your API domain&gt;/api/v1/webhooks/whatsapp</code></div>
+          <div>Verify token: the value you set above. Subscribe to the <b>messages</b> field. Delivery statuses then flow into the Delivery log tab.</div>
+          <div class="text-slate-400 pt-1">Until a valid token is set, campaigns run in <b>demo mode</b> (logged, not sent). Live marketing also needs an <b>approved template</b> — set the WABA ID, then <b>↻ Sync from Meta</b> on Templates.</div>
+        </div>
       </div>
     </section>
 
@@ -170,6 +177,52 @@
       </div>
       <div id="templateList" class="space-y-3"></div>
     </section>
+
+    <!-- ── DELIVERY LOG ── -->
+    <section id="tab-delivery" class="hidden">
+      <div class="bg-white border border-slate-200 rounded-2xl p-4 mb-4 flex flex-wrap items-end gap-3">
+        <div>
+          <label class="block text-[12px] font-semibold text-slate-500 mb-1">Status</label>
+          <select id="dlStatus" class="inp" style="min-width:150px">
+            <option value="">All statuses</option>
+            <option value="QUEUED">Queued</option>
+            <option value="SENT">Sent</option>
+            <option value="DELIVERED">Delivered</option>
+            <option value="READ">Read</option>
+            <option value="FAILED">Failed</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[12px] font-semibold text-slate-500 mb-1">Phone</label>
+          <input id="dlPhone" class="inp" style="min-width:180px" placeholder="Search a number" />
+        </div>
+        <button id="dlApply" class="bg-navy hover:bg-navy-600 text-white font-semibold rounded-lg px-4 py-2 text-sm">Filter</button>
+        <button id="dlReset" class="border border-slate-300 text-slate-600 hover:bg-slate-50 font-semibold rounded-lg px-3 py-2 text-sm">Reset</button>
+      </div>
+      <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-[13px]">
+            <thead class="bg-slate-50 text-slate-500 text-[11px] uppercase">
+              <tr>
+                <th class="text-left font-semibold px-3 py-2">When</th>
+                <th class="text-left font-semibold px-3 py-2">Recipient</th>
+                <th class="text-left font-semibold px-3 py-2">Campaign</th>
+                <th class="text-left font-semibold px-3 py-2">Status</th>
+                <th class="text-left font-semibold px-3 py-2">Detail</th>
+              </tr>
+            </thead>
+            <tbody id="dlRows"></tbody>
+          </table>
+        </div>
+        <div class="flex items-center justify-between px-3 py-2 border-t border-slate-100 text-[12px] text-slate-500">
+          <span id="dlInfo">—</span>
+          <span class="flex gap-2">
+            <button id="dlPrev" class="border border-slate-300 rounded-lg px-3 py-1 font-semibold hover:bg-slate-50 disabled:opacity-40">Prev</button>
+            <button id="dlNext" class="border border-slate-300 rounded-lg px-3 py-1 font-semibold hover:bg-slate-50 disabled:opacity-40">Next</button>
+          </span>
+        </div>
+      </div>
+    </section>
   </div>
 
   <!-- campaign detail modal -->
@@ -199,10 +252,11 @@
   document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", ()=>{
     document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
     t.classList.add("active");
-    ["connection","compose","campaigns","templates"].forEach(n => $("tab-"+n).classList.toggle("hidden", n !== t.dataset.tab));
+    ["connection","compose","campaigns","templates","delivery"].forEach(n => $("tab-"+n).classList.toggle("hidden", n !== t.dataset.tab));
     if (t.dataset.tab === "connection") loadConnection();
     if (t.dataset.tab === "campaigns") loadCampaigns();
     if (t.dataset.tab === "templates") loadTemplates();
+    if (t.dataset.tab === "delivery") loadDelivery(0);
   }));
 
   // ── connection ──
@@ -232,9 +286,10 @@
   }
   $("wSave").addEventListener("click", async ()=>{
     const body = { token:$("wToken").value.trim()||null, phoneId:$("wPhoneId").value.trim()||null,
-      wabaId:$("wWaba").value.trim()||null, defaultCc:$("wCc").value.trim()||null, verifyToken:$("wVerify").value.trim()||null };
+      wabaId:$("wWaba").value.trim()||null, defaultCc:$("wCc").value.trim()||null,
+      verifyToken:$("wVerify").value.trim()||null, appSecret:$("wAppSecret").value.trim()||null };
     jlBtn($("wSave"), true, "Saving…");
-    try { const c = await jlApi(API + "/connection", { method:"POST", body }); $("wToken").value=""; renderConn(c);
+    try { const c = await jlApi(API + "/connection", { method:"POST", body }); $("wToken").value=""; $("wAppSecret").value=""; renderConn(c);
       jlToast(c.tokenValid ? "Connected!" : ("Saved — " + (c.message||"")), { type: c.tokenValid ? "success" : "info" }); }
     catch(e){ jlToast(e.message||"Save failed", {type:"error"}); } finally { jlBtn($("wSave"), false); }
   });
@@ -246,6 +301,43 @@
     finally { jlBtn($("wDetect"), false); }
   });
   $("wRefresh").addEventListener("click", loadConnection);
+  // Show the exact callback URL for Meta's webhook config.
+  if ($("webhookUrl") && window.JL_API_BASE) $("webhookUrl").textContent = window.JL_API_BASE + "/api/v1/webhooks/whatsapp";
+
+  // ── delivery log ──
+  let dlPage = 0, dlTotalPages = 1;
+  function fmtTime(iso){ if(!iso) return ""; const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleString("en-IN", {day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}); }
+  async function loadDelivery(page){
+    dlPage = page || 0;
+    $("dlRows").innerHTML = `<tr><td colspan="5" class="px-3 py-4 text-slate-400">Loading…</td></tr>`;
+    const params = new URLSearchParams({ page: dlPage, size: 30 });
+    const st = $("dlStatus").value; if (st) params.set("status", st);
+    const ph = $("dlPhone").value.trim(); if (ph) params.set("phone", ph);
+    try {
+      const pg = await jlApi(API + "/delivery-log?" + params.toString());
+      const rows = pg.content || [];
+      dlTotalPages = pg.totalPages || 1;
+      if (!rows.length) {
+        $("dlRows").innerHTML = `<tr><td colspan="5" class="px-3 py-6 text-center text-slate-400">No messages found.</td></tr>`;
+      } else {
+        $("dlRows").innerHTML = rows.map(r=>`
+          <tr class="border-t border-slate-100">
+            <td class="px-3 py-2 text-slate-500 whitespace-nowrap">${esc(fmtTime(r.createdAt))}</td>
+            <td class="px-3 py-2"><div class="font-medium text-slate-700">${esc(r.recipientName||"—")}</div><div class="text-[11px] text-slate-400">${esc(r.phone||"")}</div></td>
+            <td class="px-3 py-2 text-slate-600">${esc(r.campaignName||"—")}</td>
+            <td class="px-3 py-2"><span class="chip ${msgTone(r.messageStatus)}">${esc(r.messageStatus)}</span></td>
+            <td class="px-3 py-2 text-[11px] text-slate-400 max-w-[220px] truncate" title="${esc(r.error||r.providerMessageId||"")}">${esc(r.error||r.providerMessageId||"")}</td>
+          </tr>`).join("");
+      }
+      $("dlInfo").textContent = `Page ${dlPage+1} of ${dlTotalPages} · ${pg.totalElements} message(s)`;
+      $("dlPrev").disabled = pg.first; $("dlNext").disabled = pg.last;
+    } catch(e){ $("dlRows").innerHTML = `<tr><td colspan="5" class="px-3 py-4 text-red-600">${esc(e.message||"Failed to load")}</td></tr>`; }
+  }
+  $("dlApply").addEventListener("click", ()=>loadDelivery(0));
+  $("dlReset").addEventListener("click", ()=>{ $("dlStatus").value=""; $("dlPhone").value=""; loadDelivery(0); });
+  $("dlPhone").addEventListener("keydown", (e)=>{ if(e.key==="Enter") loadDelivery(0); });
+  $("dlPrev").addEventListener("click", ()=>{ if(dlPage>0) loadDelivery(dlPage-1); });
+  $("dlNext").addEventListener("click", ()=>{ if(dlPage<dlTotalPages-1) loadDelivery(dlPage+1); });
 
   // ── analytics strip ──
   async function loadAnalytics(){

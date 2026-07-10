@@ -68,6 +68,7 @@ public class WhatsappConnectionServiceImpl implements WhatsappConnectionService 
         putIfPresent(WhatsAppService.KEY_WABA_ID, r.wabaId());
         putIfPresent(WhatsAppService.KEY_DEFAULT_CC, r.defaultCc());
         putIfPresent(WhatsAppService.KEY_VERIFY_TOKEN, r.verifyToken());
+        putIfPresent(WhatsAppService.KEY_APP_SECRET, r.appSecret());
         whatsApp.reload();
         return status();
     }
