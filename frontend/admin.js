@@ -46,7 +46,12 @@
     "button[class*='disabled:opacity-40']{cursor:pointer;transition:background-color .15s ease,border-color .15s ease,transform .08s ease;}" +
     "button[class*='disabled:opacity-40']:not(:disabled):hover{border-color:#576cbc;background:rgba(87,108,188,.08);}" +
     "button[class*='disabled:opacity-40']:not(:disabled):active{transform:scale(.97);}" +
-    "button[class*='disabled:opacity-40']:disabled{cursor:default;}";
+    "button[class*='disabled:opacity-40']:disabled{cursor:default;}" +
+    // Form controls (filter selects, search + form inputs): consistent hover + focus ring.
+    "select,textarea,input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]){transition:border-color .15s ease,box-shadow .15s ease;}" +
+    "select{cursor:pointer;}" +
+    "select:hover,textarea:hover,input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]):hover{border-color:#94a3b8;}" +
+    "select:focus,textarea:focus,input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]):focus{border-color:#576cbc;box-shadow:0 0 0 3px rgba(87,108,188,.15);outline:none;}";
   const s = document.createElement("style");
   s.setAttribute("data-jl", "action-buttons");
   s.textContent = css;
