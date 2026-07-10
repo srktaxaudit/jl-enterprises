@@ -77,7 +77,14 @@
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
   function flash(t, ok=true){ const el=$("msg"); el.textContent=t; el.className="mb-4 text-[13px] rounded-lg px-3 py-2 "+(ok?"bg-green-50 text-green-700 border border-green-200":"bg-red-50 text-red-700 border border-red-200"); el.classList.remove("hidden"); }
 
-  function showForm(show){ $("formCard").classList.toggle("hidden", !show); if(show) $("title").focus(); }
+  // Open/close the banner form as a modal dialog (no layout shift; the list stays put).
+  let bannerDlg = null;
+  function showForm(show){
+    if(show){
+      if(!bannerDlg) bannerDlg = jlDialog($("formCard"), { title: $("formTitle").textContent, dismissable:false, onClose:()=>{ bannerDlg=null; } });
+      else $("formCard").querySelector("input,select,textarea,button")?.focus();
+    } else if(bannerDlg){ bannerDlg.close(); bannerDlg=null; }
+  }
   function resetForm(){
     $("bid").value=""; $("title").value=""; $("linkUrl").value=""; $("imageUrl").value="";
     $("position").value="HERO"; $("sortOrder").value="0"; $("active").checked=true;
