@@ -98,15 +98,22 @@ function jlNotifyWaking() {
 }
 
 async function jlFetchWithRetry(url, opts) {
+  // Only AUTO-RETRY idempotent reads. Re-sending a POST/PUT/PATCH/DELETE on a gateway
+  // hiccup can duplicate the action (e.g. create the same product twice), so mutations
+  // get a single attempt and a clear "try again" message instead.
+  const method = ((opts && opts.method) || "GET").toUpperCase();
+  const retryable = method === "GET" || method === "HEAD";
   for (let i = 0; i <= JL_RETRY_DELAYS.length; i++) {
     try {
       const res = await fetch(url, opts);
-      if ([502, 503, 504].includes(res.status) && i < JL_RETRY_DELAYS.length) {
-        jlNotifyWaking(); await jlSleep(JL_RETRY_DELAYS[i]); continue;
+      if ([502, 503, 504].includes(res.status)) {
+        if (retryable && i < JL_RETRY_DELAYS.length) { jlNotifyWaking(); await jlSleep(JL_RETRY_DELAYS[i]); continue; }
+        if (!retryable) throw { status: res.status, message: "The server is starting up — please try again in a moment." };
       }
       return res;
-    } catch (_) {
-      if (i < JL_RETRY_DELAYS.length) { jlNotifyWaking(); await jlSleep(JL_RETRY_DELAYS[i]); continue; }
+    } catch (e) {
+      if (e && e.status) throw e;   // our own "starting up" signal — don't retry
+      if (retryable && i < JL_RETRY_DELAYS.length) { jlNotifyWaking(); await jlSleep(JL_RETRY_DELAYS[i]); continue; }
       throw { status: 0, message: "Can't reach the server. It may be starting up — please wait a moment and try again." };
     }
   }

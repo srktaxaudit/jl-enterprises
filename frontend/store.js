@@ -25,11 +25,11 @@ function jlNotifyWaking() {
 // Boot service can take 30–60s to wake). Total wait across all retries ≈ 37s.
 const JL_RETRY_DELAYS = [2000, 4000, 6000, 10000, 15000];
 
-/** Core JSON fetch with envelope-unwrap + transient-failure retry.
-    Retries only on cases where the request never reached the app (network
-    rejection, or Render's 502/503/504 while the container boots) — safe even
-    for non-idempotent POSTs. App-level responses (incl. 4xx/500) are returned
-    to the caller as-is. Set opts.auth to attach the customer bearer token. */
+/** Core JSON fetch with envelope-unwrap + cold-start retry.
+    Only IDEMPOTENT reads (GET/HEAD) are auto-retried — re-sending a POST could
+    duplicate the action (e.g. place the same order twice), so mutations get a single
+    attempt and a clear "try again" message. App-level responses (incl. 4xx/500) are
+    returned to the caller as-is. Set opts.auth to attach the customer bearer token. */
 async function jlFetchJson(path, opts = {}) {
   const method = opts.method || (opts.body ? "POST" : "GET");
   // Any state-changing call (POST/PUT/PATCH/DELETE) shows the blocking overlay so
@@ -46,13 +46,15 @@ async function jlFetchJson(path, opts = {}) {
 
 async function jlFetchJsonRaw(path, opts) {
   const { method, body, auth } = opts;
+  const verb = (method || (body ? "POST" : "GET")).toUpperCase();
+  const retryable = verb === "GET" || verb === "HEAD";   // never auto-retry a mutation
   let lastErr = { status: 0, message: "Can't reach the server. Please check your connection and try again." };
   for (let i = 0; i <= JL_RETRY_DELAYS.length; i++) {
     let res;
     try {
       const tok = auth ? localStorage.getItem(JL_CTOK) : null;
       res = await fetch(JL_API_BASE + path, {
-        method: method || (body ? "POST" : "GET"),
+        method: verb,
         headers: {
           ...(body ? { "Content-Type": "application/json" } : {}),
           ...(tok ? { Authorization: "Bearer " + tok } : {}),
@@ -60,11 +62,12 @@ async function jlFetchJsonRaw(path, opts) {
         body: body ? JSON.stringify(body) : undefined,
       });
     } catch (netErr) {
-      if (i < JL_RETRY_DELAYS.length) { jlNotifyWaking(); await jlSleep(JL_RETRY_DELAYS[i]); continue; }
+      if (retryable && i < JL_RETRY_DELAYS.length) { jlNotifyWaking(); await jlSleep(JL_RETRY_DELAYS[i]); continue; }
       throw lastErr;
     }
-    if ([502, 503, 504].includes(res.status) && i < JL_RETRY_DELAYS.length) {
-      jlNotifyWaking(); await jlSleep(JL_RETRY_DELAYS[i]); continue;
+    if ([502, 503, 504].includes(res.status)) {
+      if (retryable && i < JL_RETRY_DELAYS.length) { jlNotifyWaking(); await jlSleep(JL_RETRY_DELAYS[i]); continue; }
+      if (!retryable) throw { status: res.status, message: "The server is starting up — please try again in a moment." };
     }
     let json = null;
     try { json = await res.json(); } catch (_) { /* empty */ }

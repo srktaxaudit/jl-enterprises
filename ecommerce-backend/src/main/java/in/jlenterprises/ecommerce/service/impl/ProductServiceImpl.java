@@ -155,15 +155,22 @@ public class ProductServiceImpl implements ProductService {
         if (productRepository.existsBySku(request.sku())) {
             throw new DuplicateResourceException("Product SKU already exists: " + request.sku());
         }
-        Product product = new Product();
+        // A previously SOFT-DELETED product can still hold this slug/SKU at the DB level
+        // (existsBy* skip soft-deleted rows), so a plain insert would fail with a confusing
+        // "conflict" and the deleted product stays hidden. Revive & overwrite that row instead.
+        Product product = productRepository.findDeletedBySlugOrSku(slug, request.sku())
+                .map(existing -> { existing.setDeleted(false); return existing; })
+                .orElseGet(Product::new);
         product.setSlug(slug);
         apply(product, request);
         product = productRepository.save(product);
 
-        // Every product gets a stock record so inventory management has a home.
-        Inventory inventory = new Inventory();
-        inventory.setProduct(product);
-        inventoryRepository.save(inventory);
+        // Every product gets a stock record (a revived one usually already has its own).
+        if (inventoryRepository.findByProductId(product.getId()).isEmpty()) {
+            Inventory inventory = new Inventory();
+            inventory.setProduct(product);
+            inventoryRepository.save(inventory);
+        }
 
         return productMapper.toDetail(product);
     }

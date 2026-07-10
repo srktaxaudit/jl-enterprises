@@ -42,4 +42,17 @@ public interface ProductRepository extends JpaRepository<Product, UUID>, JpaSpec
     @org.springframework.data.jpa.repository.Query(
             "select p from Product p left join fetch p.brand b where b is null")
     java.util.List<Product> findWithoutBrand();
+
+    /**
+     * A SOFT-DELETED product still holding this slug or SKU (native query bypasses
+     * {@code @SQLRestriction}). The slug/SKU columns are uniquely constrained regardless of
+     * the soft-delete flag, so re-creating a previously deleted product must revive this row
+     * rather than insert a duplicate (which would fail with a confusing constraint violation).
+     */
+    @org.springframework.data.jpa.repository.Query(value =
+            "select * from products where deleted = true and (slug = :slug or sku = :sku) limit 1",
+            nativeQuery = true)
+    Optional<Product> findDeletedBySlugOrSku(
+            @org.springframework.data.repository.query.Param("slug") String slug,
+            @org.springframework.data.repository.query.Param("sku") String sku);
 }
