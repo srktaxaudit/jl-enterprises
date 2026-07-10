@@ -27,6 +27,10 @@ public class WhatsappTemplate extends BaseEntity {
     @Column(name = "meta_template_name", length = 160)
     private String metaTemplateName;
 
+    /** Meta review status when synced (APPROVED/PENDING/REJECTED); null for local-only templates. */
+    @Column(name = "meta_status", length = 20)
+    private String metaStatus;
+
     @Column(name = "language", nullable = false, length = 10)
     private String language = "en";
 

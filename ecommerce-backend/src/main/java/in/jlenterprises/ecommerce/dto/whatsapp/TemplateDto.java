@@ -9,6 +9,7 @@ public record TemplateDto(
         UUID id,
         String name,
         String metaTemplateName,
+        String metaStatus,
         String language,
         WhatsappTemplateCategory category,
         String bodyText,

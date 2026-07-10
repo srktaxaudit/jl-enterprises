@@ -7,14 +7,18 @@ import in.jlenterprises.ecommerce.dto.whatsapp.AudiencePreviewDto;
 import in.jlenterprises.ecommerce.dto.whatsapp.CampaignAnalyticsDto;
 import in.jlenterprises.ecommerce.dto.whatsapp.CampaignDetailDto;
 import in.jlenterprises.ecommerce.dto.whatsapp.CampaignDto;
+import in.jlenterprises.ecommerce.dto.whatsapp.ConnectionStatusDto;
 import in.jlenterprises.ecommerce.dto.whatsapp.TemplateDto;
+import in.jlenterprises.ecommerce.dto.whatsapp.TemplateSyncResult;
 import in.jlenterprises.ecommerce.dto.whatsapp.TestSendResult;
 import in.jlenterprises.ecommerce.request.whatsapp.CampaignRequest;
+import in.jlenterprises.ecommerce.request.whatsapp.ConnectionRequest;
 import in.jlenterprises.ecommerce.request.whatsapp.TemplateRequest;
 import in.jlenterprises.ecommerce.request.whatsapp.TestSendRequest;
 import in.jlenterprises.ecommerce.response.ApiResponse;
 import in.jlenterprises.ecommerce.response.PageResponse;
 import in.jlenterprises.ecommerce.service.WhatsappCampaignService;
+import in.jlenterprises.ecommerce.service.WhatsappConnectionService;
 import in.jlenterprises.ecommerce.service.WhatsappTemplateService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -46,10 +50,32 @@ public class WhatsAppController {
 
     private final WhatsappCampaignService campaigns;
     private final WhatsappTemplateService templates;
+    private final WhatsappConnectionService connection;
 
-    public WhatsAppController(WhatsappCampaignService campaigns, WhatsappTemplateService templates) {
+    public WhatsAppController(WhatsappCampaignService campaigns, WhatsappTemplateService templates,
+                             WhatsappConnectionService connection) {
         this.campaigns = campaigns;
         this.templates = templates;
+        this.connection = connection;
+    }
+
+    // ── Connection ──
+    @GetMapping("/connection")
+    @Operation(summary = "Meta connection status (token validity, phone quality, template count)")
+    public ApiResponse<ConnectionStatusDto> connection() {
+        return ApiResponse.success(connection.status());
+    }
+
+    @PostMapping("/connection")
+    @Operation(summary = "Save connection credentials (token/phone id/WABA/verify token)")
+    public ApiResponse<ConnectionStatusDto> saveConnection(@Valid @RequestBody ConnectionRequest request) {
+        return ApiResponse.success("Connection saved", connection.save(request));
+    }
+
+    @PostMapping("/connection/detect-waba")
+    @Operation(summary = "Auto-detect and save the WhatsApp Business Account id from the token")
+    public ApiResponse<ConnectionStatusDto> detectWaba() {
+        return ApiResponse.success("WABA detected", connection.detectWaba());
     }
 
     // ── Templates ──
@@ -57,6 +83,12 @@ public class WhatsAppController {
     @Operation(summary = "List saved message templates")
     public ApiResponse<List<TemplateDto>> listTemplates() {
         return ApiResponse.success(templates.list());
+    }
+
+    @PostMapping("/templates/sync")
+    @Operation(summary = "Sync approved templates from Meta into the local list")
+    public ApiResponse<TemplateSyncResult> syncTemplates() {
+        return ApiResponse.success("Templates synced", templates.syncFromMeta());
     }
 
     @PostMapping("/templates")
