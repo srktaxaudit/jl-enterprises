@@ -63,4 +63,11 @@ public class WhatsappMessageLog extends BaseEntity {
 
     @Column(name = "sent_at")
     private Instant sentAt;
+
+    /** Set from delivery-status webhooks (Phase 2). */
+    @Column(name = "delivered_at")
+    private Instant deliveredAt;
+
+    @Column(name = "read_at")
+    private Instant readAt;
 }

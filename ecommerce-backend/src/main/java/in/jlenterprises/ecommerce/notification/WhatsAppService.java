@@ -43,6 +43,7 @@ public class WhatsAppService {
     public static final String KEY_WABA_ID = "whatsapp.waba_id";
     public static final String KEY_DEFAULT_CC = "whatsapp.default_cc";
     public static final String KEY_VERIFY_TOKEN = "whatsapp.verify_token";
+    public static final String KEY_APP_SECRET = "whatsapp.app_secret";
 
     private final ObjectMapper mapper;
     private final AppSettingRepository settings;
@@ -52,6 +53,7 @@ public class WhatsAppService {
     private final String envPhoneId;
     private final String envWabaId;
     private final String envVerifyToken;
+    private final String envAppSecret;
     private final String envDefaultCc;
 
     // Resolved values (DB else env), cached in memory. Refreshed at startup and whenever
@@ -60,6 +62,7 @@ public class WhatsAppService {
     private volatile String phoneId;
     private volatile String wabaId;
     private volatile String verifyToken;
+    private volatile String appSecret;
     private volatile String defaultCc;
     private volatile boolean tokenFromPortal;
 
@@ -69,6 +72,7 @@ public class WhatsAppService {
                            @Value("${WHATSAPP_PHONE_ID:}") String envPhoneId,
                            @Value("${WHATSAPP_WABA_ID:}") String envWabaId,
                            @Value("${WHATSAPP_VERIFY_TOKEN:}") String envVerifyToken,
+                           @Value("${WHATSAPP_APP_SECRET:}") String envAppSecret,
                            @Value("${WHATSAPP_DEFAULT_CC:91}") String envDefaultCc) {
         this.mapper = mapper;
         this.settings = settings;
@@ -76,12 +80,14 @@ public class WhatsAppService {
         this.envPhoneId = envPhoneId;
         this.envWabaId = envWabaId;
         this.envVerifyToken = envVerifyToken;
+        this.envAppSecret = envAppSecret;
         this.envDefaultCc = envDefaultCc;
         // Seed from env immediately; DB overrides are applied in reload() once JPA is ready.
         this.token = blankToNull(envToken);
         this.phoneId = blankToNull(envPhoneId);
         this.wabaId = blankToNull(envWabaId);
         this.verifyToken = blankToNull(envVerifyToken);
+        this.appSecret = blankToNull(envAppSecret);
         this.defaultCc = normalizeCc(envDefaultCc);
         this.tokenFromPortal = false;
     }
@@ -94,6 +100,7 @@ public class WhatsAppService {
             this.phoneId = resolve(KEY_PHONE_ID, envPhoneId);
             this.wabaId = resolve(KEY_WABA_ID, envWabaId);
             this.verifyToken = resolve(KEY_VERIFY_TOKEN, envVerifyToken);
+            this.appSecret = resolve(KEY_APP_SECRET, envAppSecret);
             this.defaultCc = normalizeCc(resolve(KEY_DEFAULT_CC, envDefaultCc));
             this.tokenFromPortal = dbValue(KEY_TOKEN) != null;
         } catch (Exception e) {
@@ -128,6 +135,8 @@ public class WhatsAppService {
     public String phoneId() { return phoneId; }
     public String wabaId() { return wabaId; }
     public String verifyToken() { return verifyToken; }
+    /** Meta app secret, used to verify the X-Hub-Signature-256 on inbound webhooks. May be null. */
+    public String appSecret() { return appSecret; }
     public String defaultCc() { return defaultCc; }
     /** True when the active token comes from the portal (app_settings) rather than env. */
     public boolean tokenFromPortal() { return tokenFromPortal; }
