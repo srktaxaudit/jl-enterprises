@@ -4,11 +4,14 @@ import in.jlenterprises.ecommerce.constant.OrderStatus;
 import in.jlenterprises.ecommerce.constant.PaymentStatus;
 import in.jlenterprises.ecommerce.dto.order.OrderDto;
 import in.jlenterprises.ecommerce.dto.order.OrderSummaryDto;
+import in.jlenterprises.ecommerce.request.admin.PosOrderRequest;
 import in.jlenterprises.ecommerce.response.ApiResponse;
 import in.jlenterprises.ecommerce.response.PageResponse;
 import in.jlenterprises.ecommerce.service.OrderService;
+import in.jlenterprises.ecommerce.service.PosOrderService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -34,9 +37,18 @@ import java.util.UUID;
 public class AdminOrderController {
 
     private final OrderService orderService;
+    private final PosOrderService posOrderService;
 
-    public AdminOrderController(OrderService orderService) {
+    public AdminOrderController(OrderService orderService, PosOrderService posOrderService) {
         this.orderService = orderService;
+        this.posOrderService = posOrderService;
+    }
+
+    @PostMapping("/pos")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','MANAGER','ORDER_MANAGER')")
+    @Operation(summary = "Record a counter/phone (POS) sale — completed, cash-paid, stock deducted")
+    public ApiResponse<OrderDto> createPos(@Valid @org.springframework.web.bind.annotation.RequestBody PosOrderRequest request) {
+        return ApiResponse.success("Sale recorded", posOrderService.createPosOrder(request));
     }
 
     @GetMapping
