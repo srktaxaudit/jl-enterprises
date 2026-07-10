@@ -273,7 +273,7 @@ function jlProductCard(p) {
   const emoji = JL_CAT_EMOJI[p.categorySlug] || "📦";
   const searchText = jlEsc(((p.name || "") + " " + (p.brandName || "") + " " + (p.categorySlug || "")).toLowerCase());
   const media = p.primaryImageUrl
-    ? `<img src="${jlEsc(p.primaryImageUrl)}" alt="${jlEsc(p.name)}" class="h-40 w-full object-cover" />`
+    ? `<img src="${jlEsc(p.primaryImageUrl)}" alt="${jlEsc(p.name)}" loading="lazy" decoding="async" class="h-40 w-full object-cover" />`
     : `<div class="h-40 flex items-center justify-center text-6xl bg-gradient-to-br from-slate-50 to-slate-100">${emoji}</div>`;
   return `
     <div class="product-card bg-white border border-slate-200 rounded-2xl overflow-hidden hover:shadow-card hover:-translate-y-0.5 transition relative" data-search="${searchText}">

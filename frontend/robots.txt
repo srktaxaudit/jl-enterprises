@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+
+# Keep the admin panel and personal/transactional pages out of search
+Disallow: /admin-login.html
+Disallow: /admin-shell.html
+Disallow: /admin
+Disallow: /checkout.html
+Disallow: /cart.html
+Disallow: /login.html
+Disallow: /signup.html
+Disallow: /reset-password.html
+Disallow: /my-orders.html
+
+Sitemap: https://jlstores.in/sitemap.xml

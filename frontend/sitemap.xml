@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://jlstores.in/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>
+
+  <!-- Departments -->
+  <url><loc>https://jlstores.in/air-conditioners.html</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://jlstores.in/air-coolers.html</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://jlstores.in/televisions.html</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://jlstores.in/refrigerators.html</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://jlstores.in/washing-machines.html</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://jlstores.in/water-heaters.html</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://jlstores.in/fans.html</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://jlstores.in/stabilizers.html</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://jlstores.in/home-theatre.html</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://jlstores.in/kitchen.html</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://jlstores.in/furniture.html</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+
+  <!-- Services & info -->
+  <url><loc>https://jlstores.in/offers.html</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://jlstores.in/service.html</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://jlstores.in/exchange.html</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://jlstores.in/emi-payment.html</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://jlstores.in/shop-location.html</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://jlstores.in/track-order.html</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://jlstores.in/about.html</loc><changefreq>yearly</changefreq><priority>0.4</priority></url>
+  <url><loc>https://jlstores.in/terms.html</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://jlstores.in/privacy.html</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+</urlset>

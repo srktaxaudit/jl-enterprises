@@ -408,6 +408,11 @@
       $("coDoneFootnote").textContent = "Our team will call you shortly to confirm delivery.";
       $("coRetryPay").classList.add("hidden");
       revealDone(order, payNote);
+      // Analytics: conversion event (no-op when analytics is off).
+      window.jlTrack && jlTrack("purchase", {
+        transaction_id: order.orderNumber || order.id,
+        currency: "INR", value: Number(order.grandTotal || 0),
+      });
     }
 
     // Payment was not completed — the order is saved as PENDING. Show a clear
@@ -501,6 +506,7 @@
           postalCode: pin, country: "India",
         });
         const method = (document.querySelector('input[name="pay"]:checked') || {}).value || "COD";
+        window.jlTrack && jlTrack("begin_checkout", { currency: "INR", value: subtotal });
         const order = await JLCheckout.placeOrder(addr.id, $("coNotes").value.trim(), method,
                                                   appliedCoupon ? appliedCoupon.code : null,
                                                   appliedExchange ? appliedExchange.id : null);

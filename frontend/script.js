@@ -163,6 +163,10 @@ function jlCartBump(wrap, delta) {
   saveCart(cart);            // refreshes header badge + floating cart
   jlSyncCartControls(id);    // update every placement of this product
   renderCartPage();          // refresh the cart page if we're on it
+  if (delta > 0) window.jlTrack && jlTrack("add_to_cart", {
+    currency: "INR", value: Number(wrap.dataset.price) || 0,
+    items: [{ item_id: id, item_name: wrap.dataset.name, price: Number(wrap.dataset.price) || 0, quantity: 1 }],
+  });
 }
 
 // One delegated handler covers every control on every page (including cards
@@ -513,8 +517,29 @@ function initCategoryNav() {
   });
 }
 
+/* ── Analytics (Google Analytics 4 — opt-in via window.JL_GA_ID in config.js) ──
+   Loads gtag only when an ID is set, so the site works with analytics off. Exposes
+   window.jlTrack(name, params) for funnel events (add_to_cart / begin_checkout / purchase). */
+function jlInitAnalytics() {
+  const id = window.JL_GA_ID;
+  if (!id || document.getElementById("jl-ga")) return;      // disabled, or already loaded
+  const s = document.createElement("script");
+  s.id = "jl-ga"; s.async = true;
+  s.src = "https://www.googletagmanager.com/gtag/js?id=" + encodeURIComponent(id);
+  document.head.appendChild(s);
+  window.dataLayer = window.dataLayer || [];
+  window.gtag = function () { window.dataLayer.push(arguments); };
+  gtag("js", new Date());
+  gtag("config", id);
+}
+/** Fire a GA4 event; a no-op when analytics is off. Safe to call from any page. */
+window.jlTrack = function (name, params) {
+  try { if (typeof gtag === "function") gtag("event", name, params || {}); } catch (_) { /* noop */ }
+};
+
 /* ── Boot: run once the page is ready ────────────────────────────── */
 document.addEventListener("DOMContentLoaded", () => {
+  jlInitAnalytics();    // turns on Google Analytics when JL_GA_ID is configured
   initCategoryNav();    // appends Fans / Air Coolers / Stabilizers / Water Heaters to the nav bar
   updateCartWidgets();  // badge reflects the stored cart on every page
   jlSyncCartControls(); // any add/qty controls already in the DOM reflect the cart

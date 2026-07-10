@@ -4,6 +4,19 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Product — JL Enterprises</title>
+<meta name="description" content="View product details, price, EMI options and reviews at JL Enterprises, Thoothukudi. Easy EMI, COD and free delivery across Tamil Nadu." />
+<link rel="canonical" href="https://jlstores.in/product.html" />
+<meta name="theme-color" content="#0b2447" />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="JL Enterprises" />
+<meta property="og:title" content="Product — JL Enterprises" />
+<meta property="og:description" content="View product details, price, EMI options and reviews at JL Enterprises, Thoothukudi. Easy EMI, COD and free delivery across Tamil Nadu." />
+<meta property="og:url" content="https://jlstores.in/product.html" />
+<meta property="og:image" content="https://jlstores.in/og-image.svg" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Product — JL Enterprises" />
+<meta name="twitter:description" content="View product details, price, EMI options and reviews at JL Enterprises, Thoothukudi. Easy EMI, COD and free delivery across Tamil Nadu." />
+<meta name="twitter:image" content="https://jlstores.in/og-image.svg" />
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
   tailwind.config = { theme: { extend: {
@@ -51,6 +64,47 @@
   const escAttr = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
+  // Update the head for THIS product (description/OG/canonical) and inject Product
+  // JSON-LD so crawlers that render JS get real product data. Also logs a GA view_item.
+  function applyProductSeo(p, slug) {
+    try {
+      const url = (window.JL_SITE_URL || "https://jlstores.in") + "/product.html?slug=" + encodeURIComponent(slug);
+      const desc = (p.shortDescription || (p.name + " at JL Enterprises, Thoothukudi. Easy EMI, COD and free delivery across Tamil Nadu.")).slice(0, 300);
+      const img = p.primaryImageUrl || window.JL_OG_IMAGE;
+      const set = (sel, attr, val) => { const el = document.querySelector(sel); if (el) el.setAttribute(attr, val); };
+      set('meta[name="description"]', "content", desc);
+      set('link[rel="canonical"]', "href", url);
+      set('meta[property="og:title"]', "content", p.name + " — JL Enterprises");
+      set('meta[property="og:description"]', "content", desc);
+      set('meta[property="og:url"]', "content", url);
+      set('meta[property="og:image"]', "content", img);
+      set('meta[name="twitter:title"]', "content", p.name + " — JL Enterprises");
+      set('meta[name="twitter:description"]', "content", desc);
+      set('meta[name="twitter:image"]', "content", img);
+      const ld = document.createElement("script");
+      ld.type = "application/ld+json";
+      ld.textContent = JSON.stringify({
+        "@context": "https://schema.org", "@type": "Product",
+        name: p.name, sku: p.sku || undefined, image: p.primaryImageUrl || undefined,
+        description: desc, brand: p.brandName ? { "@type": "Brand", name: p.brandName } : undefined,
+        aggregateRating: (p.reviewCount > 0 && p.averageRating) ? {
+          "@type": "AggregateRating", ratingValue: Number(p.averageRating), reviewCount: Number(p.reviewCount)
+        } : undefined,
+        offers: {
+          "@type": "Offer", url: url, priceCurrency: "INR", price: Number(p.price || 0),
+          availability: (p.availableStock != null && p.availableStock <= 0)
+            ? "https://schema.org/OutOfStock" : "https://schema.org/InStock",
+          seller: { "@type": "Organization", name: "JL Enterprises" }
+        }
+      });
+      document.head.appendChild(ld);
+      window.jlTrack && jlTrack("view_item", {
+        currency: "INR", value: Number(p.price || 0),
+        items: [{ item_id: p.id, item_name: p.name, price: Number(p.price || 0) }],
+      });
+    } catch (_) { /* SEO extras must never break the page */ }
+  }
+
   async function loadProduct() {
     const box = document.getElementById("product");
     box.innerHTML = '<div style="text-align:center;padding:24px">' + jlSpinnerHTML({ size: 28 }) + '</div>';
@@ -59,6 +113,7 @@
     try {
       const p = await JLStore.productBySlug(slug);
       document.title = p.name + " — JL Enterprises";
+      applyProductSeo(p, slug);
       const price = Number(p.price || 0), mrp = Number(p.comparePrice || 0);
       const emoji = JL_CAT_EMOJI[p.categorySlug] || "📦";
       const rating = Math.round(Number(p.averageRating || 0));

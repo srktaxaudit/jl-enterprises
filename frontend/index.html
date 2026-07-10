@@ -3,7 +3,54 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>JL Enterprises — Online Store</title>
+<title>JL Enterprises — Online Appliance Store, Thoothukudi | ACs, TVs, Fridges</title>
+<meta name="description" content="Buy ACs, TVs, refrigerators, washing machines, air coolers, water heaters and more at JL Enterprises, Thoothukudi. Easy EMI, Cash on Delivery, free doorstep delivery across Tamil Nadu, plus repair &amp; AMC service." />
+<link rel="canonical" href="https://jlstores.in/" />
+<meta name="theme-color" content="#0b2447" />
+<!-- Open Graph / Twitter (social sharing previews) -->
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="JL Enterprises" />
+<meta property="og:title" content="JL Enterprises — Online Appliance Store, Thoothukudi" />
+<meta property="og:description" content="ACs, TVs, fridges, washing machines &amp; more. Easy EMI · Cash on Delivery · Free delivery across Tamil Nadu." />
+<meta property="og:url" content="https://jlstores.in/" />
+<meta property="og:image" content="https://jlstores.in/og-image.svg" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="JL Enterprises — Online Appliance Store" />
+<meta name="twitter:description" content="ACs, TVs, fridges, washing machines &amp; more. Easy EMI · COD · Free delivery across Tamil Nadu." />
+<meta name="twitter:image" content="https://jlstores.in/og-image.svg" />
+<!-- Structured data (Google rich results / knowledge panel) -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Store",
+      "@id": "https://jlstores.in/#store",
+      "name": "JL Enterprises",
+      "image": "https://jlstores.in/og-image.svg",
+      "url": "https://jlstores.in/",
+      "telephone": "+91-95149-70111",
+      "priceRange": "₹₹",
+      "address": { "@type": "PostalAddress", "addressLocality": "Thoothukudi", "addressRegion": "Tamil Nadu", "addressCountry": "IN" },
+      "areaServed": "Tamil Nadu",
+      "sameAs": [
+        "https://www.instagram.com/jl_enterprises_tut",
+        "https://www.facebook.com/people/JL-Enterprisess-Thoothukudi/61557628604440/"
+      ]
+    },
+    {
+      "@type": "WebSite",
+      "url": "https://jlstores.in/",
+      "name": "JL Enterprises",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": { "@type": "EntryPoint", "urlTemplate": "https://jlstores.in/?q={search_term_string}" },
+        "query-input": "required name=search_term_string"
+      }
+    }
+  ]
+}
+</script>
 <!-- Tailwind CDN for layout utilities + our own stylesheet for components -->
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
@@ -277,7 +324,7 @@
     const emoji = JL_CAT_EMOJI[p.categorySlug] || "📦";
     const searchText = escAttr(((p.name || "") + " " + (p.brandName || "") + " " + (p.categorySlug || "")).toLowerCase());
     const media = p.primaryImageUrl
-      ? `<img src="${escAttr(p.primaryImageUrl)}" alt="${escAttr(p.name)}" class="h-40 w-full object-cover" />`
+      ? `<img src="${escAttr(p.primaryImageUrl)}" alt="${escAttr(p.name)}" loading="lazy" decoding="async" class="h-40 w-full object-cover" />`
       : `<div class="h-40 flex items-center justify-center text-6xl bg-gradient-to-br from-slate-50 to-slate-100">${emoji}</div>`;
     return `
     <div class="product-card bg-white border border-slate-200 rounded-2xl overflow-hidden hover:shadow-card hover:-translate-y-0.5 transition relative" data-search="${searchText}">
