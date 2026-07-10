@@ -108,6 +108,8 @@
           <h2 class="text-navy font-semibold">Catalog</h2>
           <button id="autoCatBtn" class="ml-auto text-[12px] bg-brand hover:bg-navy text-white rounded-lg px-3 py-1.5" title="File General/uncategorised products into the right department by their name">🏷️ Auto-categorize by name</button>
           <button id="autoBrandBtn" class="text-[12px] bg-brand hover:bg-navy text-white rounded-lg px-3 py-1.5" title="Assign a brand (guessed from the product name) to products that have none">🏭 Auto-assign brands</button>
+          <button id="exportBtn" class="text-[12px] bg-slate-100 hover:bg-slate-200 text-navy rounded-lg px-3 py-1.5" title="Download all products as a CSV (backup / price list)">⬇ Export CSV</button>
+          <label class="text-[12px] bg-slate-100 hover:bg-slate-200 text-navy rounded-lg px-3 py-1.5 cursor-pointer" title="Bulk-update prices/stock from a CSV (matched by SKU)">⬆ Import CSV<input id="importFile" type="file" accept=".csv,text/csv" class="hidden" /></label>
         </div>
         <label class="text-[11px] text-slate-500">Category<br>
           <select id="catFilter" class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm"><option value="">All categories</option></select></label>
@@ -419,6 +421,78 @@
       load();
     } catch(err){ jlToast(err.message || "Auto-assign brands failed", {type:"error"}); }
     finally { jlBtn(e.target, false); }
+  });
+
+  // ── CSV export / import (bulk price & stock) ──
+  $("exportBtn").addEventListener("click", async (e)=>{
+    jlBtn(e.target, true);
+    try {
+      const res = await fetch(JL_API_BASE + "/api/v1/admin/products/export", { headers: { Authorization: "Bearer " + jlTokens.access } });
+      if(!res.ok) throw new Error("Export failed (" + res.status + ")");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a"); a.href = url; a.download = "products.csv";
+      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+      jlToast("Products exported.", {type:"success"});
+    } catch(err){ jlToast(err.message || "Export failed", {type:"error"}); }
+    finally { jlBtn(e.target, false); }
+  });
+
+  // Minimal RFC-4180-ish CSV parser (handles quotes, commas and newlines in fields).
+  function parseCsv(text){
+    text = text.replace(/\r\n?/g, "\n");
+    const rows=[]; let row=[], field="", inQ=false, i=0;
+    while(i < text.length){
+      const c = text[i];
+      if(inQ){
+        if(c === '"'){ if(text[i+1] === '"'){ field+='"'; i+=2; continue; } inQ=false; i++; continue; }
+        field+=c; i++; continue;
+      }
+      if(c === '"'){ inQ=true; i++; continue; }
+      if(c === ','){ row.push(field); field=""; i++; continue; }
+      if(c === '\n'){ row.push(field); rows.push(row); row=[]; field=""; i++; continue; }
+      field+=c; i++;
+    }
+    if(field !== "" || row.length){ row.push(field); rows.push(row); }
+    return rows;
+  }
+  function csvToRows(text){
+    const grid = parseCsv(text).filter(r => r.some(c => c.trim() !== ""));
+    if(grid.length < 2) return [];
+    const headers = grid[0].map(h => h.trim().toLowerCase());
+    const at = (n) => headers.indexOf(n);
+    const iSku=at("sku"), iPrice=at("price"), iCmp=at("compareprice"), iStock=at("stock"), iRe=at("reorderlevel"), iFeat=at("featured"), iAct=at("active");
+    const num = (v)=>{ v=(v==null?"":String(v)).trim(); if(v==="") return null; const n=Number(v.replace(/[^0-9.\-]/g,"")); return isNaN(n)?null:n; };
+    const boolv = (v)=>{ v=(v==null?"":String(v)).trim().toLowerCase(); if(v==="") return null; return ["yes","true","1","y","active"].includes(v); };
+    const out=[];
+    for(let r=1;r<grid.length;r++){
+      const row = grid[r];
+      const sku = iSku>=0 ? (row[iSku]||"").trim() : "";
+      if(!sku) continue;
+      const stock = iStock>=0 ? num(row[iStock]) : null;
+      const reorder = iRe>=0 ? num(row[iRe]) : null;
+      out.push({ sku,
+        price: iPrice>=0 ? num(row[iPrice]) : null,
+        comparePrice: iCmp>=0 ? num(row[iCmp]) : null,
+        stock: stock==null ? null : Math.round(stock),
+        reorderLevel: reorder==null ? null : Math.round(reorder),
+        featured: iFeat>=0 ? boolv(row[iFeat]) : null,
+        active: iAct>=0 ? boolv(row[iAct]) : null });
+    }
+    return out;
+  }
+  $("importFile").addEventListener("change", async (e)=>{
+    const f = e.target.files[0]; e.target.value=""; if(!f) return;
+    try {
+      const rows = csvToRows(await f.text());
+      if(!rows.length){ jlToast("No usable rows found (need a header row with a SKU column).", {type:"warn"}); return; }
+      if(!(await jlConfirm(`Update ${rows.length} product(s) matched by SKU from this file? Only price / compare price / stock / reorder level / featured / active are changed; unknown SKUs are skipped.`, {title:"Import CSV", confirmText:"Update"}))) return;
+      const result = await jlApi("/api/v1/admin/products/import", {method:"POST", body: rows, blocking:true, busyMessage:"Updating products…"});
+      const skipped = (result.skipped||[]).length;
+      jlToast(`Updated ${result.updated} product(s)${skipped?`, skipped ${skipped}`:""}.`, {type:"success"});
+      if(skipped){ flash("Skipped: " + result.skipped.slice(0,8).map(s=>`${esc(s.sku||"(no SKU)")} — ${esc(s.reason)}`).join(" · ") + (skipped>8?" …":""), false); }
+      load();
+    } catch(err){ jlToast(err.message || "Import failed", {type:"error"}); }
   });
 
   jlWireLogout("#logoutBtn");

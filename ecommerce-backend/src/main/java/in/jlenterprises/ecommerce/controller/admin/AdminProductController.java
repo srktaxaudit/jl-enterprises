@@ -1,7 +1,9 @@
 package in.jlenterprises.ecommerce.controller.admin;
 
+import in.jlenterprises.ecommerce.dto.admin.BulkUpdateResult;
 import in.jlenterprises.ecommerce.dto.catalog.ProductSearchCriteria;
 import in.jlenterprises.ecommerce.dto.catalog.ProductSummaryDto;
+import in.jlenterprises.ecommerce.request.admin.ProductBulkRow;
 import in.jlenterprises.ecommerce.response.ApiResponse;
 import in.jlenterprises.ecommerce.response.PageResponse;
 import in.jlenterprises.ecommerce.service.ProductCategorizerService;
@@ -10,12 +12,18 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 import java.util.Map;
 
@@ -67,5 +75,21 @@ public class AdminProductController {
         Map<String, Integer> assigned = brandAssignerService.autoAssign();
         int total = assigned.values().stream().mapToInt(Integer::intValue).sum();
         return ApiResponse.success("Assigned brands to " + total + " products.", assigned);
+    }
+
+    @GetMapping("/export")
+    @Operation(summary = "Export all products as CSV")
+    public ResponseEntity<String> export() {
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"products.csv\"")
+                .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
+                .body(productService.exportProductsCsv());
+    }
+
+    @PostMapping("/import")
+    @Operation(summary = "Bulk-update products (price/stock/etc.) matched by SKU")
+    public ApiResponse<BulkUpdateResult> importCsv(@RequestBody List<ProductBulkRow> rows) {
+        BulkUpdateResult result = productService.bulkUpdateBySku(rows);
+        return ApiResponse.success("Updated " + result.updated() + " products.", result);
     }
 }

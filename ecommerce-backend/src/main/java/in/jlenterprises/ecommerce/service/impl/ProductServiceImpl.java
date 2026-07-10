@@ -1,6 +1,8 @@
 package in.jlenterprises.ecommerce.service.impl;
 
 import in.jlenterprises.ecommerce.audit.Auditable;
+import in.jlenterprises.ecommerce.constant.RecordStatus;
+import in.jlenterprises.ecommerce.dto.admin.BulkUpdateResult;
 import in.jlenterprises.ecommerce.dto.catalog.ProductDetailDto;
 import in.jlenterprises.ecommerce.dto.catalog.ProductImageDto;
 import in.jlenterprises.ecommerce.dto.catalog.ProductSearchCriteria;
@@ -18,6 +20,7 @@ import in.jlenterprises.ecommerce.repository.CategoryRepository;
 import in.jlenterprises.ecommerce.repository.InventoryRepository;
 import in.jlenterprises.ecommerce.repository.ProductRepository;
 import in.jlenterprises.ecommerce.repository.ProductSpecifications;
+import in.jlenterprises.ecommerce.request.admin.ProductBulkRow;
 import in.jlenterprises.ecommerce.request.catalog.ProductRequest;
 import in.jlenterprises.ecommerce.service.ProductService;
 import in.jlenterprises.ecommerce.storage.SupabaseStorageService;
@@ -25,13 +28,16 @@ import in.jlenterprises.ecommerce.util.SlugUtil;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -204,6 +210,72 @@ public class ProductServiceImpl implements ProductService {
         Product product = getEntity(id);
         product.setDeleted(true);
         productRepository.save(product);
+    }
+
+    // ── Bulk CSV ──
+    @Override
+    @Transactional(readOnly = true)
+    public String exportProductsCsv() {
+        List<Product> products = productRepository.findAll(Sort.by(Sort.Direction.ASC, "name"));
+        List<UUID> ids = products.stream().map(Product::getId).toList();
+        Map<UUID, Inventory> invByProduct = ids.isEmpty() ? Map.of()
+                : inventoryRepository.findByProductIdIn(ids).stream()
+                    .collect(Collectors.toMap(i -> i.getProduct().getId(), i -> i, (a, b) -> a));
+        StringBuilder sb = new StringBuilder(4096);
+        sb.append("SKU,Name,Price,ComparePrice,CategorySlug,Brand,Stock,ReorderLevel,Featured,Active,ShortDescription\n");
+        for (Product p : products) {
+            Inventory inv = invByProduct.get(p.getId());
+            sb.append(csv(p.getSku())).append(',')
+              .append(csv(p.getName())).append(',')
+              .append(p.getPrice() == null ? "" : p.getPrice().toPlainString()).append(',')
+              .append(p.getComparePrice() == null ? "" : p.getComparePrice().toPlainString()).append(',')
+              .append(csv(p.getCategory() != null ? p.getCategory().getSlug() : "")).append(',')
+              .append(csv(p.getBrand() != null ? p.getBrand().getName() : "")).append(',')
+              .append(inv != null ? inv.getQuantity() : 0).append(',')
+              .append(inv != null ? inv.getReorderLevel() : 0).append(',')
+              .append(p.isFeatured() ? "yes" : "no").append(',')
+              .append(p.getStatus() == RecordStatus.ACTIVE ? "yes" : "no").append(',')
+              .append(csv(p.getShortDescription())).append('\n');
+        }
+        return sb.toString();
+    }
+
+    @Override
+    @Transactional
+    public BulkUpdateResult bulkUpdateBySku(List<ProductBulkRow> rows) {
+        int updated = 0;
+        List<BulkUpdateResult.Skipped> skipped = new ArrayList<>();
+        for (ProductBulkRow r : rows) {
+            String sku = r.sku() == null ? "" : r.sku().trim();
+            if (sku.isEmpty()) { skipped.add(new BulkUpdateResult.Skipped("", "missing SKU")); continue; }
+            Optional<Product> op = productRepository.findBySku(sku);
+            if (op.isEmpty()) { skipped.add(new BulkUpdateResult.Skipped(sku, "SKU not found — create the product first")); continue; }
+            Product p = op.get();
+            if (r.price() != null) p.setPrice(r.price());
+            if (r.comparePrice() != null) p.setComparePrice(r.comparePrice());
+            if (r.featured() != null) p.setFeatured(r.featured());
+            if (r.active() != null) p.setStatus(r.active() ? RecordStatus.ACTIVE : RecordStatus.INACTIVE);
+            productRepository.save(p);
+            if (r.stock() != null || r.reorderLevel() != null) {
+                Inventory inv = inventoryRepository.findByProductId(p.getId()).orElseGet(() -> {
+                    Inventory ni = new Inventory(); ni.setProduct(p); return ni;
+                });
+                if (r.stock() != null) inv.setQuantity(Math.max(0, r.stock()));
+                if (r.reorderLevel() != null) inv.setReorderLevel(Math.max(0, r.reorderLevel()));
+                inventoryRepository.save(inv);
+            }
+            updated++;
+        }
+        return new BulkUpdateResult(updated, skipped);
+    }
+
+    /** Minimal CSV field escaping (quote if it contains a comma, quote or newline). */
+    private static String csv(String s) {
+        if (s == null || s.isEmpty()) return "";
+        if (s.indexOf(',') >= 0 || s.indexOf('"') >= 0 || s.indexOf('\n') >= 0 || s.indexOf('\r') >= 0) {
+            return '"' + s.replace("\"", "\"\"") + '"';
+        }
+        return s;
     }
 
     // ── Product images ──

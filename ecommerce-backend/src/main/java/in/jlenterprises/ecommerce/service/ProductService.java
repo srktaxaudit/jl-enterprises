@@ -3,7 +3,9 @@ package in.jlenterprises.ecommerce.service;
 import in.jlenterprises.ecommerce.dto.catalog.ProductDetailDto;
 import in.jlenterprises.ecommerce.dto.catalog.ProductImageDto;
 import in.jlenterprises.ecommerce.dto.catalog.ProductSearchCriteria;
+import in.jlenterprises.ecommerce.dto.admin.BulkUpdateResult;
 import in.jlenterprises.ecommerce.dto.catalog.ProductSummaryDto;
+import in.jlenterprises.ecommerce.request.admin.ProductBulkRow;
 import in.jlenterprises.ecommerce.request.catalog.ProductRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -46,4 +48,11 @@ public interface ProductService {
 
     /** Flag one image as primary (unsets the others). */
     List<ProductImageDto> setPrimaryImage(UUID productId, UUID imageId);
+
+    // ── Bulk CSV ──
+    /** All products as CSV (sku, name, price, comparePrice, category, brand, stock, reorder, featured, active). */
+    String exportProductsCsv();
+
+    /** Update existing products (matched by SKU) with the given rows; unknown SKUs are skipped. */
+    BulkUpdateResult bulkUpdateBySku(List<ProductBulkRow> rows);
 }
