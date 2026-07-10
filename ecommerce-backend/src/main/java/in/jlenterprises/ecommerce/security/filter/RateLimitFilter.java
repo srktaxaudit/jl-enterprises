@@ -35,6 +35,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
             "/api/v1/auth/reset-password",
             "/api/v1/contact",
             "/api/v1/emi-requests",
+            "/api/v1/stock-alerts",
             "/api/v1/service-bookings");
 
     private final int maxPerWindow;

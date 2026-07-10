@@ -11,5 +11,6 @@ public enum NotificationType {
     PAYMENT,
     REVIEW,
     CONTACT,
-    EMI
+    EMI,
+    STOCK
 }

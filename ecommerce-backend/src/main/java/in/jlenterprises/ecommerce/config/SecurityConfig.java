@@ -104,7 +104,7 @@ public class SecurityConfig {
                     .permitAll()
                 // Public service-request / contact / EMI-request submission (staff GET/PATCH still require auth)
                 .requestMatchers(org.springframework.http.HttpMethod.POST,
-                        "/api/v1/service-bookings", "/api/v1/contact", "/api/v1/emi-requests").permitAll()
+                        "/api/v1/service-bookings", "/api/v1/contact", "/api/v1/emi-requests", "/api/v1/stock-alerts").permitAll()
                 .anyRequest().authenticated()
             )
             .exceptionHandling(ex -> ex

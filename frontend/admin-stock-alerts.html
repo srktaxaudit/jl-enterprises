@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Stock Alerts — JL Admin</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = { theme: { extend: { colors: {
+    navy: { DEFAULT: "#0b2447", 600: "#19376d" }, brand: { DEFAULT: "#576cbc", sky: "#a5d7e8" },
+    orange: { DEFAULT: "#f97316" } }, boxShadow: { card: "0 12px 30px rgba(15,23,42,.12)" } } } };
+</script>
+<style> body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .inp{border:1px solid #cbd5e1;border-radius:8px;padding:7px 10px;font-size:13px;outline:none} .inp:focus{border-color:#576cbc} </style>
+</head>
+<body class="bg-[#eef1f6] min-h-screen text-slate-800">
+
+  <div class="bg-white border-b border-slate-200 px-4 md:px-7 py-3 flex items-center gap-3 sticky top-0 z-10">
+    <a href="admin.html" class="flex items-center gap-2 text-navy">
+      <div class="w-9 h-7 rounded bg-navy text-white text-[11px] font-extrabold flex items-center justify-center">JL</div>
+      <span class="font-bold text-sm">← Dashboard</span>
+    </a>
+    <div class="ml-auto flex items-center gap-3">
+      <span id="adminBadge" class="w-9 h-9 rounded-full bg-gradient-to-br from-navy-600 to-brand text-white flex items-center justify-center font-bold text-[13px]">··</span>
+      <a href="#" id="logoutBtn" class="text-[13px] text-slate-500 hover:text-navy">⎋ Logout</a>
+    </div>
+  </div>
+
+  <div class="max-w-[1000px] mx-auto p-4 md:p-7">
+    <div class="mb-5"><h1 class="text-2xl text-navy font-bold mb-1">Back-in-Stock Requests</h1>
+      <p class="text-slate-400 text-sm">Customers waiting for an out-of-stock product. When it's restocked, call/WhatsApp them and mark Notified.</p></div>
+
+    <div class="bg-white border border-slate-200 rounded-2xl p-5">
+      <div class="flex flex-wrap items-end gap-3 mb-4">
+        <label class="text-[11px] text-slate-500">Status<br>
+          <select id="statusFilter" class="inp">
+            <option value="">All</option><option value="NEW">New</option><option value="NOTIFIED">Notified</option><option value="CLOSED">Closed</option>
+          </select></label>
+        <label class="text-[11px] text-slate-500">Sort<br>
+          <select id="sortSel" class="inp"><option value="createdAt,desc">Latest first</option><option value="createdAt,asc">Oldest first</option></select></label>
+        <input id="search" placeholder="Search name/product…" class="ml-auto w-52 inp" />
+      </div>
+      <div id="rows" class="space-y-3"></div>
+    </div>
+  </div>
+
+<script src="jl-ui.js"></script>
+<script src="config.js"></script>
+<script src="admin.js"></script>
+<script>
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c)=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+  const $ = (id) => document.getElementById(id);
+  const fmt = (iso) => { try { return new Date(iso).toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short"}); } catch(_){ return "—"; } };
+  const STATUSES = ["NEW","NOTIFIED","CLOSED"];
+  const badge = { NEW:"bg-amber-100 text-amber-700", NOTIFIED:"bg-blue-100 text-blue-700", CLOSED:"bg-green-100 text-green-700" };
+
+  async function load(){
+    const box = $("rows");
+    const status = $("statusFilter").value, sort = $("sortSel").value, search = ($("search").value||"").trim().toLowerCase();
+    box.innerHTML = `<div class="py-6 text-center">${jlSpinnerHTML({label:"Loading requests"})}</div>`;
+    try {
+      const page = await jlApi(`/api/v1/admin/stock-alerts?size=100&sort=${sort}` + (status?`&status=${status}`:""));
+      let rows = page.content || [];
+      if (search) rows = rows.filter(r => (r.customerName||"").toLowerCase().includes(search) || String(r.productName||"").toLowerCase().includes(search));
+      box.innerHTML = rows.length ? rows.map(r=>`
+        <div class="border border-slate-200 rounded-xl p-4" data-id="${esc(r.id)}">
+          <div class="flex items-center gap-2 flex-wrap">
+            <b class="text-navy">${esc(r.customerName)}</b>
+            <a href="tel:${esc(r.phone)}" class="text-brand text-sm">${esc(r.phone)}</a>
+            <a href="https://wa.me/91${esc(String(r.phone||"").replace(/\D/g,"").slice(-10))}" target="_blank" rel="noopener" class="text-[12px] text-green-600 font-semibold">WhatsApp</a>
+            <span class="text-[11px] font-bold px-2 py-0.5 rounded-full ${badge[r.alertStatus]||"bg-slate-100 text-slate-600"}">${esc(r.alertStatus)}</span>
+            <span class="ml-auto text-[12px] text-slate-400">${fmt(r.createdAt)}</span>
+          </div>
+          <div class="text-[13px] text-slate-600 mt-1">Product: <b>${esc(r.productName||"—")}</b></div>
+          <div class="mt-2 flex items-center gap-2">
+            <label class="text-[12px] text-slate-400">Set status:</label>
+            <select data-status class="inp text-[12px] py-1">
+              ${STATUSES.map(s=>`<option value="${s}" ${s===r.alertStatus?"selected":""}>${s}</option>`).join("")}
+            </select>
+          </div>
+        </div>`).join("") : `<p class="text-slate-400 text-sm py-4">No back-in-stock requests.</p>`;
+    } catch(e){ box.innerHTML = `<p class="text-red-600 text-sm py-4">Could not load (${esc(e.message)}).</p>`; }
+  }
+
+  $("rows").addEventListener("change", async (ev)=>{
+    const sel = ev.target.closest("[data-status]"); if(!sel) return;
+    const id = sel.closest("[data-id]").dataset.id;
+    try { await jlApi(`/api/v1/admin/stock-alerts/${id}/status?status=${sel.value}`, {method:"PATCH"});
+      jlToast("Status updated.", {type:"success"}); if(window.parent.jlRefreshCounts) window.parent.jlRefreshCounts(); load(); }
+    catch(e){ jlToast(e.message||"Update failed", {type:"error"}); }
+  });
+  $("statusFilter").addEventListener("change", load);
+  $("sortSel").addEventListener("change", load);
+  let t; $("search").addEventListener("input", ()=>{ clearTimeout(t); t=setTimeout(load, 250); });
+
+  jlWireLogout("#logoutBtn");
+  jlRequireAdmin(["CUSTOMER_SUPPORT"]).then((a)=>{
+    $("adminBadge").textContent = jlDisplayName(a).split(/[\s@.]+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join("")||"JL";
+    jlWithBusy(load);
+  });
+</script>
+</body>
+</html>
