@@ -138,8 +138,8 @@
     /* Clickable banner hover (plain CSS so it works for JS-injected banners without relying on Tailwind JIT). */
     .jl-bnr { cursor: pointer; transition: transform .3s ease, box-shadow .3s ease; }
     .jl-bnr img { transition: transform .6s ease-out; will-change: transform; }
-    .jl-bnr:hover { transform: translateY(-3px); box-shadow: 0 22px 46px rgba(15,23,42,.28); }
-    .jl-bnr:hover img { transform: scale(1.05); }
+    .jl-bnr:hover { transform: translateY(-1px); box-shadow: 0 10px 22px rgba(15,23,42,.14); }
+    .jl-bnr:hover img { transform: scale(1.015); }
     @media (prefers-reduced-motion: reduce) { .jl-bnr, .jl-bnr img { transition: none; } .jl-bnr:hover, .jl-bnr:hover img { transform: none; } }
   </style>
   <!-- Admin-managed hero banners replace ONLY the main (left) panel; the promo cards on the right stay. -->
