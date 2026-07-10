@@ -139,6 +139,13 @@ const JLCustomer = {
   },
 };
 
+/* ── Wishlist (customer) — backed by /api/v1/wishlist ── */
+const JLWishlist = {
+  get: () => jlAuthApi("/api/v1/wishlist", null, "GET"),
+  add: (productId) => jlAuthApi("/api/v1/wishlist/items/" + productId, {}, "POST"),
+  remove: (productId) => jlAuthApi("/api/v1/wishlist/items/" + productId, null, "DELETE"),
+};
+
 /* ── Checkout helpers (place a real order from the localStorage cart) ──── */
 const JLCheckout = {
   /** Mirror the localStorage cart into the backend cart. Clears any stale

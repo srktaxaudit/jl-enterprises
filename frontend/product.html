@@ -117,8 +117,14 @@
       const price = Number(p.price || 0), mrp = Number(p.comparePrice || 0);
       const emoji = JL_CAT_EMOJI[p.categorySlug] || "📦";
       const rating = Math.round(Number(p.averageRating || 0));
-      const media = p.primaryImageUrl
-        ? `<img src="${escAttr(p.primaryImageUrl)}" alt="${escAttr(p.name)}" class="w-full rounded-2xl object-cover" />`
+      const galleryUrls = (p.images && p.images.length)
+        ? p.images.slice().sort((a, b) => (b.primary ? 1 : 0) - (a.primary ? 1 : 0) || (a.sortOrder || 0) - (b.sortOrder || 0)).map((i) => i.url)
+        : (p.primaryImageUrl ? [p.primaryImageUrl] : []);
+      const media = galleryUrls.length
+        ? `<div>
+            <img id="galMain" src="${escAttr(galleryUrls[0])}" alt="${escAttr(p.name)}" class="w-full rounded-2xl object-cover" />
+            ${galleryUrls.length > 1 ? `<div id="galThumbs" class="flex gap-2 mt-3 flex-wrap">${galleryUrls.map((u, i) => `<button type="button" data-gal="${escAttr(u)}" class="w-16 h-16 rounded-lg overflow-hidden border-2 ${i === 0 ? "border-brand" : "border-transparent"}"><img src="${escAttr(u)}" alt="" class="w-full h-full object-cover" /></button>`).join("")}</div>` : ""}
+           </div>`
         : `<div class="h-72 flex items-center justify-center text-8xl bg-gradient-to-br from-slate-50 to-slate-100 rounded-2xl">${emoji}</div>`;
       box.innerHTML = `
         <div class="grid md:grid-cols-2 gap-8 bg-white border border-slate-200 rounded-2xl p-6">
@@ -146,6 +152,7 @@
               ? `<button disabled class="bg-slate-300 text-white font-bold px-6 py-3 rounded-lg text-sm cursor-not-allowed">❌ Out of Stock</button>`
               : `${jlCartControl({ id: p.id, name: p.name, brand: p.brandName || "", emoji, price, stock: (p.availableStock == null ? "" : p.availableStock) }, { variant: "detail" })}
                  ${p.availableStock != null && p.availableStock <= 5 ? `<div class="text-[12px] text-orange-600 font-semibold mt-2">Only ${p.availableStock} left in stock!</div>` : ""}`}
+            <div class="mt-3"><button id="wishBtn" type="button" class="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-brand"><span id="wishIcon">🤍</span> <span id="wishLabel">Save to wishlist</span></button></div>
           </div>
         </div>
         ${p.description ? `<div class="bg-white border border-slate-200 rounded-2xl p-6 mt-5">
@@ -155,11 +162,51 @@
           <h2 class="text-navy font-semibold mb-3">Customer Reviews</h2>
           <div id="reviewList" class="space-y-4 text-sm text-slate-400">Loading reviews…</div>
           <div id="reviewFormWrap" class="mt-5 pt-5 border-t border-slate-100"></div>
-        </div>`;
+        </div>
+        <section id="relatedWrap" class="mt-8 hidden">
+          <h2 class="text-xl font-bold text-navy mb-4">You may also like</h2>
+          <div id="relatedGrid" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+        </section>`;
       loadReviews(p.id);
       renderReviewForm(p.id);
       const emiBtn = document.getElementById("emiRequestBtn");
       if (emiBtn) emiBtn.addEventListener("click", () => requestEmi(p));
+
+      // Gallery: swap the main image when a thumbnail is clicked.
+      const thumbs = document.getElementById("galThumbs");
+      if (thumbs) thumbs.addEventListener("click", (ev) => {
+        const b = ev.target.closest("[data-gal]"); if (!b) return;
+        document.getElementById("galMain").src = b.dataset.gal;
+        thumbs.querySelectorAll("button").forEach((x) => { x.classList.remove("border-brand"); x.classList.add("border-transparent"); });
+        b.classList.remove("border-transparent"); b.classList.add("border-brand");
+      });
+
+      // Wishlist heart.
+      let inWish = false;
+      const paintWish = () => { const ic = document.getElementById("wishIcon"), lb = document.getElementById("wishLabel"); if (!ic) return; ic.textContent = inWish ? "❤️" : "🤍"; lb.textContent = inWish ? "Saved to wishlist" : "Save to wishlist"; };
+      if (JLCustomer.isLoggedIn()) { try { const w = await JLWishlist.get(); inWish = (w.items || []).some((it) => it.product && it.product.id === p.id); paintWish(); } catch (_) { /* ignore */ } }
+      const wishBtn = document.getElementById("wishBtn");
+      if (wishBtn) wishBtn.addEventListener("click", async () => {
+        if (!JLCustomer.isLoggedIn()) {
+          if (await jlConfirm("Log in to save items to your wishlist?", { confirmText: "Log in" }))
+            location.href = "login.html?next=" + encodeURIComponent("product.html?slug=" + slug);
+          return;
+        }
+        try {
+          if (inWish) { await JLWishlist.remove(p.id); inWish = false; jlToast("Removed from wishlist.", { type: "info" }); }
+          else { await JLWishlist.add(p.id); inWish = true; jlToast("Saved to wishlist ❤️", { type: "success" }); }
+          paintWish();
+        } catch (e) { jlToast(e.message || "Couldn't update wishlist", { type: "error" }); }
+      });
+
+      // Related products.
+      try {
+        const items = await jlPublicApi("/api/v1/products/" + encodeURIComponent(slug) + "/related?limit=8");
+        if (items && items.length) {
+          document.getElementById("relatedGrid").innerHTML = items.map(jlProductCard).join("");
+          document.getElementById("relatedWrap").classList.remove("hidden");
+        }
+      } catch (_) { /* related is optional */ }
     } catch (e) {
       box.innerHTML = `<p class="text-red-500">${e.status === 404 ? "Product not found." : "Couldn't load this product."}</p>`;
     }
