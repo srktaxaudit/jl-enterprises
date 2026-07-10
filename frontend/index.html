@@ -292,6 +292,11 @@
 </div>
 </main>
 
+<!-- PROMO STRIP (admin-managed STRIP banners) — hidden until at least one is configured -->
+<section id="stripBannersWrap" class="hidden max-w-[1440px] mx-auto px-5 mt-9">
+  <div id="stripBanners"></div>
+</section>
+
 <!-- FOOTER (same on every page; all items are real links) -->
 <footer class="footer bg-navy text-slate-300 mt-9 pt-10">
   <div class="footer-container max-w-[1440px] mx-auto px-5 grid grid-cols-2 md:grid-cols-4 gap-7">
@@ -439,6 +444,37 @@
     if (staticMain) staticMain.classList.add("hidden");
   }
   loadHeroBanners();
+
+  // Admin-managed STRIP banners: a slim, full-width promo strip above the footer.
+  async function loadStripBanners() {
+    let banners = [];
+    try { banners = await JLStore.banners("STRIP"); } catch (_) { return; }
+    if (!banners || !banners.length) return;   // none → strip stays hidden
+    const wrap = document.getElementById("stripBannersWrap");
+    const box = document.getElementById("stripBanners");
+    const slideInner = (b) => {
+      const img = `<img src="${escAttr(b.imageUrl)}" alt="${escAttr(b.title || "")}" class="w-full h-full object-cover" />`;
+      return b.linkUrl ? `<a href="${escAttr(b.linkUrl)}" class="block w-full h-full">${img}</a>` : img;
+    };
+    if (banners.length === 1) {
+      box.innerHTML = `<div class="rounded-2xl overflow-hidden h-24 sm:h-28 md:h-32">${slideInner(banners[0])}</div>`;
+    } else {
+      box.innerHTML = `<div class="relative rounded-2xl overflow-hidden h-24 sm:h-28 md:h-32">
+        ${banners.map((b, i) => `<div class="jl-strip-slide" style="position:absolute;inset:0;opacity:${i === 0 ? 1 : 0};transition:opacity .6s">${slideInner(b)}</div>`).join("")}
+        <div style="position:absolute;bottom:8px;left:0;right:0;display:flex;gap:6px;justify-content:center;z-index:2">
+          ${banners.map((b, i) => `<button data-sdot="${i}" aria-label="Show promo ${i + 1}" style="width:8px;height:8px;border-radius:50%;border:0;cursor:pointer;background:${i === 0 ? "#fff" : "rgba(255,255,255,.55)"}"></button>`).join("")}
+        </div></div>`;
+      const slides = box.querySelectorAll(".jl-strip-slide");
+      const dots = box.querySelectorAll("[data-sdot]");
+      let idx = 0, timer;
+      const show = (n) => { idx = (n + slides.length) % slides.length; slides.forEach((s, i) => s.style.opacity = i === idx ? 1 : 0); dots.forEach((d, i) => d.style.background = i === idx ? "#fff" : "rgba(255,255,255,.55)"); };
+      dots.forEach((d, i) => d.addEventListener("click", () => show(i)));
+      timer = setInterval(() => show(idx + 1), 5000);
+      box.addEventListener("mouseenter", () => clearInterval(timer));
+    }
+    wrap.classList.remove("hidden");
+  }
+  loadStripBanners();
 
   // ── Homepage offers strip (active coupons) ──
   async function loadHomeOffers() {
