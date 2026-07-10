@@ -234,6 +234,7 @@ const JLStore = {
   },
   productBySlug: (slug) => jlPublicApi("/api/v1/products/" + encodeURIComponent(slug)),
   categories: () => jlPublicApi("/api/v1/categories"),
+  banners: (position) => jlPublicApi("/api/v1/banners" + (position ? "?position=" + encodeURIComponent(position) : "")),
 };
 
 // ── Shared helpers + product card (used by index.html and every category page) ──

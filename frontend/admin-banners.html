@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Homepage Banners — JL Admin</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = { theme: { extend: { colors: {
+    navy: { DEFAULT: "#0b2447", 600: "#19376d" }, brand: { DEFAULT: "#576cbc", sky: "#a5d7e8" },
+    orange: { DEFAULT: "#f97316", 600: "#ea580c" } }, boxShadow: { card: "0 12px 30px rgba(15,23,42,.12)" } } } };
+</script>
+<style> body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .lbl{display:block;font-size:13px;font-weight:600;color:#475569;margin-bottom:4px}
+  .inp{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:9px 12px;font-size:14px;outline:none} .inp:focus{border-color:#576cbc} </style>
+</head>
+<body class="bg-[#eef1f6] min-h-screen text-slate-800">
+
+  <div class="bg-white border-b border-slate-200 px-4 md:px-7 py-3 flex items-center gap-3 sticky top-0 z-10">
+    <a href="admin.html" class="flex items-center gap-2 text-navy">
+      <div class="w-9 h-7 rounded bg-navy text-white text-[11px] font-extrabold flex items-center justify-center">JL</div>
+      <span class="font-bold text-sm">← Dashboard</span>
+    </a>
+    <div class="ml-auto flex items-center gap-3">
+      <span id="adminBadge" class="w-9 h-9 rounded-full bg-gradient-to-br from-navy-600 to-brand text-white flex items-center justify-center font-bold text-[13px]">··</span>
+      <a href="#" id="logoutBtn" class="text-[13px] text-slate-500 hover:text-navy">⎋ Logout</a>
+    </div>
+  </div>
+
+  <div class="max-w-[980px] mx-auto p-4 md:p-7">
+    <div class="flex items-center gap-3 mb-1">
+      <h1 class="text-2xl text-navy font-bold">Homepage Banners</h1>
+      <button id="newBtn" class="ml-auto bg-navy hover:bg-navy-600 text-white font-semibold rounded-lg px-4 py-2 text-sm">+ New banner</button>
+    </div>
+    <p class="text-slate-400 text-sm mb-5">Manage the hero banners shown at the top of the store home page. Drag order is by "Sort".</p>
+    <div id="msg" class="hidden mb-4 text-[13px] rounded-lg px-3 py-2"></div>
+
+    <!-- FORM -->
+    <div id="formCard" class="hidden bg-white border border-slate-200 rounded-2xl p-5 mb-6">
+      <h2 id="formTitle" class="text-navy font-semibold mb-4">New banner</h2>
+      <input type="hidden" id="bid" />
+      <div class="grid md:grid-cols-2 gap-4">
+        <div><label class="lbl">Title *</label><input id="title" class="inp" maxlength="160" placeholder="e.g. Summer AC Sale" /></div>
+        <div><label class="lbl">Link URL (optional)</label><input id="linkUrl" class="inp" placeholder="e.g. air-conditioners.html" /></div>
+        <div class="md:col-span-2">
+          <label class="lbl">Image *</label>
+          <div class="flex flex-wrap items-center gap-3">
+            <label class="inline-flex items-center gap-2 bg-brand hover:bg-navy text-white font-semibold rounded-lg px-4 py-2 text-sm cursor-pointer">
+              ⬆ Upload image <input id="imgFile" type="file" accept="image/png,image/jpeg,image/webp" class="hidden" />
+            </label>
+            <span class="text-slate-400 text-[12px]">or paste a URL →</span>
+            <input id="imageUrl" class="inp flex-1 min-w-[200px]" placeholder="https://…/banner.jpg" />
+          </div>
+          <img id="imgPreview" class="hidden mt-3 rounded-lg border border-slate-200 max-h-40 object-cover" alt="Banner preview" />
+        </div>
+        <div><label class="lbl">Position</label>
+          <select id="position" class="inp"><option value="HERO">HERO (home top)</option><option value="STRIP">STRIP</option></select></div>
+        <div><label class="lbl">Sort order</label><input id="sortOrder" data-jl="digits" type="number" min="0" class="inp" value="0" /></div>
+      </div>
+      <label class="flex items-center gap-2 mt-3 text-sm text-slate-600"><input type="checkbox" id="active" class="w-4 h-4" checked /> Active (visible on the store)</label>
+      <div class="flex gap-2 mt-4">
+        <button id="saveBtn" class="bg-navy hover:bg-navy-600 text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Save banner</button>
+        <button id="cancelBtn" class="text-slate-500 px-3 text-sm">Cancel</button>
+      </div>
+    </div>
+
+    <!-- LIST -->
+    <div id="list" class="grid sm:grid-cols-2 gap-4"></div>
+  </div>
+
+<script src="jl-ui.js"></script>
+<script src="config.js"></script>
+<script src="admin.js"></script>
+<script>
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+  function flash(t, ok=true){ const el=$("msg"); el.textContent=t; el.className="mb-4 text-[13px] rounded-lg px-3 py-2 "+(ok?"bg-green-50 text-green-700 border border-green-200":"bg-red-50 text-red-700 border border-red-200"); el.classList.remove("hidden"); }
+
+  function showForm(show){ $("formCard").classList.toggle("hidden", !show); if(show) $("title").focus(); }
+  function resetForm(){
+    $("bid").value=""; $("title").value=""; $("linkUrl").value=""; $("imageUrl").value="";
+    $("position").value="HERO"; $("sortOrder").value="0"; $("active").checked=true;
+    $("imgPreview").classList.add("hidden"); $("imgPreview").src=""; $("formTitle").textContent="New banner";
+  }
+  function reflectPreview(){ const u=$("imageUrl").value.trim(); if(u){ $("imgPreview").src=u; $("imgPreview").classList.remove("hidden"); } else { $("imgPreview").classList.add("hidden"); } }
+  $("imageUrl").addEventListener("input", reflectPreview);
+
+  $("imgFile").addEventListener("change", async (e)=>{
+    const f = e.target.files[0]; e.target.value=""; if(!f) return;
+    try { const d = await jlUpload("/api/v1/admin/banners/image", f); if(d && d.url){ $("imageUrl").value=d.url; reflectPreview(); jlToast("Image uploaded.",{type:"success"}); } }
+    catch(err){ jlToast(err.message || "Upload failed", {type:"error"}); }
+  });
+
+  async function load(){
+    const box = $("list");
+    box.innerHTML = `<div class="col-span-full text-center py-8">${jlSpinnerHTML()}</div>`;
+    try {
+      const banners = await jlApi("/api/v1/admin/banners");
+      box.innerHTML = (banners && banners.length) ? banners.map(b=>`
+        <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+          <img src="${esc(b.imageUrl)}" alt="${esc(b.title)}" class="w-full h-32 object-cover bg-slate-100" />
+          <div class="p-3.5">
+            <div class="flex items-center gap-2">
+              <b class="text-navy text-sm flex-1">${esc(b.title)}</b>
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${b.active?'bg-green-50 text-green-700':'bg-slate-100 text-slate-500'}">${b.active?'ACTIVE':'HIDDEN'}</span>
+            </div>
+            <div class="text-[12px] text-slate-400 mt-0.5">${esc(b.position||'HERO')} · sort ${b.sortOrder} ${b.linkUrl?('· '+esc(b.linkUrl)):''}</div>
+            <div class="flex gap-3 mt-2 text-[12px]">
+              <button data-edit="${b.id}" class="text-brand font-semibold">Edit</button>
+              <button data-toggle="${b.id}" data-on="${!b.active}" class="text-slate-500">${b.active?'Hide':'Show'}</button>
+              <button data-del="${b.id}" class="text-red-500">Delete</button>
+            </div>
+          </div>
+        </div>`).join("") : '<div class="col-span-full text-slate-400 py-6 text-center">No banners yet. Add one to feature it on the home page.</div>';
+    } catch(e){ box.innerHTML = `<div class="col-span-full text-red-600 py-4">Could not load banners (${esc(e.message)}).</div>`; }
+  }
+
+  function bodyFromForm(){
+    return { title:$("title").value.trim(), imageUrl:$("imageUrl").value.trim(),
+      linkUrl:$("linkUrl").value.trim()||null, position:$("position").value,
+      sortOrder:Number($("sortOrder").value)||0, active:$("active").checked };
+  }
+  $("saveBtn").addEventListener("click", async ()=>{
+    const body = bodyFromForm();
+    if(!body.title){ flash("Enter a banner title.", false); return; }
+    if(!body.imageUrl){ flash("Add a banner image (upload or paste a URL).", false); return; }
+    const id = $("bid").value;
+    try { jlBtn($("saveBtn"), true);
+      await (id ? jlApi("/api/v1/admin/banners/"+id, {method:"PUT", body}) : jlApi("/api/v1/admin/banners", {method:"POST", body}));
+      jlToast(id?"Banner updated.":"Banner created.", {type:"success"}); showForm(false); resetForm(); load();
+    } catch(e){ flash(e.message||"Save failed", false); }
+    finally { jlBtn($("saveBtn"), false); }
+  });
+
+  $("list").addEventListener("click", async (ev)=>{
+    const b = ev.target.closest("button"); if(!b) return;
+    try {
+      if(b.dataset.edit){
+        const banners = await jlApi("/api/v1/admin/banners");
+        const x = banners.find(y=>String(y.id)===b.dataset.edit); if(!x) return;
+        $("bid").value=x.id; $("title").value=x.title||""; $("linkUrl").value=x.linkUrl||"";
+        $("imageUrl").value=x.imageUrl||""; $("position").value=x.position||"HERO";
+        $("sortOrder").value=x.sortOrder||0; $("active").checked=!!x.active;
+        $("formTitle").textContent="Edit banner"; reflectPreview(); showForm(true);
+      } else if(b.dataset.toggle){
+        const banners = await jlApi("/api/v1/admin/banners");
+        const x = banners.find(y=>String(y.id)===b.dataset.toggle); if(!x) return;
+        await jlApi("/api/v1/admin/banners/"+x.id, {method:"PUT", body:{ title:x.title, imageUrl:x.imageUrl, linkUrl:x.linkUrl, position:x.position, sortOrder:x.sortOrder, active:(b.dataset.on==="true") }});
+        load();
+      } else if(b.dataset.del){
+        if(!(await jlConfirm("Delete this banner?", {title:"Delete banner", confirmText:"Delete", danger:true}))) return;
+        await jlApi("/api/v1/admin/banners/"+b.dataset.del, {method:"DELETE"}); jlToast("Banner deleted.",{type:"success"}); load();
+      }
+    } catch(e){ flash(e.message||"Action failed", false); }
+  });
+
+  $("newBtn").addEventListener("click", ()=>{ resetForm(); showForm(true); });
+  $("cancelBtn").addEventListener("click", ()=>{ showForm(false); resetForm(); });
+  jlAutoRestrict();
+  jlWireLogout("#logoutBtn");
+  jlRequireAdmin(["MARKETING_MANAGER"]).then((admin)=>{
+    $("adminBadge").textContent = jlDisplayName(admin).split(/[\s@.]+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join("")||"JL";
+    load();
+  });
+</script>
+</body>
+</html>

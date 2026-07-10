@@ -3,7 +3,7 @@
 
   const NAV = [
     ["Overview",[["Dashboard","📊","admin.html"],["Sales Analytics","📈","admin-analytics.html"],["Orders","📥","admin-orders.html","ORDER_MANAGER,CUSTOMER_SUPPORT"]]],
-    ["Catalog & Sales",[["Products","📦","admin-products.html","PRODUCT_MANAGER"],["Inventory","🗂️","admin-inventory.html","INVENTORY_MANAGER"],["Offers & Deals","🏷️","admin-offers.html","MARKETING_MANAGER"]]],
+    ["Catalog & Sales",[["Products","📦","admin-products.html","PRODUCT_MANAGER"],["Inventory","🗂️","admin-inventory.html","INVENTORY_MANAGER"],["Offers & Deals","🏷️","admin-offers.html","MARKETING_MANAGER"],["Homepage Banners","🎞️","admin-banners.html","MARKETING_MANAGER"]]],
     ["Engage",[["Customers (CRM)","👥","admin-customers.html","MANAGER"],["Reviews","⭐","admin-reviews.html","MARKETING_MANAGER,CUSTOMER_SUPPORT"],["Service Bookings","🔧","admin-service.html","CUSTOMER_SUPPORT"],["Exchange Requests","♻️","admin-exchanges.html","CUSTOMER_SUPPORT,MANAGER"],["Contact Enquiries","✉️","admin-enquiries.html","CUSTOMER_SUPPORT"],["EMI Requests","🧾","admin-emi-requests.html","CUSTOMER_SUPPORT"],["WhatsApp Marketing","💬","admin-whatsapp.html","MARKETING_MANAGER"]]],
     ["Human Resources",[["Employees & Payroll","🧑‍🤝‍🧑","admin-hr.html","@hr"]]],
     ["Accounting",[["Billing","🧾","admin-billing.html","@admin"],["Chart of Accounts","📒","admin-accounts.html","ACCOUNTANT"],["Invoices & Bills","🧾","admin-vouchers.html","ACCOUNTANT"],["Journal / Vouchers","✍️","admin-journal.html","ACCOUNTANT"],["Ledgers","📚","admin-ledgers.html","ACCOUNTANT"],["Financial Reports","📈","admin-reports.html","ACCOUNTANT"],["GST Returns","🧮","admin-gst.html","ACCOUNTANT"],["Outstanding & Cashflow","📆","admin-outstanding.html","ACCOUNTANT"]]],
