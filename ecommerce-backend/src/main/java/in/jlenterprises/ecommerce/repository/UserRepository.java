@@ -56,6 +56,11 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
     @Query("select distinct u from User u join u.roles r where r.name in :names")
     List<User> findByRoleNames(@Param("names") Collection<RoleName> names);
 
+    /** Count of enabled users holding the given role (soft-deleted rows excluded by @SQLRestriction).
+        Used to protect the last active Super Admin from being locked out. */
+    @Query("select count(distinct u.id) from User u join u.roles r where u.enabled = true and r.name = :role")
+    long countEnabledByRole(@Param("role") RoleName role);
+
     // ── Broadcast audience picker facets (Phase 3) ──
     /** Ids of users who have placed at least one order. */
     @Query("select distinct o.user.id from Order o")

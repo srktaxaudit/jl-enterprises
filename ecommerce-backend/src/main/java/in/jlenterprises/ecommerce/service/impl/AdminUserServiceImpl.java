@@ -85,6 +85,7 @@ public class AdminUserServiceImpl implements AdminUserService {
     public UserDto setEnabled(UUID userId, boolean enabled) {
         User user = getEntity(userId);
         assertCanManage(user);
+        if (!enabled) assertNotLastSuperAdmin(user);
         user.setEnabled(enabled);
         return userMapper.toDto(userRepository.save(user));
     }
@@ -107,6 +108,7 @@ public class AdminUserServiceImpl implements AdminUserService {
         if (user.getRoles().size() <= 1) {
             throw new BusinessException("A user must retain at least one role");
         }
+        if (roleName == RoleName.ROLE_SUPER_ADMIN) assertNotLastSuperAdmin(user);
         user.getRoles().removeIf(r -> r.getName() == roleName);
         return userMapper.toDto(userRepository.save(user));
     }
@@ -165,7 +167,10 @@ public class AdminUserServiceImpl implements AdminUserService {
         if (r.phone() != null) u.setPhone(r.phone().isBlank() ? null : r.phone().trim());
         u.setDepartment(r.department());
         u.setDesignation(r.designation());
-        if (r.roles() != null && !r.roles().isEmpty()) applyRoles(u, r.roles());
+        if (r.roles() != null && !r.roles().isEmpty()) {
+            if (!r.roles().contains(RoleName.ROLE_SUPER_ADMIN)) assertNotLastSuperAdmin(u);
+            applyRoles(u, r.roles());
+        }
         if (r.password() != null && !r.password().isBlank()) u.setPasswordHash(passwordEncoder.encode(r.password()));
         return userMapper.toDto(userRepository.save(u));
     }
@@ -189,6 +194,7 @@ public class AdminUserServiceImpl implements AdminUserService {
     public void deleteStaff(UUID userId) {
         User u = getEntity(userId);
         assertCanManage(u);
+        assertNotLastSuperAdmin(u);
         u.setDeleted(true);
         u.setEnabled(false);
         userRepository.save(u);
@@ -236,6 +242,18 @@ public class AdminUserServiceImpl implements AdminUserService {
         if (targetIsPrivileged) {
             throw new BusinessException(HttpStatus.FORBIDDEN,
                     "Only a super-admin can manage admin accounts.");
+        }
+    }
+
+    /** Guard against locking everyone out: the last enabled Super Admin may not be
+        deactivated, deleted, or stripped of its Super Admin role. Create another first. */
+    private void assertNotLastSuperAdmin(User user) {
+        boolean activeSuper = user.isEnabled() && user.getRoles().stream()
+                .anyMatch(r -> r.getName() == RoleName.ROLE_SUPER_ADMIN);
+        if (activeSuper && userRepository.countEnabledByRole(RoleName.ROLE_SUPER_ADMIN) <= 1) {
+            throw new BusinessException(HttpStatus.CONFLICT,
+                    "This is the last active Super Admin — create another Super Admin first, "
+                    + "then you can deactivate, delete, or change this one.");
         }
     }
 
