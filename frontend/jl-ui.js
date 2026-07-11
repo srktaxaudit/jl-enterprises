@@ -636,6 +636,8 @@
         fires on selection. Read the value via el.dataset.iso. ── */
   var JLDP_CSS =
     ".jl-dp-wrap{position:relative;display:inline-block}" +
+    ".jl-dp-btn{position:absolute;right:8px;top:50%;transform:translateY(-50%);border:0;background:none;cursor:pointer;padding:2px;color:#64748b;display:inline-flex;align-items:center}" +
+    ".jl-dp-btn:hover{color:#0b2447}" +
     ".jl-dp-pop{position:absolute;z-index:60;top:calc(100% + 4px);left:0;background:#fff;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 12px 30px rgba(15,23,42,.18);padding:10px;width:252px}" +
     ".jl-dp-head{display:flex;align-items:center;gap:6px;margin-bottom:6px}" +
     ".jl-dp-title{font-weight:700;color:#0b2447;font-size:14px;flex:1;text-align:center}" +
@@ -658,15 +660,37 @@
     var pad = function (n) { return String(n).padStart(2, "0"); };
     var toIso = function (d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); };
     var fmt = function (iso) { if (!iso) return ""; var p = iso.split("-"); return p[2] + "-" + p[1] + "-" + p[0]; };
+    // Parse a manually typed value → ISO. Accepts dd-mm-yyyy (/ . - separators) or yyyy-mm-dd.
+    // Returns "" for blank, null for an invalid date (caller reverts).
+    var parseTyped = function (str) {
+      str = (str || "").trim(); if (!str) return "";
+      var m = str.match(/^(\d{1,2})[-\/. ](\d{1,2})[-\/. ](\d{4})$/);
+      if (m) { var d = +m[1], mo = +m[2], y = +m[3], dt = new Date(y, mo - 1, d);
+        if (dt.getFullYear() === y && dt.getMonth() === mo - 1 && dt.getDate() === d) return toIso(dt); }
+      if (/^\d{4}-\d{2}-\d{2}$/.test(str)) { var p = str.split("-"), t = new Date(+p[0], +p[1] - 1, +p[2]);
+        if (t.getMonth() === +p[1] - 1) return str; }
+      return null;
+    };
     if (input.value && /^\d{4}-\d{2}-\d{2}$/.test(input.value)) input.dataset.iso = input.value;
-    input.type = "text"; input.readOnly = true; input.autocomplete = "off";
+    input.type = "text"; input.autocomplete = "off"; input.setAttribute("inputmode", "numeric");
     if (!input.placeholder) input.placeholder = "dd-mm-yyyy";
     input.value = fmt(input.dataset.iso || "");
+    input.style.paddingRight = "32px";
     var wrap = document.createElement("span"); wrap.className = "jl-dp-wrap";
     input.parentNode.insertBefore(wrap, input); wrap.appendChild(input);
+    var btn = document.createElement("button");
+    btn.type = "button"; btn.className = "jl-dp-btn"; btn.setAttribute("aria-label", "Open calendar");
+    btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4.5" width="18" height="17" rx="2"></rect><path d="M3 9.5h18M8 2.5v4M16 2.5v4"></path></svg>';
+    wrap.appendChild(btn);
     var pop = null, view = null;
     function selDate() { var iso = input.dataset.iso; if (iso) { var p = iso.split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); } return null; }
     function setIso(iso) { input.dataset.iso = iso || ""; input.value = fmt(iso); input.dispatchEvent(new Event("change", { bubbles: true })); }
+    // Commit whatever the user typed: normalise valid dates, revert invalid ones.
+    function commitTyped() {
+      var iso = parseTyped(input.value);
+      if (iso === null) { input.value = fmt(input.dataset.iso || ""); return; }
+      input.dataset.iso = iso; input.value = fmt(iso);
+    }
     function render() {
       var y = view.getFullYear(), m = view.getMonth();
       var start = new Date(y, m, 1).getDay(), days = new Date(y, m + 1, 0).getDate();
@@ -698,10 +722,16 @@
       setTimeout(function () { document.addEventListener("mousedown", outside, true); document.addEventListener("keydown", onKey, true); }, 0);
     }
     function close() { if (!pop) return; pop.remove(); pop = null; document.removeEventListener("mousedown", outside, true); document.removeEventListener("keydown", onKey, true); }
-    function outside(e) { if (!wrap.contains(e.target)) close(); }
+    function outside(e) { if (!wrap.contains(e.target)) { commitTyped(); close(); } }
     function onKey(e) { if (e.key === "Escape") close(); }
-    input.addEventListener("mousedown", function (e) { e.preventDefault(); pop ? close() : open(); });
-    input.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pop ? close() : open(); } });
+    // The calendar icon toggles the popup; the text box stays freely editable.
+    btn.addEventListener("mousedown", function (e) { e.preventDefault(); });   // don't steal focus / cause a blur flash
+    btn.addEventListener("click", function () { commitTyped(); pop ? close() : open(); });
+    input.addEventListener("blur", commitTyped);
+    input.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") { e.preventDefault(); commitTyped(); close(); }
+      else if (e.key === "Escape") close();
+    });
   };
 
   // ── typed input restriction (block invalid characters at the source) ───────
