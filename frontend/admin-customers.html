@@ -76,7 +76,7 @@
     const search = $("search").value.trim();
     const active = $("activeFilter").value;
     const sort = $("sortSel").value;
-    const q = `?page=${state.page}&size=${state.size}&sort=${sort}`
+    const q = `?page=${state.page}&size=${state.size}&sort=${sort}&customersOnly=true`
       + (search?`&search=${encodeURIComponent(search)}`:"") + (active?`&active=${active}`:"");
     const body = $("rows");
     body.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:20px">${jlSpinnerHTML()}</td></tr>`;

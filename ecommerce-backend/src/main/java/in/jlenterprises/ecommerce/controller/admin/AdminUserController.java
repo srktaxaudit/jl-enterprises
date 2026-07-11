@@ -40,8 +40,9 @@ public class AdminUserController {
     @Operation(summary = "List users (paged, optional search)")
     public ApiResponse<PageResponse<UserDto>> listUsers(@RequestParam(required = false) String search,
                                                         @RequestParam(required = false) Boolean active,
+                                                        @RequestParam(required = false) Boolean customersOnly,
                                                         @PageableDefault(size = 20) Pageable pageable) {
-        return ApiResponse.success(PageResponse.of(adminUserService.listUsers(search, active, pageable)));
+        return ApiResponse.success(PageResponse.of(adminUserService.listUsers(search, active, customersOnly, pageable)));
     }
 
     @GetMapping("/users/{id}")

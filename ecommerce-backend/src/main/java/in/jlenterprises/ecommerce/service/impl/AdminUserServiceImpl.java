@@ -62,8 +62,11 @@ public class AdminUserServiceImpl implements AdminUserService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<UserDto> listUsers(String search, Boolean active, Pageable pageable) {
+    public Page<UserDto> listUsers(String search, Boolean active, Boolean customersOnly, Pageable pageable) {
         Specification<User> spec = buildSearch(search);
+        if (Boolean.TRUE.equals(customersOnly)) {
+            spec = Specification.where(spec).and(customerSpec());
+        }
         if (active != null) {
             spec = Specification.where(spec).and((root, query, cb) -> cb.equal(root.get("enabled"), active));
         }
@@ -199,6 +202,20 @@ public class AdminUserServiceImpl implements AdminUserService {
         return (root, query, cb) -> {
             query.distinct(true);
             return root.join("roles").get("name").in(STAFF_ROLES);
+        };
+    }
+
+    /** Only plain customers — users holding NONE of the staff roles (via NOT EXISTS,
+        so a customer keeps their CUSTOMER role without matching staff). */
+    private Specification<User> customerSpec() {
+        return (root, query, cb) -> {
+            var sq = query.subquery(Integer.class);
+            var subRoot = sq.from(User.class);
+            var subRoles = subRoot.join("roles");
+            sq.select(cb.literal(1))
+              .where(cb.equal(subRoot.get("id"), root.get("id")),
+                     subRoles.get("name").in(STAFF_ROLES));
+            return cb.not(cb.exists(sq));
         };
     }
 
