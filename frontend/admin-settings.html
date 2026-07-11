@@ -34,10 +34,10 @@
 
     <div class="bg-white border border-slate-200 rounded-2xl p-5 mb-6">
       <h2 class="text-navy font-semibold mb-4">Add / update a setting</h2>
-      <form id="form" class="flex flex-col sm:flex-row gap-3" novalidate>
-        <input id="key" required placeholder="key (e.g. gstin)" class="inp sm:w-48" />
-        <input id="value" placeholder="value" class="inp flex-1" />
-        <button type="submit" class="bg-navy hover:bg-navy-600 text-white font-semibold rounded-lg px-5 py-2.5 text-sm">Save</button>
+      <form id="form" class="flex flex-col sm:flex-row sm:items-start gap-3" novalidate>
+        <div class="sm:w-48"><input id="key" required placeholder="key (e.g. gstin)" class="inp w-full" /></div>
+        <div class="flex-1"><input id="value" placeholder="value" class="inp w-full" /></div>
+        <button type="submit" class="bg-navy hover:bg-navy-600 text-white font-semibold rounded-lg px-5 py-2.5 text-sm whitespace-nowrap">Save</button>
       </form>
     </div>
 
