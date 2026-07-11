@@ -629,6 +629,81 @@
     return { close: close, content: content, shell: shell };
   };
 
+  /* ── jlDatePicker: replaces a native <input type="date"> with a small custom
+        calendar that toggles open/closed on click, closes on outside-click / Esc /
+        selection, and works the same in every browser. The canonical value lives in
+        input.dataset.iso (YYYY-MM-DD); the box shows dd-mm-yyyy. A "change" event
+        fires on selection. Read the value via el.dataset.iso. ── */
+  var JLDP_CSS =
+    ".jl-dp-wrap{position:relative;display:inline-block}" +
+    ".jl-dp-pop{position:absolute;z-index:60;top:calc(100% + 4px);left:0;background:#fff;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 12px 30px rgba(15,23,42,.18);padding:10px;width:252px}" +
+    ".jl-dp-head{display:flex;align-items:center;gap:6px;margin-bottom:6px}" +
+    ".jl-dp-title{font-weight:700;color:#0b2447;font-size:14px;flex:1;text-align:center}" +
+    ".jl-dp-nav{width:28px;height:28px;border:0;background:#f1f5f9;border-radius:8px;cursor:pointer;color:#0b2447;font-size:16px;line-height:1}" +
+    ".jl-dp-nav:hover{background:#e2e8f0}" +
+    ".jl-dp-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}" +
+    ".jl-dp-dow{text-align:center;font-size:11px;color:#94a3b8;padding:2px 0}" +
+    ".jl-dp-day{border:0;background:none;border-radius:8px;height:30px;cursor:pointer;font-size:13px;color:#334155}" +
+    ".jl-dp-day:hover{background:#eef2ff}" +
+    ".jl-dp-day.sel{background:#576cbc;color:#fff;font-weight:700}" +
+    ".jl-dp-day.today{outline:1px solid #576cbc}" +
+    ".jl-dp-foot{display:flex;justify-content:space-between;margin-top:6px}" +
+    ".jl-dp-foot button{border:0;background:none;color:#576cbc;font-size:12px;font-weight:600;cursor:pointer;padding:4px}" +
+    ".jl-dp-foot button:hover{text-decoration:underline}";
+  var jldpStyled = false;
+  var JLDP_MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  window.jlDatePicker = function (input) {
+    if (!input || input.dataset.jldp) return; input.dataset.jldp = "1";
+    if (!jldpStyled) { var st = document.createElement("style"); st.textContent = JLDP_CSS; document.head.appendChild(st); jldpStyled = true; }
+    var pad = function (n) { return String(n).padStart(2, "0"); };
+    var toIso = function (d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); };
+    var fmt = function (iso) { if (!iso) return ""; var p = iso.split("-"); return p[2] + "-" + p[1] + "-" + p[0]; };
+    if (input.value && /^\d{4}-\d{2}-\d{2}$/.test(input.value)) input.dataset.iso = input.value;
+    input.type = "text"; input.readOnly = true; input.autocomplete = "off";
+    if (!input.placeholder) input.placeholder = "dd-mm-yyyy";
+    input.value = fmt(input.dataset.iso || "");
+    var wrap = document.createElement("span"); wrap.className = "jl-dp-wrap";
+    input.parentNode.insertBefore(wrap, input); wrap.appendChild(input);
+    var pop = null, view = null;
+    function selDate() { var iso = input.dataset.iso; if (iso) { var p = iso.split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); } return null; }
+    function setIso(iso) { input.dataset.iso = iso || ""; input.value = fmt(iso); input.dispatchEvent(new Event("change", { bubbles: true })); }
+    function render() {
+      var y = view.getFullYear(), m = view.getMonth();
+      var start = new Date(y, m, 1).getDay(), days = new Date(y, m + 1, 0).getDate();
+      var sel = selDate(), tIso = toIso(new Date());
+      var html = '<div class="jl-dp-head"><button type="button" class="jl-dp-nav" data-nav="-1">‹</button>' +
+        '<div class="jl-dp-title">' + JLDP_MONTHS[m] + " " + y + "</div>" +
+        '<button type="button" class="jl-dp-nav" data-nav="1">›</button></div><div class="jl-dp-grid">';
+      ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].forEach(function (d) { html += '<div class="jl-dp-dow">' + d + "</div>"; });
+      for (var i = 0; i < start; i++) html += "<span></span>";
+      for (var d = 1; d <= days; d++) {
+        var iso = y + "-" + pad(m + 1) + "-" + pad(d);
+        var cls = "jl-dp-day"; if (sel && toIso(sel) === iso) cls += " sel"; if (iso === tIso) cls += " today";
+        html += '<button type="button" class="' + cls + '" data-day="' + iso + '">' + d + "</button>";
+      }
+      html += '</div><div class="jl-dp-foot"><button type="button" data-clear>Clear</button><button type="button" data-today>Today</button></div>';
+      pop.innerHTML = html;
+    }
+    function open() {
+      if (pop) return;
+      view = selDate() || new Date();
+      pop = document.createElement("div"); pop.className = "jl-dp-pop"; wrap.appendChild(pop); render();
+      pop.addEventListener("click", function (e) {
+        var b = e.target.closest("button"); if (!b) return;
+        if (b.dataset.nav) { view = new Date(view.getFullYear(), view.getMonth() + (+b.dataset.nav), 1); render(); }
+        else if (b.dataset.day) { setIso(b.dataset.day); close(); }
+        else if (b.hasAttribute("data-clear")) { setIso(""); close(); }
+        else if (b.hasAttribute("data-today")) { setIso(toIso(new Date())); close(); }
+      });
+      setTimeout(function () { document.addEventListener("mousedown", outside, true); document.addEventListener("keydown", onKey, true); }, 0);
+    }
+    function close() { if (!pop) return; pop.remove(); pop = null; document.removeEventListener("mousedown", outside, true); document.removeEventListener("keydown", onKey, true); }
+    function outside(e) { if (!wrap.contains(e.target)) close(); }
+    function onKey(e) { if (e.key === "Escape") close(); }
+    input.addEventListener("mousedown", function (e) { e.preventDefault(); pop ? close() : open(); });
+    input.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pop ? close() : open(); } });
+  };
+
   // ── typed input restriction (block invalid characters at the source) ───────
   // Presets: what each field TYPE is allowed to contain, a cleaner that strips the
   // rest (Unicode-aware — Array.from iterates code points so emoji/surrogates go

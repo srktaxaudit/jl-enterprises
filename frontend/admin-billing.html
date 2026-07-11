@@ -85,8 +85,8 @@
   const STATUS_LABEL = { SUCCESS:"Paid", PENDING:"Pending", REFUNDED:"Refunded", FAILED:"Failed" };
 
   // Date range → ISO instants. Default: last 30 days.
-  function isoFrom(){ const v=$("from").value; return v ? new Date(v+"T00:00:00").toISOString() : ""; }
-  function isoTo(){ const v=$("to").value; return v ? new Date(v+"T23:59:59").toISOString() : ""; }
+  function isoFrom(){ const v=$("from").dataset.iso; return v ? new Date(v+"T00:00:00").toISOString() : ""; }
+  function isoTo(){ const v=$("to").dataset.iso; return v ? new Date(v+"T23:59:59").toISOString() : ""; }
   function rangeQuery(){ const f=isoFrom(), t=isoTo(); return (f?`&from=${encodeURIComponent(f)}`:"") + (t?`&to=${encodeURIComponent(t)}`:""); }
 
   function summaryCard(label, value, sub, tone){
@@ -237,6 +237,7 @@
     const to = new Date(), from = new Date(); from.setDate(from.getDate()-30);
     const iso = (d)=> d.toISOString().slice(0,10);
     $("from").value = iso(from); $("to").value = iso(to);
+    jlDatePicker($("from")); jlDatePicker($("to"));   // custom toggle calendar (replaces native picker)
   })();
 
   // The managed site logo — printed on invoices when configured.
