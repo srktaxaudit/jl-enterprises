@@ -152,6 +152,7 @@
     try {
       if (t.dataset.assign) {
         const role = document.querySelector(`[data-roleselect="${t.dataset.assign}"]`).value;
+        if (!(await jlConfirm(`Assign the ${role.replace("ROLE_","")} role to this user?`, {title:"Assign role", confirmText:"Assign"}))) return;
         await jlApi(`/api/v1/admin/users/${t.dataset.assign}/roles/${role}`, { method: "POST" });
         jlToast("Role assigned.", {type:"success"});
       } else if (t.dataset.remove) {
