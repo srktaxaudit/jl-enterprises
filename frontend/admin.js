@@ -58,6 +58,27 @@
   (document.head || document.documentElement).appendChild(s);
 })();
 
+// Upgrade every <input type="date"> to the shared jlDatePicker (toggle calendar +
+// typeable dd-mm-yyyy) — across all admin pages, including forms rendered later.
+// jlDatePicker keeps the input's .value in ISO, so existing page code is unaffected.
+(function jlAutoDatePickers() {
+  function enh(el) { if (el && el.matches && el.matches('input[type="date"]') && window.jlDatePicker) window.jlDatePicker(el); }
+  function scan(root) { if (root && root.querySelectorAll) root.querySelectorAll('input[type="date"]').forEach(enh); }
+  function start() {
+    scan(document);
+    try {
+      new MutationObserver(function (muts) {
+        for (var i = 0; i < muts.length; i++) {
+          var a = muts[i].addedNodes;
+          for (var j = 0; j < a.length; j++) { var n = a[j]; if (n.nodeType === 1) { enh(n); scan(n); } }
+        }
+      }).observe(document.documentElement, { childList: true, subtree: true });
+    } catch (_) { /* MutationObserver unsupported — static scan already ran */ }
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
+  else start();
+})();
+
 // Admin pages are rendered inside one persistent dashboard shell.  Keep direct
 // bookmarks working by promoting standalone pages into that shell; pages loaded
 // by the shell's iframe are left alone.

@@ -660,37 +660,53 @@
     var pad = function (n) { return String(n).padStart(2, "0"); };
     var toIso = function (d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); };
     var fmt = function (iso) { if (!iso) return ""; var p = iso.split("-"); return p[2] + "-" + p[1] + "-" + p[0]; };
-    // Parse a manually typed value → ISO. Accepts dd-mm-yyyy (/ . - separators) or yyyy-mm-dd.
+    var isIso = function (v) { return /^\d{4}-\d{2}-\d{2}$/.test(v || ""); };
+    // Parse a manually typed value → ISO. Accepts dd-mm-yyyy (/ . - space seps) or yyyy-mm-dd.
     // Returns "" for blank, null for an invalid date (caller reverts).
     var parseTyped = function (str) {
       str = (str || "").trim(); if (!str) return "";
       var m = str.match(/^(\d{1,2})[-\/. ](\d{1,2})[-\/. ](\d{4})$/);
       if (m) { var d = +m[1], mo = +m[2], y = +m[3], dt = new Date(y, mo - 1, d);
         if (dt.getFullYear() === y && dt.getMonth() === mo - 1 && dt.getDate() === d) return toIso(dt); }
-      if (/^\d{4}-\d{2}-\d{2}$/.test(str)) { var p = str.split("-"), t = new Date(+p[0], +p[1] - 1, +p[2]);
-        if (t.getMonth() === +p[1] - 1) return str; }
+      if (isIso(str)) { var p = str.split("-"), t = new Date(+p[0], +p[1] - 1, +p[2]); if (t.getMonth() === +p[1] - 1) return str; }
       return null;
     };
-    if (input.value && /^\d{4}-\d{2}-\d{2}$/.test(input.value)) input.dataset.iso = input.value;
-    input.type = "text"; input.autocomplete = "off"; input.setAttribute("inputmode", "numeric");
-    if (!input.placeholder) input.placeholder = "dd-mm-yyyy";
-    input.value = fmt(input.dataset.iso || "");
-    input.style.paddingRight = "32px";
+    // The ORIGINAL input stays the source of truth and keeps its id/name; we hide it and
+    // keep its .value in ISO (YYYY-MM-DD) so existing page code that reads/writes .value is
+    // unaffected. A visible dd-mm-yyyy field + calendar drives it.
+    var vdesc = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value");
+    var nativeGet = function () { return vdesc.get.call(input); };
+    var nativeSet = function (v) { vdesc.set.call(input, v == null ? "" : v); };
+    var startIso = isIso(nativeGet()) ? nativeGet() : "";
+
+    var disp = document.createElement("input");
+    disp.type = "text"; disp.autocomplete = "off"; disp.className = input.className;
+    disp.setAttribute("inputmode", "numeric");
+    disp.placeholder = input.placeholder || "dd-mm-yyyy";
+    disp.style.paddingRight = "32px";
+    disp.value = fmt(startIso);
     var wrap = document.createElement("span"); wrap.className = "jl-dp-wrap";
-    input.parentNode.insertBefore(wrap, input); wrap.appendChild(input);
+    input.parentNode.insertBefore(wrap, input);
+    wrap.appendChild(disp);
     var btn = document.createElement("button");
     btn.type = "button"; btn.className = "jl-dp-btn"; btn.setAttribute("aria-label", "Open calendar");
     btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4.5" width="18" height="17" rx="2"></rect><path d="M3 9.5h18M8 2.5v4M16 2.5v4"></path></svg>';
     wrap.appendChild(btn);
+    input.type = "hidden"; nativeSet(startIso); wrap.appendChild(input);
+
+    // Reflect programmatic value changes (page setting a default etc.) into the visible field.
+    Object.defineProperty(input, "value", {
+      configurable: true,
+      get: function () { return nativeGet(); },
+      set: function (v) { nativeSet(v); disp.value = fmt(isIso(v) ? v : ""); }
+    });
+
     var pop = null, view = null;
-    function selDate() { var iso = input.dataset.iso; if (iso) { var p = iso.split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); } return null; }
-    function setIso(iso) { input.dataset.iso = iso || ""; input.value = fmt(iso); input.dispatchEvent(new Event("change", { bubbles: true })); }
-    // Commit whatever the user typed: normalise valid dates, revert invalid ones.
-    function commitTyped() {
-      var iso = parseTyped(input.value);
-      if (iso === null) { input.value = fmt(input.dataset.iso || ""); return; }
-      input.dataset.iso = iso; input.value = fmt(iso);
-    }
+    function curIso() { return isIso(nativeGet()) ? nativeGet() : ""; }
+    function selDate() { var iso = curIso(); if (iso) { var p = iso.split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); } return null; }
+    function apply(iso) { nativeSet(iso || ""); disp.value = fmt(iso);
+      input.dispatchEvent(new Event("input", { bubbles: true })); input.dispatchEvent(new Event("change", { bubbles: true })); }
+    function commitTyped() { var iso = parseTyped(disp.value); if (iso === null) { disp.value = fmt(curIso()); return; } apply(iso); }
     function render() {
       var y = view.getFullYear(), m = view.getMonth();
       var start = new Date(y, m, 1).getDay(), days = new Date(y, m + 1, 0).getDate();
@@ -715,9 +731,9 @@
       pop.addEventListener("click", function (e) {
         var b = e.target.closest("button"); if (!b) return;
         if (b.dataset.nav) { view = new Date(view.getFullYear(), view.getMonth() + (+b.dataset.nav), 1); render(); }
-        else if (b.dataset.day) { setIso(b.dataset.day); close(); }
-        else if (b.hasAttribute("data-clear")) { setIso(""); close(); }
-        else if (b.hasAttribute("data-today")) { setIso(toIso(new Date())); close(); }
+        else if (b.dataset.day) { apply(b.dataset.day); close(); }
+        else if (b.hasAttribute("data-clear")) { apply(""); close(); }
+        else if (b.hasAttribute("data-today")) { apply(toIso(new Date())); close(); }
       });
       setTimeout(function () { document.addEventListener("mousedown", outside, true); document.addEventListener("keydown", onKey, true); }, 0);
     }
@@ -725,10 +741,10 @@
     function outside(e) { if (!wrap.contains(e.target)) { commitTyped(); close(); } }
     function onKey(e) { if (e.key === "Escape") close(); }
     // The calendar icon toggles the popup; the text box stays freely editable.
-    btn.addEventListener("mousedown", function (e) { e.preventDefault(); });   // don't steal focus / cause a blur flash
+    btn.addEventListener("mousedown", function (e) { e.preventDefault(); });
     btn.addEventListener("click", function () { commitTyped(); pop ? close() : open(); });
-    input.addEventListener("blur", commitTyped);
-    input.addEventListener("keydown", function (e) {
+    disp.addEventListener("blur", commitTyped);
+    disp.addEventListener("keydown", function (e) {
       if (e.key === "Enter") { e.preventDefault(); commitTyped(); close(); }
       else if (e.key === "Escape") close();
     });
