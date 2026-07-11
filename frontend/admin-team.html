@@ -159,6 +159,7 @@
         await jlApi(`/api/v1/admin/users/${t.dataset.remove}/roles/${t.dataset.role}`, { method: "DELETE" });
         jlToast("Role removed.", {type:"success"});
       } else if (t.dataset.enable) {
+        if (t.dataset.on !== "true" && !(await jlConfirm("Disable this user? They won't be able to log in until re-enabled.", {title:"Disable user", danger:true, confirmText:"Disable"}))) return;
         await jlApi(`/api/v1/admin/users/${t.dataset.enable}/status?enabled=${t.dataset.on}`, { method: "PATCH" });
         jlToast("User " + (t.dataset.on === "true" ? "enabled." : "disabled."), {type:"success"});
       }

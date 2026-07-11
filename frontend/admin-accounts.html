@@ -218,12 +218,14 @@
     const a = ACCOUNTS.find(x=>String(x.id)===String(b.dataset.block||b.dataset.active||b.dataset.del));
     if(b.dataset.block){
       const blk = !(a&&a.blocked);
+      if(blk && !(await jlConfirm("Block this ledger account? It can't be used in new entries until unblocked.",{title:"Block account",confirmText:"Block",danger:true}))) return;
       try { await jlSubmit(b, ()=>jlApi(`${API}/accounts/${b.dataset.block}/blocked?blocked=${blk}`, {method:"PATCH"})); jlToast(blk?"Account blocked.":"Account unblocked.",{type:"success"}); load(); }
       catch(e){ jlToast(e.message||"Could not update",{type:"error"}); }
       return;
     }
     if(b.dataset.active){
       const act = !(a&&a.active);
+      if(!act && !(await jlConfirm("Deactivate this ledger account?",{title:"Deactivate account",confirmText:"Deactivate",danger:true}))) return;
       try { await jlSubmit(b, ()=>jlApi(`${API}/accounts/${b.dataset.active}/active?active=${act}`, {method:"PATCH"})); jlToast(act?"Account activated.":"Account deactivated.",{type:"success"}); load(); }
       catch(e){ jlToast(e.message||"Could not update",{type:"error"}); }
       return;
