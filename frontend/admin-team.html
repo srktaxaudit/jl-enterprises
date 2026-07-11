@@ -37,19 +37,16 @@
     <p class="text-slate-400 text-sm mb-5">Manage staff access. Roles: SUPER_ADMIN · ADMIN · MANAGER · CUSTOMER.</p>
 
     <div class="bg-blue-50 border border-blue-200 text-blue-800 text-[13px] rounded-lg px-3 py-2 mb-5">
-      ℹ️ This list shows <b>company staff only</b>. To promote a customer to staff, tick <b>“Include customers”</b>, search their name/email, then assign a role.
+      ℹ️ This list shows <b>company staff only</b>. Search by name or email to find a staff member. To add a new staff member, use the <b>Staff</b> page.
     </div>
 
     <div id="msg" class="hidden mb-4 text-[13px] rounded-lg px-3 py-2"></div>
 
     <div class="bg-white border border-slate-200 rounded-2xl p-5">
-      <div class="flex flex-wrap items-center gap-3 mb-4">
+      <div class="flex items-center gap-3 mb-4">
         <h2 class="text-navy font-semibold">Staff</h2>
-        <label class="ml-auto inline-flex items-center gap-1.5 text-[12px] text-slate-500 cursor-pointer select-none" title="Also search customers so you can promote one to staff">
-          <input id="inclCustomers" type="checkbox" class="w-3.5 h-3.5" /> Include customers (to promote)
-        </label>
         <input id="search" placeholder="Search staff…"
-               class="w-64 rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-brand" />
+               class="ml-auto w-64 rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-brand" />
       </div>
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
@@ -124,24 +121,15 @@
     const body = document.getElementById("usersBody");
     body.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-slate-400">${jlSpinnerHTML({label:"Loading users"})}</td></tr>`;
     try {
-      // Default = company staff only. Searching stays WITHIN staff (client-filtered) so the
-      // imported customer list can't flood it. Tick "Include customers" to search ALL users —
-      // needed to find a customer and promote them to staff.
+      // Company staff only. Search filters the staff list client-side (small list) —
+      // customers are never listed here.
       const s = (search || "").trim();
-      const inclCustomers = document.getElementById("inclCustomers").checked;
-      let users;
-      if (inclCustomers && s) {
-        const page = await jlApi(`/api/v1/admin/users?search=${encodeURIComponent(s)}&size=50`);
-        if (seq !== usersSeq) return;   // a newer search started — drop this stale result
-        users = page.content || [];
-      } else {
-        const page = await jlApi("/api/v1/admin/staff?size=200");
-        if (seq !== usersSeq) return;
-        users = page.content || [];
-        if (s) {
-          const q = s.toLowerCase();
-          users = users.filter((u) => name(u).toLowerCase().includes(q) || (u.email || "").toLowerCase().includes(q));
-        }
+      const page = await jlApi("/api/v1/admin/staff?size=200");
+      if (seq !== usersSeq) return;   // a newer search started — drop this stale result
+      let users = page.content || [];
+      if (s) {
+        const q = s.toLowerCase();
+        users = users.filter((u) => name(u).toLowerCase().includes(q) || (u.email || "").toLowerCase().includes(q));
       }
       body.innerHTML = users.length ? users.map((u) => `
         <tr class="border-t border-slate-100 align-top">
@@ -185,9 +173,6 @@
     clearTimeout(searchTimer);
     const v = e.target.value.trim();
     searchTimer = setTimeout(() => loadUsers(v), 300);
-  });
-  document.getElementById("inclCustomers").addEventListener("change", () => {
-    loadUsers(document.getElementById("search").value.trim());
   });
 
   jlWireLogout("#logoutBtn");
