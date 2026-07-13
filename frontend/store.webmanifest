@@ -1,0 +1,14 @@
+{
+  "name": "JL Enterprises — Appliance Store",
+  "short_name": "JL Store",
+  "description": "Shop ACs, TVs, fridges, washing machines & more with easy EMI, COD and free delivery across Tamil Nadu.",
+  "start_url": "/index.html",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0b2447",
+  "theme_color": "#0b2447",
+  "icons": [
+    { "src": "/pwa-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/pwa-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
