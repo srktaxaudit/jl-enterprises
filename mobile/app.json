@@ -7,6 +7,12 @@
     "scheme": "jladmin",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0b2447"
+    },
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
@@ -19,7 +25,11 @@
     },
     "android": {
       "package": "com.jlenterprises.admin",
-      "permissions": ["USE_BIOMETRIC", "USE_FINGERPRINT"]
+      "permissions": ["USE_BIOMETRIC", "USE_FINGERPRINT"],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0b2447"
+      }
     },
     "plugins": [
       "expo-router",
@@ -28,7 +38,7 @@
       "expo-image-picker",
       [
         "expo-notifications",
-        { "color": "#f97316" }
+        { "icon": "./assets/notification-icon.png", "color": "#f97316" }
       ]
     ],
     "experiments": { "typedRoutes": true },
