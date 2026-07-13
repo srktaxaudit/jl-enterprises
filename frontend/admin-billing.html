@@ -219,8 +219,8 @@
       catch(e){ jlToast(e.message||"Could not update",{type:"error"}); }
     }
     if(b.dataset.refund){
-      if(!(await jlConfirm("Refund this payment? The order will be marked refunded.",{title:"Issue refund",confirmText:"Refund",danger:true}))) return;
-      try { await jlSubmit(b, ()=>jlApi(`/api/v1/admin/billing/orders/${b.dataset.refund}/refund`, {method:"POST"})); jlToast("Refund issued.",{type:"success"}); loadRows(); loadSummary(); }
+      if(!(await jlConfirm("Refund this order? Stock is restored, the coupon is released and the sale is reversed in your books. You must still return the money to the customer in Razorpay (or as cash for COD) — this does not refund it automatically.",{title:"Refund order",confirmText:"Mark refunded",danger:true}))) return;
+      try { await jlSubmit(b, ()=>jlApi(`/api/v1/admin/billing/orders/${b.dataset.refund}/refund`, {method:"POST"})); jlToast("Refunded — stock & books updated. Remember to return the money in Razorpay.",{type:"success"}); loadRows(); loadSummary(); }
       catch(e){ jlToast(e.message||"Could not refund",{type:"error"}); }
     }
   });

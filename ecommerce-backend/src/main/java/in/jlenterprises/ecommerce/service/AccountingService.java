@@ -43,6 +43,10 @@ public interface AccountingService {
     /** Best-effort: post a Sales voucher for a paid order (idempotent). Never throws. */
     void postSaleForOrder(UUID orderId);
 
+    /** Best-effort: reverse a previously posted Sales voucher for a returned/refunded order by
+        posting a Credit Note (idempotent — only if a Sale exists and no reversal yet). Never throws. */
+    void reverseSaleForOrder(UUID orderId);
+
     /** Net balance of an account (opening + all movements). +ve = debit balance, -ve = credit. */
     BigDecimal netBalance(UUID accountId);
 

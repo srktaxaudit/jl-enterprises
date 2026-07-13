@@ -328,6 +328,45 @@ public class AccountingServiceImpl implements AccountingService {
         }
     }
 
+    // ── Reverse a paid sale on return/refund via a Credit Note (best-effort, isolated) ──
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void reverseSaleForOrder(UUID orderId) {
+        try {
+            if (!entryRepo.existsByReferenceIdAndVoucherType(orderId, VoucherType.SALES)) return;      // nothing was posted
+            if (entryRepo.existsByReferenceIdAndVoucherType(orderId, VoucherType.CREDIT_NOTE)) return; // already reversed
+            Order order = orderRepository.findById(orderId).orElse(null);
+            if (order == null) return;
+            Payment p = order.getPayment();
+            BigDecimal grand = order.getGrandTotal();
+            if (grand == null || grand.signum() <= 0) return;
+
+            LedgerAccount cashBank = (p != null && p.getMethod() == PaymentMethod.COD)
+                    ? accountRepo.findByCode(CASH).orElse(null) : accountRepo.findByCode(BANK).orElse(null);
+            LedgerAccount salesAcc = accountRepo.findByCode(SALES).orElse(null);
+            LedgerAccount gstAcc = accountRepo.findByCode(OUTPUT_GST).orElse(null);
+            if (cashBank == null || salesAcc == null || gstAcc == null) return;
+
+            BigDecimal gst = GstUtil.gstAmount(grand, billingConfig.gstRate());
+            BigDecimal taxable = grand.subtract(gst);
+
+            // Mirror of the sale, reversed: Dr Sales + Dr Output GST, Cr Cash/Bank (money returned).
+            JournalEntry e = new JournalEntry();
+            e.setVoucherType(VoucherType.CREDIT_NOTE);
+            e.setEntryDate(LocalDate.now(ZONE));
+            e.setReference(order.getOrderNumber());
+            e.setReferenceId(orderId);
+            e.setNarration("Sales return / refund — order " + order.getOrderNumber());
+            e.setVoucherNumber(nextVoucherNumber(VoucherType.CREDIT_NOTE));
+            e.addLine(line(salesAcc, taxable, BigDecimal.ZERO));
+            if (gst.signum() > 0) e.addLine(line(gstAcc, gst, BigDecimal.ZERO));
+            e.addLine(line(cashBank, BigDecimal.ZERO, grand));
+            entryRepo.save(e);
+        } catch (Exception ex) {
+            log.warn("Auto-reverse of sale for order {} skipped: {}", orderId, ex.toString());
+        }
+    }
+
     @Override
     @Transactional(readOnly = true)
     public BigDecimal netBalance(UUID accountId) {

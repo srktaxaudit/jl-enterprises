@@ -9,6 +9,7 @@ import in.jlenterprises.ecommerce.constant.TransactionType;
 import in.jlenterprises.ecommerce.dto.order.OrderPaymentDto;
 import in.jlenterprises.ecommerce.dto.payment.PaymentInitResponse;
 import in.jlenterprises.ecommerce.entity.Order;
+import in.jlenterprises.ecommerce.entity.OrderItem;
 import in.jlenterprises.ecommerce.entity.Payment;
 import in.jlenterprises.ecommerce.entity.Transaction;
 import in.jlenterprises.ecommerce.exception.BusinessException;
@@ -17,11 +18,13 @@ import in.jlenterprises.ecommerce.payment.PaymentConfirmation;
 import in.jlenterprises.ecommerce.payment.PaymentInitResult;
 import in.jlenterprises.ecommerce.payment.PaymentStrategy;
 import in.jlenterprises.ecommerce.payment.PaymentStrategyFactory;
+import in.jlenterprises.ecommerce.repository.InventoryRepository;
 import in.jlenterprises.ecommerce.repository.OrderRepository;
 import in.jlenterprises.ecommerce.repository.PaymentRepository;
 import in.jlenterprises.ecommerce.request.payment.PaymentConfirmRequest;
 import in.jlenterprises.ecommerce.constant.WhatsappAutomationEvent;
 import in.jlenterprises.ecommerce.service.AccountingService;
+import in.jlenterprises.ecommerce.service.CouponService;
 import in.jlenterprises.ecommerce.service.NotificationService;
 import in.jlenterprises.ecommerce.service.PaymentService;
 import in.jlenterprises.ecommerce.service.WhatsappAutomationService;
@@ -42,16 +45,21 @@ public class PaymentServiceImpl implements PaymentService {
     private final NotificationService notificationService;
     private final AccountingService accountingService;
     private final WhatsappAutomationService whatsappAutomation;
+    private final InventoryRepository inventoryRepository;
+    private final CouponService couponService;
 
     public PaymentServiceImpl(OrderRepository orderRepository, PaymentRepository paymentRepository,
                               PaymentStrategyFactory strategyFactory, NotificationService notificationService,
-                              AccountingService accountingService, WhatsappAutomationService whatsappAutomation) {
+                              AccountingService accountingService, WhatsappAutomationService whatsappAutomation,
+                              InventoryRepository inventoryRepository, CouponService couponService) {
         this.orderRepository = orderRepository;
         this.paymentRepository = paymentRepository;
         this.strategyFactory = strategyFactory;
         this.notificationService = notificationService;
         this.accountingService = accountingService;
         this.whatsappAutomation = whatsappAutomation;
+        this.inventoryRepository = inventoryRepository;
+        this.couponService = couponService;
     }
 
     /** After the current transaction commits, post the sale to the books (best-effort). */
@@ -63,6 +71,28 @@ public class PaymentServiceImpl implements PaymentService {
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override public void afterCommit() { accountingService.postSaleForOrder(orderId); }
         });
+    }
+
+    /** After the current transaction commits, reverse the sale on the books (best-effort). */
+    private void reverseSaleAfterCommit(UUID orderId) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            accountingService.reverseSaleForOrder(orderId);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override public void afterCommit() { accountingService.reverseSaleForOrder(orderId); }
+        });
+    }
+
+    /** Put the ordered quantities back into stock, locking each row to match the deduct path. */
+    private void restoreStock(Order order) {
+        for (OrderItem item : order.getItems()) {
+            if (item.getProduct() == null) continue;
+            inventoryRepository.findByProductIdForUpdate(item.getProduct().getId()).ifPresent(inv -> {
+                inv.setQuantity(inv.getQuantity() + item.getQuantity());
+                inventoryRepository.save(inv);
+            });
+        }
     }
 
     @Override
@@ -150,6 +180,12 @@ public class PaymentServiceImpl implements PaymentService {
         if (payment.getPaymentStatus() != PaymentStatus.SUCCESS) {
             throw new BusinessException("Only successful payments can be refunded");
         }
+        // A refund reverses the sale: put stock back (locked), release the coupon usage, and
+        // reverse the sales journal after commit. The SUCCESS guard above makes this idempotent —
+        // a second refund attempt fails, so stock/coupons are never restored twice.
+        restoreStock(order);
+        couponService.revokeForOrder(orderId);
+
         Transaction txn = new Transaction();
         txn.setPayment(payment);
         txn.setType(TransactionType.REFUND);
@@ -162,6 +198,7 @@ public class PaymentServiceImpl implements PaymentService {
         order.setOrderStatus(OrderStatus.REFUNDED);
         orderRepository.save(order);
         paymentRepository.save(payment);
+        reverseSaleAfterCommit(orderId);
 
         notificationService.notifyUser(order.getUser().getId(), NotificationType.ORDER, "Refund issued",
                 "A refund was issued for order " + order.getOrderNumber() + ".", "/orders/" + order.getId());

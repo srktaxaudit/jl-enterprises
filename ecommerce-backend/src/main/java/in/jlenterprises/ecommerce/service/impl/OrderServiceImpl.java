@@ -29,6 +29,7 @@ import in.jlenterprises.ecommerce.repository.InventoryRepository;
 import in.jlenterprises.ecommerce.repository.OrderRepository;
 import in.jlenterprises.ecommerce.repository.PaymentRepository;
 import in.jlenterprises.ecommerce.request.order.PlaceOrderRequest;
+import in.jlenterprises.ecommerce.service.AccountingService;
 import in.jlenterprises.ecommerce.service.CouponService;
 import in.jlenterprises.ecommerce.service.NotificationService;
 import in.jlenterprises.ecommerce.service.OrderService;
@@ -39,6 +40,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -64,6 +67,7 @@ public class OrderServiceImpl implements OrderService {
     private final BillingConfig billingConfig;
     private final in.jlenterprises.ecommerce.service.ExchangeService exchangeService;
     private final WhatsappAutomationService whatsappAutomation;
+    private final AccountingService accountingService;
 
     public OrderServiceImpl(OrderRepository orderRepository, CartRepository cartRepository,
                             AddressRepository addressRepository, InventoryRepository inventoryRepository,
@@ -71,7 +75,7 @@ public class OrderServiceImpl implements OrderService {
                             NotificationService notificationService, OrderNumberGenerator orderNumberGenerator,
                             OrderMapper orderMapper, BillingConfig billingConfig,
                             in.jlenterprises.ecommerce.service.ExchangeService exchangeService,
-                            WhatsappAutomationService whatsappAutomation) {
+                            WhatsappAutomationService whatsappAutomation, AccountingService accountingService) {
         this.orderRepository = orderRepository;
         this.cartRepository = cartRepository;
         this.addressRepository = addressRepository;
@@ -84,6 +88,7 @@ public class OrderServiceImpl implements OrderService {
         this.billingConfig = billingConfig;
         this.exchangeService = exchangeService;
         this.whatsappAutomation = whatsappAutomation;
+        this.accountingService = accountingService;
     }
 
     @Override
@@ -425,13 +430,26 @@ public class OrderServiceImpl implements OrderService {
         order.setCancellationReason(reason);
     }
 
-    /** Restore inventory + coupon usage and flip a successful payment to REFUNDED. */
+    /** Restore inventory + coupon usage, flip a successful payment to REFUNDED, and reverse the
+        sales journal after commit (best-effort, idempotent) so the books don't overstate revenue. */
     private void refundAndRestore(Order order) {
         restoreStock(order);
         couponService.revokeForOrder(order.getId());
         if (order.getPayment() != null && order.getPayment().getPaymentStatus() == PaymentStatus.SUCCESS) {
             order.getPayment().setPaymentStatus(PaymentStatus.REFUNDED);
         }
+        reverseSaleAfterCommit(order.getId());
+    }
+
+    /** After the current transaction commits, reverse the sale on the books (best-effort). */
+    private void reverseSaleAfterCommit(UUID orderId) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            accountingService.reverseSaleForOrder(orderId);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override public void afterCommit() { accountingService.reverseSaleForOrder(orderId); }
+        });
     }
 
     private static String appendNote(String existing, String add) {
