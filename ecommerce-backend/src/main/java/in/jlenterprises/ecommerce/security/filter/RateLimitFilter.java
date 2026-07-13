@@ -28,6 +28,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     /** Only these POST paths are throttled; everything else passes straight through. */
     private static final Set<String> LIMITED_PATHS = Set.of(
+            "/api/v1/auth/login",
             "/api/v1/auth/send-otp",
             "/api/v1/auth/verify-otp",
             "/api/v1/auth/register",

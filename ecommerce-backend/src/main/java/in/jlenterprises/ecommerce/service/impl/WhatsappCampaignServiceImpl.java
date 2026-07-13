@@ -27,11 +27,15 @@ import in.jlenterprises.ecommerce.request.whatsapp.CampaignRequest;
 import in.jlenterprises.ecommerce.service.WhatsappCampaignService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -52,17 +56,21 @@ public class WhatsappCampaignServiceImpl implements WhatsappCampaignService {
     private final WhatsappTemplateRepository templateRepo;
     private final UserRepository userRepo;
     private final WhatsAppService whatsApp;
+    /** Self proxy (lazy to avoid a construction cycle) so the @Async worker call goes through the proxy. */
+    private final WhatsappCampaignService self;
 
     public WhatsappCampaignServiceImpl(WhatsappCampaignRepository campaignRepo,
                                        WhatsappMessageLogRepository logRepo,
                                        WhatsappTemplateRepository templateRepo,
                                        UserRepository userRepo,
-                                       WhatsAppService whatsApp) {
+                                       WhatsAppService whatsApp,
+                                       @Lazy WhatsappCampaignService self) {
         this.campaignRepo = campaignRepo;
         this.logRepo = logRepo;
         this.templateRepo = templateRepo;
         this.userRepo = userRepo;
         this.whatsApp = whatsApp;
+        this.self = self;
     }
 
     // ── Audience ──
@@ -171,8 +179,53 @@ public class WhatsappCampaignServiceImpl implements WhatsappCampaignService {
             throw new BusinessException("Live sending needs an approved template. Create a template with its "
                     + "Meta template name, then compose the campaign from it. (Free text only works inside the 24-hour reply window.)");
         }
-        dispatch(c, recipients);
+        enqueue(c, recipients);
+        // Hand the actual sending to a background worker once this tx commits — a large audience
+        // must not block the request thread / one long DB transaction (Render free-tier timeouts).
+        UUID cid = c.getId();
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override public void afterCommit() { self.processQueued(cid); }
+            });
+        } else {
+            self.processQueued(cid);
+        }
         return toDetail(c);
+    }
+
+    /** Mark the campaign SENDING and persist one QUEUED message-log row per recipient. */
+    private void enqueue(WhatsappCampaign c, List<User> recipients) {
+        c.setDemoMode(!whatsApp.isConfigured());
+        c.setCampaignStatus(WhatsappCampaignStatus.SENDING);
+        c.setTotalRecipients(recipients.size());
+        campaignRepo.save(c);
+        for (User u : recipients) {
+            WhatsappMessageLog msg = new WhatsappMessageLog();
+            msg.setCampaign(c);
+            msg.setUserId(u.getId());
+            msg.setRecipientName(nameOf(u));
+            msg.setPhone(u.getPhone());
+            msg.setRenderedBody(render(c.getBodyText(), u.getFirstName()));
+            msg.setMessageStatus(WhatsappMessageStatus.QUEUED);
+            logRepo.save(msg);
+        }
+    }
+
+    @Override
+    @Async
+    @Transactional
+    public void processQueued(UUID campaignId) {
+        WhatsappCampaign c = campaignRepo.findById(campaignId).orElse(null);
+        if (c == null) return;
+        boolean demo = c.isDemoMode();
+        List<WhatsappMessageLog> queued = logRepo.findByCampaign_IdAndMessageStatus(campaignId, WhatsappMessageStatus.QUEUED);
+        for (WhatsappMessageLog msg : queued) {
+            sendOne(c, msg, demo);
+            logRepo.save(msg);
+        }
+        recount(c);
+        c.setSentAt(Instant.now());
+        campaignRepo.save(c);
     }
 
     @Override

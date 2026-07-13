@@ -23,6 +23,9 @@ public interface WhatsappCampaignService {
     CampaignDetailDto get(UUID id);
     CampaignDetailDto create(CampaignRequest request);
     CampaignDetailDto send(UUID id);
+    /** Internal async worker: send all QUEUED messages of a campaign in the background.
+        Called by {@link #send} after commit — not a controller endpoint. */
+    void processQueued(UUID campaignId);
     CampaignDetailDto retryFailed(UUID id);
     CampaignDetailDto cancel(UUID id);
     void delete(UUID id);

@@ -79,19 +79,27 @@ public class AdminOrderController {
         return ApiResponse.success(PageResponse.of(orderService.userOrders(userId, pageable)));
     }
 
+    // Order-mutating actions (status changes trigger refunds/restock) are limited to order
+    // managers + admins. CUSTOMER_SUPPORT keeps read access and can add internal notes, but
+    // can't advance status or approve/reject returns.
+    private static final String ORDER_WRITE = "hasAnyRole('ADMIN','SUPER_ADMIN','MANAGER','ORDER_MANAGER')";
+
     @PatchMapping("/{id}/status")
+    @PreAuthorize(ORDER_WRITE)
     @Operation(summary = "Advance an order's status (validates transitions; auto-restocks on cancel/return)")
     public ApiResponse<OrderDto> updateStatus(@PathVariable UUID id, @RequestParam OrderStatus status) {
         return ApiResponse.success("Order status updated", orderService.updateStatus(id, status));
     }
 
     @PostMapping("/{id}/return/approve")
+    @PreAuthorize(ORDER_WRITE)
     @Operation(summary = "Approve a return request (restock + refund)")
     public ApiResponse<OrderDto> approveReturn(@PathVariable UUID id) {
         return ApiResponse.success("Return approved", orderService.approveReturn(id));
     }
 
     @PostMapping("/{id}/return/reject")
+    @PreAuthorize(ORDER_WRITE)
     @Operation(summary = "Reject a return request with a reason")
     public ApiResponse<OrderDto> rejectReturn(@PathVariable UUID id, @RequestParam(required = false) String reason) {
         return ApiResponse.success("Return rejected", orderService.rejectReturn(id, reason));
