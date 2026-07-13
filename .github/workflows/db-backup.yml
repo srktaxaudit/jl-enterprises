@@ -1,0 +1,43 @@
+name: Database backup
+
+# Weekly pg_dump of the JL STORE Postgres, stored as a downloadable artifact.
+#
+# SETUP (one time): add a repository secret named DATABASE_URL containing the
+# JL STORE database connection string (Supabase → Project → Database → Connection
+# string / URI, session pooler). Until that secret is set, this workflow no-ops.
+#
+# ⚠️ Use the JL STORE database only — never point DATABASE_URL at any other project.
+on:
+  schedule:
+    - cron: '30 19 * * 0'   # weekly · Sunday 19:30 UTC (~01:00 IST Mon)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    steps:
+      - name: Install postgresql-client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: pg_dump (skips cleanly if DATABASE_URL is not set)
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "DATABASE_URL secret not set — add it to enable weekly backups. Skipping."
+            exit 0
+          fi
+          ts=$(date -u +%Y%m%d-%H%M)
+          pg_dump --no-owner --no-privileges "$DATABASE_URL" | gzip > "jlstore-$ts.sql.gz"
+          ls -lh jlstore-*.sql.gz
+
+      - name: Upload backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: jlstore-db-backup
+          path: jlstore-*.sql.gz
+          if-no-files-found: ignore
+          retention-days: 30
