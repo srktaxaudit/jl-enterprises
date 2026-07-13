@@ -46,15 +46,18 @@ public class DocumentServiceImpl implements DocumentService {
     private final JournalEntryRepository entryRepo;
     private final AccountingService accountingService;
     private final in.jlenterprises.ecommerce.service.NumberSequenceService numberSequence;
+    private final in.jlenterprises.ecommerce.repository.InventoryRepository inventoryRepository;
 
     public DocumentServiceImpl(AccountingDocumentRepository docRepo, LedgerAccountRepository accountRepo,
                                JournalEntryRepository entryRepo, AccountingService accountingService,
-                               in.jlenterprises.ecommerce.service.NumberSequenceService numberSequence) {
+                               in.jlenterprises.ecommerce.service.NumberSequenceService numberSequence,
+                               in.jlenterprises.ecommerce.repository.InventoryRepository inventoryRepository) {
         this.docRepo = docRepo;
         this.accountRepo = accountRepo;
         this.entryRepo = entryRepo;
         this.accountingService = accountingService;
         this.numberSequence = numberSequence;
+        this.inventoryRepository = inventoryRepository;
     }
 
     @Override
@@ -154,7 +157,30 @@ public class DocumentServiceImpl implements DocumentService {
                 d.getDocumentNumber(), d.getId(), narration(d), buildPostings(d));
         d.setJournalEntryId(journalId);
         d.setDocumentStatus(DocumentStatus.POSTED);
+        applyStockMovement(d, +1);   // purchase bill → stock in; debit note (purchase return) → stock out
         return toDto(docRepo.save(d));
+    }
+
+    /** Move inventory for a posted purchase-side document. factor +1 on post, -1 to reverse on cancel.
+        PURCHASE_BILL brings goods in (+), a DEBIT_NOTE is a purchase return to the supplier (-). Sales
+        documents move no stock here — the order flow already deducts/restocks for those. */
+    private void applyStockMovement(AccountingDocument d, int factor) {
+        int dir = switch (d.getDocumentType()) {
+            case PURCHASE_BILL -> +1;
+            case DEBIT_NOTE -> -1;
+            default -> 0;
+        } * factor;
+        if (dir == 0) return;
+        for (in.jlenterprises.ecommerce.entity.DocumentLine ln : d.getLines()) {
+            if (ln.getProductId() == null || ln.getQuantity() == null) continue;
+            int qty = ln.getQuantity().setScale(0, RoundingMode.HALF_UP).intValue();
+            if (qty == 0) continue;
+            int delta = dir * qty;
+            inventoryRepository.findByProductIdForUpdate(ln.getProductId()).ifPresent(inv -> {
+                inv.setQuantity(inv.getQuantity() + delta);
+                inventoryRepository.save(inv);
+            });
+        }
     }
 
     @Override
@@ -167,6 +193,7 @@ public class DocumentServiceImpl implements DocumentService {
             // Remove its journal from the ledgers (soft-delete keeps an audit trail).
             entryRepo.findById(d.getJournalEntryId()).ifPresent(e -> { e.setDeleted(true); entryRepo.save(e); });
             d.setJournalEntryId(null);
+            applyStockMovement(d, -1);   // undo the stock-in/out this document made when it was posted
         }
         d.setDocumentStatus(DocumentStatus.CANCELLED);
         return toDto(docRepo.save(d));
