@@ -155,7 +155,15 @@
               ${p.emiNote ? `<div class="text-slate-500 mt-1">Note: ${escAttr(p.emiNote)}</div>` : ""}
               <button id="emiRequestBtn" type="button" class="mt-2 bg-brand hover:bg-navy text-white font-semibold rounded-lg px-4 py-1.5 text-[12px] transition">Request EMI / Callback</button>
             </div>` : ""}
-            <div class="text-[13px] text-brand mb-4">Free delivery in Tamil Nadu</div>
+            <div class="text-[13px] text-brand mb-3">Free delivery in Tamil Nadu</div>
+            <div class="mb-4 border border-slate-200 rounded-xl p-3 bg-slate-50">
+              <label class="block text-[12px] font-semibold text-slate-500 mb-1">🚚 Check delivery to your area</label>
+              <div class="flex gap-2">
+                <input id="pinInput" inputmode="numeric" maxlength="6" placeholder="6-digit pincode" class="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-brand" />
+                <button id="pinBtn" type="button" class="bg-navy hover:bg-navy-600 text-white font-semibold rounded-lg px-4 py-2 text-sm whitespace-nowrap">Check</button>
+              </div>
+              <div id="pinResult" class="text-[12px] mt-2"></div>
+            </div>
             ${p.shortDescription ? `<p class="text-slate-600 text-sm mb-3">${escAttr(p.shortDescription)}</p>` : ""}
             ${(p.availableStock != null && p.availableStock <= 0)
               ? `<div><button disabled class="bg-slate-300 text-white font-bold px-6 py-3 rounded-lg text-sm cursor-not-allowed">❌ Out of Stock</button>
@@ -185,6 +193,7 @@
       jlRenderRecentlyViewed("recentlyViewed", { exclude: slug, title: "Recently viewed" });
       const emiBtn = document.getElementById("emiRequestBtn");
       if (emiBtn) emiBtn.addEventListener("click", () => requestEmi(p));
+      wirePincodeCheck();
       const notifyBtn = document.getElementById("notifyStockBtn");
       if (notifyBtn) notifyBtn.addEventListener("click", () => requestStock(p));
 
@@ -226,6 +235,31 @@
     } catch (e) {
       box.innerHTML = `<p class="text-red-500">${e.status === 404 ? "Product not found." : "Couldn't load this product."}</p>`;
     }
+  }
+
+  // Delivery pincode / ETA check. Tamil Nadu pincodes (600000–649999) get a free-delivery ETA;
+  // anything else is invited to call to confirm (honest — the shop delivers across Tamil Nadu).
+  function wirePincodeCheck(){
+    const btn = document.getElementById("pinBtn"); if (!btn) return;
+    const input = document.getElementById("pinInput");
+    const result = document.getElementById("pinResult");
+    input.addEventListener("input", () => { input.value = input.value.replace(/\D/g, "").slice(0, 6); });
+    function check(){
+      const pin = (input.value || "").trim();
+      if (!/^\d{6}$/.test(pin)) { result.className = "text-[12px] mt-2 text-red-600"; result.textContent = "Enter a valid 6-digit pincode."; return; }
+      try { localStorage.setItem("jl_pincode", pin); } catch (_) {}
+      if (/^6[0-4]\d{4}$/.test(pin)) {
+        result.className = "text-[12px] mt-2 text-emerald-700 font-semibold";
+        result.innerHTML = `✓ Free delivery &amp; installation to <b>${pin}</b> — usually 2–5 days.`;
+      } else {
+        result.className = "text-[12px] mt-2 text-slate-600";
+        result.innerHTML = `We deliver across Tamil Nadu. For <b>${pin}</b>, please call <a href="tel:+919514970111" class="text-brand font-semibold">95149&nbsp;70111</a> to confirm.`;
+      }
+    }
+    btn.addEventListener("click", check);
+    input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); check(); } });
+    let saved = ""; try { saved = localStorage.getItem("jl_pincode") || ""; } catch (_) {}
+    if (saved) { input.value = saved; check(); }   // remember the shopper's last pincode
   }
 
   // "Request EMI / Callback" → collects name + phone and POSTs a public EMI request.
