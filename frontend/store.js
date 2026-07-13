@@ -303,6 +303,56 @@ function jlProductCard(p) {
     </div>`;
 }
 
+/* ── Recently viewed products (localStorage; purely client-side) ────────── */
+const JL_RV_KEY = "jl_recently_viewed";
+function jlPushRecentlyViewed(item) {
+  if (!item || !item.slug) return;
+  try {
+    let list = JSON.parse(localStorage.getItem(JL_RV_KEY)) || [];
+    list = list.filter((x) => x && x.slug !== item.slug);
+    list.unshift({ slug: item.slug, name: item.name || "", price: Number(item.price) || 0,
+                   image: item.image || "", brand: item.brand || "" });
+    localStorage.setItem(JL_RV_KEY, JSON.stringify(list.slice(0, 12)));
+  } catch (_) { /* storage disabled/full */ }
+}
+function jlGetRecentlyViewed(excludeSlug) {
+  try {
+    const list = JSON.parse(localStorage.getItem(JL_RV_KEY)) || [];
+    return excludeSlug ? list.filter((x) => x && x.slug !== excludeSlug) : list;
+  } catch (_) { return []; }
+}
+/** Render a horizontal "Recently viewed" rail into #containerId. No-op (hidden) when empty. */
+function jlRenderRecentlyViewed(containerId, opts) {
+  opts = opts || {};
+  const box = document.getElementById(containerId);
+  if (!box) return;
+  const items = jlGetRecentlyViewed(opts.exclude).slice(0, opts.limit || 12);
+  if (!items.length) { box.style.display = "none"; return; }
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const card = (x) => `
+    <a href="product.html?slug=${encodeURIComponent(x.slug)}" class="group flex-shrink-0 w-40 bg-white border border-slate-200 rounded-2xl p-3 hover:shadow-card hover:-translate-y-0.5 transition">
+      <div class="h-28 rounded-xl overflow-hidden bg-slate-50 flex items-center justify-center mb-2">
+        ${x.image ? `<img src="${esc(x.image)}" alt="${esc(x.name)}" loading="lazy" class="w-full h-full object-cover" />` : `<span class="text-4xl">📦</span>`}
+      </div>
+      ${x.brand ? `<div class="text-[11px] text-slate-400 truncate">${esc(x.brand)}</div>` : ""}
+      <div class="text-[13px] font-semibold text-navy leading-snug mb-1" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:34px">${esc(x.name)}</div>
+      <div class="text-navy font-extrabold">${jlInr(x.price)}</div>
+    </a>`;
+  box.innerHTML = `
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="text-xl font-bold text-navy">${esc(opts.title || "Recently viewed")}</h2>
+      <button type="button" data-rv-clear class="text-[12px] text-slate-400 hover:text-red-500">Clear</button>
+    </div>
+    <div class="flex gap-3 overflow-x-auto pb-2">${items.map(card).join("")}</div>`;
+  box.style.display = "";
+  const clr = box.querySelector("[data-rv-clear]");
+  if (clr) clr.addEventListener("click", () => { try { localStorage.removeItem(JL_RV_KEY); } catch (_) {} box.style.display = "none"; });
+}
+window.jlPushRecentlyViewed = jlPushRecentlyViewed;
+window.jlGetRecentlyViewed = jlGetRecentlyViewed;
+window.jlRenderRecentlyViewed = jlRenderRecentlyViewed;
+
 /* ── Header login state ────────────────────────────────────────────────
    Storefront headers are static (they always show Sign Up / Login). When a
    customer is logged in, swap those for "My Orders" + "Logout" so they can

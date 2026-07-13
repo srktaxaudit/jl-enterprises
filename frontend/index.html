@@ -238,6 +238,9 @@
     </div>
   </section>
 
+  <!-- RECENTLY VIEWED (client-side; hidden until the shopper has viewed a product) -->
+  <section id="recentlyViewed" class="mb-8" style="display:none"></section>
+
   <!-- PRODUCTS (rendered by the inline script below; the header search
        box filters these cards live via script.js) -->
   <section class="mb-8" id="productsSection">
@@ -434,6 +437,9 @@
   // Honour ?q= on first load (e.g. arriving from another page's search).
   try { const q0 = new URLSearchParams(location.search).get("q"); if (q0) homeSearch = q0.trim(); } catch (_) {}
   loadProducts();
+
+  // Recently-viewed rail (client-side; hidden until the shopper has viewed a product).
+  if (window.jlRenderRecentlyViewed) jlRenderRecentlyViewed("recentlyViewed", { title: "Recently viewed" });
 
   // Admin-managed hero banners: if any are configured, they replace the static hero.
   async function loadHeroBanners() {
