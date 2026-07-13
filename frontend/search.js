@@ -191,8 +191,11 @@
       term = (term || "").trim();
       if (!term) { input.focus(); return; }
       pushRecent(term);
-      if (onIndex() && typeof applySearch === "function") {
-        input.value = term; closePanel(); applySearch(term);
+      if (onIndex() && (typeof window.jlHomeSearch === "function" || typeof applySearch === "function")) {
+        input.value = term; closePanel();
+        // Prefer the API-backed grid reload (finds matches on any page); fall back to on-page filter.
+        if (typeof window.jlHomeSearch === "function") window.jlHomeSearch(term);
+        else applySearch(term);
         var grid = document.getElementById("products");
         if (grid) grid.scrollIntoView({ behavior: "smooth" });
       } else {
@@ -307,7 +310,10 @@
     });
     clearBtn.addEventListener("click", function () {
       input.value = ""; form.classList.remove("has-text"); seq++;
-      if (typeof applySearch === "function" && onIndex()) applySearch("");
+      if (onIndex()) {
+        if (typeof window.jlHomeSearch === "function") window.jlHomeSearch("");   // restore full catalog
+        else if (typeof applySearch === "function") applySearch("");
+      }
       renderDefault(); input.focus();
     });
     form.addEventListener("submit", function (e) {

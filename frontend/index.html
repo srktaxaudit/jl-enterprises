@@ -390,31 +390,49 @@
   }
 
   let homePage = 0;
+  let homeSearch = "";
   const HOME_PAGE_SIZE = 24;
   async function loadProducts(append = false) {
     const grid = document.getElementById("products");
     const moreBtn = document.getElementById("loadMore");
     if (!append) grid.innerHTML = `<div class="col-span-full text-center py-12">${jlSpinnerHTML({ label: "Loading products…" })}</div>`;
     try {
-      const page = await JLStore.products({ page: homePage, size: HOME_PAGE_SIZE });
+      const query = { page: homePage, size: HOME_PAGE_SIZE };
+      if (homeSearch) query.search = homeSearch;   // server-side search → finds matches on any page
+      const page = await JLStore.products(query);
       const items = (page && page.content) || [];
       const none = document.getElementById("noResults");
       if (!append && !items.length) { grid.innerHTML = ""; if (none) none.style.display = "block"; if (moreBtn) moreBtn.style.display = "none"; return; }
+      if (none) none.style.display = "none";
       const html = items.map(card).join("");
       if (append) grid.insertAdjacentHTML("beforeend", html);
       else grid.innerHTML = html;
       // Show "Load more" only while more pages remain.
       if (moreBtn) moreBtn.style.display = (page && page.last) ? "none" : "inline-block";
-      // If a search filter is active, re-apply it so newly added cards obey it.
-      const si = document.getElementById("searchInput");
-      const q = (si && si.value.trim()) || new URLSearchParams(location.search).get("q");
-      if (q && window.applySearch) { if (si && !si.value) si.value = q; applySearch(q); }
+      // When NOT using the API search, keep the legacy on-page filter for a typed ?q.
+      if (!homeSearch) {
+        const si = document.getElementById("searchInput");
+        const q = (si && si.value.trim()) || new URLSearchParams(location.search).get("q");
+        if (q && window.applySearch) { if (si && !si.value) si.value = q; applySearch(q); }
+      }
     } catch (e) {
       if (!append) grid.innerHTML = `<div class="col-span-full text-center py-12 text-red-500">Couldn't load products right now. Please refresh in a moment.</div>`;
       else if (typeof jlToast === "function") jlToast("Couldn't load more products. Please try again.", { type: "error" });
     }
   }
   document.getElementById("loadMore").addEventListener("click", () => { homePage++; loadProducts(true); });
+
+  // API-backed home search: reload the grid from the server so matches on later pages are
+  // found (the on-page card filter only sees already-loaded products). Called by the header
+  // search on submit / clear (search.js); pass "" to restore the full catalog.
+  window.jlHomeSearch = function (term) {
+    homeSearch = (term || "").trim();
+    homePage = 0;
+    loadProducts(false);
+  };
+
+  // Honour ?q= on first load (e.g. arriving from another page's search).
+  try { const q0 = new URLSearchParams(location.search).get("q"); if (q0) homeSearch = q0.trim(); } catch (_) {}
   loadProducts();
 
   // Admin-managed hero banners: if any are configured, they replace the static hero.
