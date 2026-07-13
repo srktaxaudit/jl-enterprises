@@ -45,13 +45,16 @@ public class DocumentServiceImpl implements DocumentService {
     private final LedgerAccountRepository accountRepo;
     private final JournalEntryRepository entryRepo;
     private final AccountingService accountingService;
+    private final in.jlenterprises.ecommerce.service.NumberSequenceService numberSequence;
 
     public DocumentServiceImpl(AccountingDocumentRepository docRepo, LedgerAccountRepository accountRepo,
-                               JournalEntryRepository entryRepo, AccountingService accountingService) {
+                               JournalEntryRepository entryRepo, AccountingService accountingService,
+                               in.jlenterprises.ecommerce.service.NumberSequenceService numberSequence) {
         this.docRepo = docRepo;
         this.accountRepo = accountRepo;
         this.entryRepo = entryRepo;
         this.accountingService = accountingService;
+        this.numberSequence = numberSequence;
     }
 
     @Override
@@ -86,7 +89,7 @@ public class DocumentServiceImpl implements DocumentService {
     public DocumentDto create(DocumentRequest r) {
         AccountingDocument d = new AccountingDocument();
         d.setDocumentType(r.documentType());
-        d.setDocumentNumber(nextNumber(r.documentType()));
+        d.setDocumentNumber(nextNumber(r.documentType(), r.documentDate()));
         apply(d, r);
         return toDto(docRepo.save(d));
     }
@@ -178,7 +181,7 @@ public class DocumentServiceImpl implements DocumentService {
 
         AccountingDocument inv = new AccountingDocument();
         inv.setDocumentType(DocumentType.SALES_INVOICE);
-        inv.setDocumentNumber(nextNumber(DocumentType.SALES_INVOICE));
+        inv.setDocumentNumber(nextNumber(DocumentType.SALES_INVOICE, LocalDate.now()));
         inv.setDocumentDate(LocalDate.now());
         inv.setParty(est.getParty());
         inv.setPartyName(est.getPartyName());
@@ -321,12 +324,17 @@ public class DocumentServiceImpl implements DocumentService {
         d.setTdsAmount(tds);
     }
 
-    private String nextNumber(DocumentType t) {
+    /** Document number: PREFIX/FY/running-no, e.g. "INV/2026-27/1". Per-(type, financial-year)
+        atomic sequence — no collisions under concurrency, and deleting a document never re-issues
+        a number. The FY segment also avoids any clash with legacy count-based numbers. */
+    private String nextNumber(DocumentType t, java.time.LocalDate date) {
         String prefix = switch (t) {
             case SALES_INVOICE -> "INV"; case PURCHASE_BILL -> "PUR"; case ESTIMATE -> "EST";
             case CREDIT_NOTE -> "CN"; case DEBIT_NOTE -> "DN";
         };
-        return prefix + "/" + (docRepo.countByDocumentType(t) + 1);
+        String fy = in.jlenterprises.ecommerce.util.FinancialYear.of(date);
+        long n = numberSequence.next("D:" + t.name() + ":" + fy);
+        return prefix + "/" + fy + "/" + n;
     }
 
     private String narration(AccountingDocument d) {

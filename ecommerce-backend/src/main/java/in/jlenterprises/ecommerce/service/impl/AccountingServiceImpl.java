@@ -27,6 +27,8 @@ import in.jlenterprises.ecommerce.repository.OrderRepository;
 import in.jlenterprises.ecommerce.request.accounting.JournalEntryRequest;
 import in.jlenterprises.ecommerce.request.accounting.LedgerAccountRequest;
 import in.jlenterprises.ecommerce.service.AccountingService;
+import in.jlenterprises.ecommerce.service.NumberSequenceService;
+import in.jlenterprises.ecommerce.util.FinancialYear;
 import in.jlenterprises.ecommerce.util.GstUtil;
 import jakarta.persistence.criteria.Predicate;
 import org.slf4j.Logger;
@@ -63,15 +65,17 @@ public class AccountingServiceImpl implements AccountingService {
     private final JournalLineRepository lineRepo;
     private final OrderRepository orderRepository;
     private final BillingConfig billingConfig;
+    private final NumberSequenceService numberSequence;
 
     public AccountingServiceImpl(LedgerAccountRepository accountRepo, JournalEntryRepository entryRepo,
                                  JournalLineRepository lineRepo, OrderRepository orderRepository,
-                                 BillingConfig billingConfig) {
+                                 BillingConfig billingConfig, NumberSequenceService numberSequence) {
         this.accountRepo = accountRepo;
         this.entryRepo = entryRepo;
         this.lineRepo = lineRepo;
         this.orderRepository = orderRepository;
         this.billingConfig = billingConfig;
+        this.numberSequence = numberSequence;
     }
 
     // ── Chart of accounts ─────────────────────────────────────────────────
@@ -197,7 +201,7 @@ public class AccountingServiceImpl implements AccountingService {
         entry.setEntryDate(r.entryDate());
         entry.setNarration(r.narration());
         entry.setReference(r.reference());
-        entry.setVoucherNumber(nextVoucherNumber(type));
+        entry.setVoucherNumber(nextVoucherNumber(type, entry.getEntryDate()));
         return toEntryDto(entryRepo.save(entry));
     }
 
@@ -318,7 +322,7 @@ public class AccountingServiceImpl implements AccountingService {
             e.setReference(order.getOrderNumber());
             e.setReferenceId(orderId);
             e.setNarration("Sale — order " + order.getOrderNumber());
-            e.setVoucherNumber(nextVoucherNumber(VoucherType.SALES));
+            e.setVoucherNumber(nextVoucherNumber(VoucherType.SALES, e.getEntryDate()));
             e.addLine(line(debitAcc, grand, BigDecimal.ZERO));
             e.addLine(line(salesAcc, BigDecimal.ZERO, taxable));
             if (gst.signum() > 0) e.addLine(line(gstAcc, BigDecimal.ZERO, gst));
@@ -357,7 +361,7 @@ public class AccountingServiceImpl implements AccountingService {
             e.setReference(order.getOrderNumber());
             e.setReferenceId(orderId);
             e.setNarration("Sales return / refund — order " + order.getOrderNumber());
-            e.setVoucherNumber(nextVoucherNumber(VoucherType.CREDIT_NOTE));
+            e.setVoucherNumber(nextVoucherNumber(VoucherType.CREDIT_NOTE, e.getEntryDate()));
             e.addLine(line(salesAcc, taxable, BigDecimal.ZERO));
             if (gst.signum() > 0) e.addLine(line(gstAcc, gst, BigDecimal.ZERO));
             e.addLine(line(cashBank, BigDecimal.ZERO, grand));
@@ -385,7 +389,7 @@ public class AccountingServiceImpl implements AccountingService {
         e.setReference(reference);
         e.setReferenceId(referenceId);
         e.setNarration(narration);
-        e.setVoucherNumber(nextVoucherNumber(e.getVoucherType()));
+        e.setVoucherNumber(nextVoucherNumber(e.getVoucherType(), e.getEntryDate()));
         BigDecimal totalDr = BigDecimal.ZERO, totalCr = BigDecimal.ZERO;
         for (AccountingService.Posting p : postings) {
             BigDecimal dr = nz(p.debit()).setScale(2, RoundingMode.HALF_UP);
@@ -481,12 +485,18 @@ public class AccountingServiceImpl implements AccountingService {
         return map;
     }
 
-    private String nextVoucherNumber(VoucherType type) {
+    /** Voucher number: PREFIX/FY/running-no, e.g. "SV/2026-27/1". The running number is a
+        per-(type, financial-year) atomic sequence, so concurrent posts can't collide and
+        deleting an entry never re-issues a number. The FY segment also prevents any clash with
+        legacy count-based numbers ("SV/5"). */
+    private String nextVoucherNumber(VoucherType type, LocalDate date) {
         String prefix = switch (type) {
             case SALES -> "SV"; case PURCHASE -> "PV"; case RECEIPT -> "RV"; case PAYMENT -> "PY";
             case CONTRA -> "CV"; case CREDIT_NOTE -> "CN"; case DEBIT_NOTE -> "DN"; default -> "JV";
         };
-        return prefix + "/" + (entryRepo.count() + 1);
+        String fy = FinancialYear.of(date);
+        long n = numberSequence.next("V:" + type.name() + ":" + fy);
+        return prefix + "/" + fy + "/" + n;
     }
 
     private JournalEntryDto toEntryDto(JournalEntry e) {
