@@ -155,6 +155,34 @@
       }
     }
 
+    // Re-add a past order's items to the cart (merging quantities), then go to the cart.
+    // Uses the historical unit price for display; the server re-prices/validates at checkout.
+    async function reorder(id, btn) {
+      const label = btn ? btn.textContent : "";
+      if (btn) { btn.disabled = true; btn.textContent = "Adding…"; }
+      try {
+        const o = await JLCheckout.order(id);
+        const items = (o.items || []).filter((it) => it.productId);
+        if (!items.length) { jlToast("No items available to reorder.", { type: "warn" }); return; }
+        const cart = getCart();
+        items.forEach((it) => {
+          const cid = String(it.productId);
+          const existing = cart.find((x) => String(x.id) === cid);
+          const qty = it.quantity || 1;
+          if (existing) existing.qty += qty;
+          else cart.push({ id: it.productId, name: it.productName || "Item", brand: "", emoji: "📦", price: Number(it.unitPrice) || 0, qty });
+        });
+        saveCart(cart);
+        jlToast(`${items.length} item(s) added to your cart.`, { type: "success" });
+        setTimeout(() => { location.href = "cart.html"; }, 600);
+      } catch (err) {
+        if (err.status === 401) { location.replace("login.html?next=my-orders.html"); return; }
+        jlToast(err.message || "Could not add these items to the cart.", { type: "error" });
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = label; }
+      }
+    }
+
     async function cancelOrder(id) {
       const reason = await jlPrompt("Reason for cancelling (optional):", { title: "Cancel order", required: false, placeholder: "Optional" });
       if (reason === null) return;
@@ -240,6 +268,7 @@
             <div class="mt-3 flex gap-4 flex-wrap items-center text-[13px]">
               <button type="button" class="viewBtn text-brand font-semibold">View items ▾</button>
               <button type="button" class="invBtn text-slate-500 hover:text-navy">🧾 Invoice</button>
+              <button type="button" class="reorderBtn text-green-700 font-semibold">🛒 Buy again</button>
               ${["PENDING","CONFIRMED","PROCESSING"].includes(o.status) ? '<button type="button" class="cancelBtn text-red-600 font-semibold">Cancel order</button>' : ""}
               ${o.status === "DELIVERED" ? '<button type="button" class="returnBtn text-orange-600 font-semibold">Request return</button>' : ""}
               ${o.status === "RETURN_REQUESTED" ? '<span class="text-orange-600">↩ Return requested</span>' : ""}
@@ -249,6 +278,7 @@
           const vb = card.querySelector(".viewBtn");
           vb.addEventListener("click", () => toggleDetail(o.id, wrap, vb));
           card.querySelector(".invBtn").addEventListener("click", () => downloadInvoice(o.id));
+          card.querySelector(".reorderBtn").addEventListener("click", (e) => reorder(o.id, e.currentTarget));
           const cb = card.querySelector(".cancelBtn"); if (cb) cb.addEventListener("click", () => cancelOrder(o.id));
           const rb = card.querySelector(".returnBtn"); if (rb) rb.addEventListener("click", () => returnOrder(o.id));
           list.appendChild(card);
