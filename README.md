@@ -18,6 +18,8 @@ The store that is actually built, deployed, and maintained is a **three-part** s
 
 **Deployment & operations are documented in [`DEPLOY.md`](DEPLOY.md); the backend internals in [`ecommerce-backend/README.md`](ecommerce-backend/README.md).** Start there.
 
+There are also two **native mobile apps** (Expo / React Native) on the same API: the customer shopping app in [`mobile-store/`](mobile-store/) and the staff admin app in [`mobile/`](mobile/) — see [`MOBILE.md`](MOBILE.md).
+
 ### Vercel deploy guard
 The Vercel project's **Root Directory is set to `frontend`** so it serves the static storefront. Keep it that way — there is no build step; the folder is served as-is.
 

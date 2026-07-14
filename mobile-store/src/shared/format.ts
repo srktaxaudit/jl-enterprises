@@ -1,0 +1,28 @@
+/** ₹ formatting to match the web (Indian grouping, no decimals). */
+export const inr = (n: number | string | null | undefined): string =>
+  "₹" + Math.round(Number(n || 0)).toLocaleString("en-IN");
+
+export const dateTime = (iso?: string | null): string => {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
+  } catch {
+    return "—";
+  }
+};
+
+export const dateOnly = (iso?: string | null): string => {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleDateString("en-IN", { dateStyle: "medium" });
+  } catch {
+    return "—";
+  }
+};
+
+/** Human label for an order status enum value, e.g. OUT_FOR_DELIVERY → "Out for delivery". */
+export const statusLabel = (s?: string | null): string => {
+  if (!s) return "—";
+  const words = s.toLowerCase().split("_").join(" ");
+  return words.charAt(0).toUpperCase() + words.slice(1);
+};
