@@ -1,6 +1,7 @@
 # ── Dependencies ──
 /node_modules
 mobile/node_modules
+mobile-store/node_modules
 
 # ── Build output ──
 /.next
@@ -10,9 +11,10 @@ ecommerce-backend/target/
 next-env.d.ts
 *.tsbuildinfo
 
-# ── Expo / React Native (mobile/) ──
+# ── Expo / React Native (mobile/, mobile-store/) ──
 .expo/
 mobile/.expo/
+mobile-store/.expo/
 
 # ── Deploy / local ──
 .vercel
