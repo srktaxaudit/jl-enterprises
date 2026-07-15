@@ -7,6 +7,8 @@ import static in.jlenterprises.ecommerce.config.StartupConfigValidator.DEFAULT_J
 import static in.jlenterprises.ecommerce.config.StartupConfigValidator.validateProduction;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -55,17 +57,31 @@ class StartupConfigValidatorTest {
     }
 
     // ── Bootstrap admin password ──
+    // Flagged (loud warning) but NOT a boot failure: the value is only used when seeding a fresh
+    // database, and DataInitializer already hard-fails that case. An established production DB
+    // must not be taken offline over it — this bit the very first prod deploy of these checks.
     @Test
-    void rejectsMissingWeakOrDefaultAdminPassword() {
-        assertTrue(expectFail(GOOD_JWT, GOOD_DB_PASSWORD, "", GOOD_CORS)
-                .getMessage().contains("APP_BOOTSTRAP_ADMIN_PASSWORD"));
-        // The DataInitializer sentinel default.
-        assertTrue(expectFail(GOOD_JWT, GOOD_DB_PASSWORD, DataInitializer.DEFAULT_ADMIN_PASSWORD, GOOD_CORS)
-                .getMessage().contains("APP_BOOTSTRAP_ADMIN_PASSWORD"));
-        // A well-known weak value (case-insensitive).
-        expectFail(GOOD_JWT, GOOD_DB_PASSWORD, "ChangeMe", GOOD_CORS);
-        // Too short.
-        assertTrue(expectFail(GOOD_JWT, GOOD_DB_PASSWORD, "Sh0rt!", GOOD_CORS).getMessage().contains("too short"));
+    void weakAdminPasswordWarnsButDoesNotBlockBoot() {
+        assertDoesNotThrow(() -> validateProduction(GOOD_JWT, GOOD_DB_PASSWORD, "", GOOD_CORS));
+        assertDoesNotThrow(() -> validateProduction(
+                GOOD_JWT, GOOD_DB_PASSWORD, DataInitializer.DEFAULT_ADMIN_PASSWORD, GOOD_CORS));
+        assertDoesNotThrow(() -> validateProduction(GOOD_JWT, GOOD_DB_PASSWORD, "ChangeMe", GOOD_CORS));
+        assertDoesNotThrow(() -> validateProduction(GOOD_JWT, GOOD_DB_PASSWORD, "Sh0rt!", GOOD_CORS));
+    }
+
+    @Test
+    void adminPasswordProblemsAreStillDetectedAndNeverEchoTheValue() {
+        assertNull(StartupConfigValidator.adminPasswordProblem(GOOD_ADMIN_PASSWORD));
+
+        String[] bad = {"", DataInitializer.DEFAULT_ADMIN_PASSWORD, "ChangeMe", "xY7q-admin"};
+        for (String pw : bad) {
+            String problem = StartupConfigValidator.adminPasswordProblem(pw);
+            assertNotNull(problem, "should flag: <" + pw + ">");
+            assertTrue(problem.contains("APP_BOOTSTRAP_ADMIN_PASSWORD"));
+            if (!pw.isEmpty()) {
+                assertFalse(problem.contains(pw), "warning must not echo the value");
+            }
+        }
     }
 
     // ── CORS ──
@@ -98,15 +114,14 @@ class StartupConfigValidatorTest {
         // Distinctive values that cannot occur incidentally in the message prose.
         String secretJwt = "xY7q-jwt";                  // too short → triggers a failure
         String secretDb = "xY7q-db";
-        String secretAdmin = "xY7q-admin";
 
         assertFalse(expectFail(secretJwt, GOOD_DB_PASSWORD, GOOD_ADMIN_PASSWORD, GOOD_CORS)
                 .getMessage().contains(secretJwt));
         assertFalse(expectFail(GOOD_JWT, DEFAULT_DB_PASSWORD, GOOD_ADMIN_PASSWORD, GOOD_CORS)
                 .getMessage().contains(DEFAULT_DB_PASSWORD));
-        assertFalse(expectFail(GOOD_JWT, secretDb, "weak", GOOD_CORS).getMessage().contains(secretDb));
-        // Shorter than the minimum → fails on length, and the value must not appear.
-        assertFalse(expectFail(GOOD_JWT, GOOD_DB_PASSWORD, secretAdmin, GOOD_CORS)
-                .getMessage().contains(secretAdmin));
+        // Fail on CORS while a distinctive DB secret is present — it must not leak into the message.
+        assertFalse(expectFail(GOOD_JWT, secretDb, GOOD_ADMIN_PASSWORD, "")
+                .getMessage().contains(secretDb));
+        // Admin-password warnings are covered by adminPasswordProblemsAreStillDetectedAndNeverEchoTheValue.
     }
 }

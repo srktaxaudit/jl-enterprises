@@ -126,17 +126,15 @@ public class StartupConfigValidator implements ApplicationRunner {
         }
 
         // ── Bootstrap super-admin password ──
-        if (isBlank(adminPassword)) {
-            throw fail("APP_BOOTSTRAP_ADMIN_PASSWORD is not set. Set a strong, unique value of at least "
-                    + MIN_ADMIN_PASSWORD_LENGTH + " characters and redeploy.");
-        }
-        if (WEAK_ADMIN_PASSWORDS.contains(adminPassword.toLowerCase(Locale.ROOT))) {
-            throw fail("APP_BOOTSTRAP_ADMIN_PASSWORD is a well-known default/weak value. "
-                    + "Set a strong, unique value and redeploy.");
-        }
-        if (adminPassword.length() < MIN_ADMIN_PASSWORD_LENGTH) {
-            throw fail("APP_BOOTSTRAP_ADMIN_PASSWORD is too short — use at least "
-                    + MIN_ADMIN_PASSWORD_LENGTH + " characters. Set a stronger value and redeploy.");
+        // A loud WARNING, not a boot failure: this value is only ever USED when seeding a brand-new
+        // empty database, and DataInitializer already hard-fails that exact case on a default value.
+        // An established production database must not be taken offline over a variable that is
+        // never read again — but the warning fires every boot until it is fixed.
+        String adminProblem = adminPasswordProblem(adminPassword);
+        if (adminProblem != null) {
+            log.warn("Unsafe production configuration (non-fatal): {} It is only used when seeding a "
+                    + "fresh database — DataInitializer refuses to seed one with a default value — but "
+                    + "set a strong value anyway to silence this warning.", adminProblem);
         }
 
         // ── CORS allow-list (origins are not secrets, so they may appear in the message) ──
@@ -160,6 +158,21 @@ public class StartupConfigValidator implements ApplicationRunner {
                         + "'. Remove it from the production configuration and redeploy.");
             }
         }
+    }
+
+    /** Why the bootstrap admin password is unsafe, or {@code null} if it is fine. Never echoes the value. */
+    static String adminPasswordProblem(String adminPassword) {
+        if (isBlank(adminPassword)) {
+            return "APP_BOOTSTRAP_ADMIN_PASSWORD is not set.";
+        }
+        if (WEAK_ADMIN_PASSWORDS.contains(adminPassword.toLowerCase(Locale.ROOT))) {
+            return "APP_BOOTSTRAP_ADMIN_PASSWORD is a well-known default/weak value.";
+        }
+        if (adminPassword.length() < MIN_ADMIN_PASSWORD_LENGTH) {
+            return "APP_BOOTSTRAP_ADMIN_PASSWORD is too short (use at least "
+                    + MIN_ADMIN_PASSWORD_LENGTH + " characters).";
+        }
+        return null;
     }
 
     private static IllegalStateException fail(String problem) {

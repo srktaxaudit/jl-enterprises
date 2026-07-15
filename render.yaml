@@ -70,7 +70,8 @@ services:
       - key: APP_SECURITY_CORS_ALLOW_VERCEL_PREVIEWS
         value: "false"
       # Strong, unique initial SUPER_ADMIN password (>= 12 chars, not a known default).
-      # Required: production startup fails if this is missing or weak.
+      # Only used when seeding a brand-new empty database. A weak/missing value logs a
+      # loud warning on every boot (and fresh-DB seeding refuses a default outright).
       - key: APP_BOOTSTRAP_ADMIN_PASSWORD
         sync: false
       # ── Email (SMTP) — needed for OTP, email verification & password reset ──

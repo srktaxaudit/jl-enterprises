@@ -112,9 +112,12 @@ to fix but **never printing the value**, when:
 
 - `JWT_SECRET` is missing, is the built-in development default, or is shorter than 32 bytes
 - `DB_PASSWORD` is missing/blank or is the development default
-- `APP_BOOTSTRAP_ADMIN_PASSWORD` is missing/blank, shorter than 12 characters, or a
-  well-known weak value
 - `CORS_ORIGINS` is missing, contains a wildcard (`*`), or contains a localhost origin
+
+An unsafe `APP_BOOTSTRAP_ADMIN_PASSWORD` (missing, shorter than 12 characters, or a
+well-known weak value) logs a **loud warning on every boot** but does not block startup:
+the value is only ever used when seeding a brand-new empty database, and that seeding
+path separately refuses to run with a default value. Set a strong value anyway.
 
 As a safety net these checks also run without the `prod` profile whenever the datasource
 is not local, so a deployment that forgot `SPRING_PROFILES_ACTIVE` is still covered.
