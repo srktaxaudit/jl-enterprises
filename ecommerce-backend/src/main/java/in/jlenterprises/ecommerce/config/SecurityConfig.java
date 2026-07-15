@@ -53,8 +53,9 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtFilter;
     private final RestAuthenticationEntryPoint entryPoint;
     private final RestAccessDeniedHandler accessDeniedHandler;
-    /** Allow every *.vercel.app preview origin. Convenient for preview deploys; set
-        APP_SECURITY_CORS_ALLOW_VERCEL_PREVIEWS=false in prod to restrict to the named origins. */
+    /** Allow every {@code *.vercel.app} preview origin. OFF by default: the pattern matches ANY
+        vercel.app site, not just ours, so production must never enable it implicitly. Switch on
+        deliberately with APP_SECURITY_CORS_ALLOW_VERCEL_PREVIEWS=true for temporary preview testing. */
     private final boolean allowVercelPreviews;
     /** Per-IP allowance for the throttled public write endpoints, within the rolling window. */
     private final int rateLimitMax;
@@ -63,7 +64,7 @@ public class SecurityConfig {
     public SecurityConfig(AppProperties props, JwtAuthenticationFilter jwtFilter,
                           RestAuthenticationEntryPoint entryPoint, RestAccessDeniedHandler accessDeniedHandler,
                           @org.springframework.beans.factory.annotation.Value(
-                                  "${app.security.cors.allow-vercel-previews:true}") boolean allowVercelPreviews,
+                                  "${app.security.cors.allow-vercel-previews:false}") boolean allowVercelPreviews,
                           @org.springframework.beans.factory.annotation.Value(
                                   "${app.security.rate-limit.max:15}") int rateLimitMax,
                           @org.springframework.beans.factory.annotation.Value(
@@ -146,20 +147,17 @@ public class SecurityConfig {
         // not need credentialed CORS. Keeping allowCredentials=false lets wildcard
         // origin PATTERNS work; browsers forbid "*"/patterns with allowCredentials=true.
         //
-        // Use allowedOriginPatterns (not allowedOrigins) so a wildcard host matches:
-        // Vercel gives every deployment its own subdomain (production + every git
-        // preview like jl-enterprises-git-<branch>-<team>.vercel.app). Matching
-        // "https://*.vercel.app" means the storefront works from ALL of them without
-        // having to keep CORS_ORIGINS in sync with each new preview URL.
+        // The EXACT allowed origins come from CORS_ORIGINS (app.security.cors.allowed-origins).
+        // Nothing is hardcoded here: production lists its real domains in that variable, and the
+        // local-development defaults live in application.yml. StartupConfigValidator rejects a
+        // production CORS_ORIGINS that is missing, wildcarded, or points at localhost.
         List<String> originPatterns = new java.util.ArrayList<>(props.security().cors().allowedOrigins());
+        // Vercel gives every deployment its own subdomain (each git preview is
+        // jl-enterprises-git-<branch>-<team>.vercel.app). Matching "https://*.vercel.app" would
+        // cover them all — but it also matches EVERY OTHER vercel.app site on the internet, so it
+        // stays off unless explicitly switched on for temporary preview testing.
         if (allowVercelPreviews && originPatterns.stream().noneMatch(o -> o.contains("*.vercel.app"))) {
             originPatterns.add("https://*.vercel.app");
-        }
-        // The JL store production domain (served by Vercel). Added here so the
-        // storefront + admin work on it without needing CORS_ORIGINS env changes.
-        // Apex + www.
-        for (String origin : List.of("https://jlstores.in", "https://www.jlstores.in")) {
-            if (!originPatterns.contains(origin)) originPatterns.add(origin);
         }
         cfg.setAllowedOriginPatterns(originPatterns);
         cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));

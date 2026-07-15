@@ -5,14 +5,26 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.stereotype.Component;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+
 /**
- * Guards against booting a real deployment on the built-in development defaults.
- * A public default JWT secret means anyone could forge tokens; default DB creds are
- * equally unsafe. We only fail-fast when the datasource is NOT local (i.e. a genuine
- * remote/prod database) so local development on the defaults keeps working — it just
- * logs a loud warning. Mirrors the bootstrap-admin fail-fast in {@link DataInitializer}.
+ * Refuses to boot a real deployment on unsafe development defaults.
+ *
+ * <p>"Production" is the explicit {@code prod} Spring profile (set by render.yaml via
+ * SPRING_PROFILES_ACTIVE) OR — as a deliberate fallback — any non-local datasource, so a
+ * deployment whose profile was never set still gets the checks. Local development (localhost
+ * DB, no prod profile) only logs warnings, so the built-in defaults keep working.
+ *
+ * <p>Messages never contain a secret VALUE — they only name the variable to fix.
+ * Mirrors the bootstrap-admin fail-fast in {@link DataInitializer}.
  */
 @Component
 public class StartupConfigValidator implements ApplicationRunner {
@@ -22,41 +34,139 @@ public class StartupConfigValidator implements ApplicationRunner {
     /** Must match the dev fallbacks in application.yml. */
     static final String DEFAULT_JWT_SECRET = "dev-only-change-me-a-long-random-secret-at-least-32-bytes";
     static final String DEFAULT_DB_PASSWORD = "jl";
+    /** HS256 signing needs a key of at least 256 bits. */
+    static final int MIN_JWT_SECRET_BYTES = 32;
+    /** Minimum length for the bootstrap super-admin password. */
+    static final int MIN_ADMIN_PASSWORD_LENGTH = 12;
+    /** Obvious values that must never guard a production super-admin (compared lower-cased). */
+    static final Set<String> WEAK_ADMIN_PASSWORDS = Set.of(
+            "admin@12345", "admin", "admin123", "administrator", "password", "password123",
+            "passw0rd", "changeme", "letmein", "12345678", "123456789", "qwerty", "jl", "jladmin");
 
+    private final Environment environment;
     private final String jwtSecret;
     private final String dbUrl;
     private final String dbPassword;
+    private final String adminPassword;
+    private final String corsOrigins;
+    private final boolean allowVercelPreviews;
 
-    public StartupConfigValidator(@Value("${app.jwt.secret:}") String jwtSecret,
+    public StartupConfigValidator(Environment environment,
+                                  @Value("${app.jwt.secret:}") String jwtSecret,
                                   @Value("${spring.datasource.url:}") String dbUrl,
-                                  @Value("${spring.datasource.password:}") String dbPassword) {
+                                  @Value("${spring.datasource.password:}") String dbPassword,
+                                  @Value("${app.bootstrap.admin-password:}") String adminPassword,
+                                  @Value("${app.security.cors.allowed-origins:}") String corsOrigins,
+                                  @Value("${app.security.cors.allow-vercel-previews:false}") boolean allowVercelPreviews) {
+        this.environment = environment;
         this.jwtSecret = jwtSecret;
         this.dbUrl = dbUrl;
         this.dbPassword = dbPassword;
+        this.adminPassword = adminPassword;
+        this.corsOrigins = corsOrigins;
+        this.allowVercelPreviews = allowVercelPreviews;
     }
 
     @Override
     public void run(ApplicationArguments args) {
-        boolean localDb = dbUrl.contains("localhost") || dbUrl.contains("127.0.0.1");
-        boolean defaultJwt = DEFAULT_JWT_SECRET.equals(jwtSecret);
-        boolean defaultDbPass = DEFAULT_DB_PASSWORD.equals(dbPassword);
-
-        if (localDb) {
-            if (defaultJwt) log.warn("Using the DEFAULT dev JWT secret. Set JWT_SECRET before deploying anywhere real.");
-            if (defaultDbPass) log.warn("Using the DEFAULT dev DB password. Set DB_PASSWORD before deploying anywhere real.");
+        if (!isProduction()) {
+            if (DEFAULT_JWT_SECRET.equals(jwtSecret)) {
+                log.warn("Using the DEFAULT dev JWT secret. Set JWT_SECRET before deploying anywhere real.");
+            }
+            if (DEFAULT_DB_PASSWORD.equals(dbPassword)) {
+                log.warn("Using the DEFAULT dev DB password. Set DB_PASSWORD before deploying anywhere real.");
+            }
             return;
         }
 
-        // Non-local datasource → treat as a real deployment; refuse to boot on public defaults.
-        if (defaultJwt) {
-            throw new IllegalStateException(
-                    "Refusing to boot: JWT_SECRET is the built-in development default, so tokens would be "
-                    + "forgeable. Set a strong, unique JWT_SECRET (>=32 bytes) and redeploy.");
+        validateProduction(jwtSecret, dbPassword, adminPassword, corsOrigins);
+
+        // Enabling previews requires an explicit env var (the default is false), so reaching here
+        // is a deliberate, temporary choice — but it is risky enough to shout about every boot.
+        if (allowVercelPreviews) {
+            log.warn("CORS: *.vercel.app preview origins are ENABLED in production "
+                    + "(APP_SECURITY_CORS_ALLOW_VERCEL_PREVIEWS=true). That lets ANY vercel.app site call this "
+                    + "API from a browser. Unset it as soon as preview testing is done.");
         }
-        if (defaultDbPass) {
-            throw new IllegalStateException(
-                    "Refusing to boot: DB_PASSWORD is the built-in development default. Set the real "
-                    + "database password (DB_PASSWORD) and redeploy.");
+    }
+
+    /** A real deployment: the explicit {@code prod} profile, or a non-local datasource. */
+    private boolean isProduction() {
+        if (environment.acceptsProfiles(Profiles.of("prod"))) return true;
+        return !(dbUrl.contains("localhost") || dbUrl.contains("127.0.0.1"));
+    }
+
+    /**
+     * Fail-fast configuration checks for a real deployment. Package-private and static so it can be
+     * unit-tested without a Spring context. Never echoes a secret value — only names the variable.
+     *
+     * @throws IllegalStateException on the first unsafe value found
+     */
+    static void validateProduction(String jwtSecret, String dbPassword, String adminPassword, String corsOrigins) {
+        // ── JWT signing secret ──
+        if (isBlank(jwtSecret)) {
+            throw fail("JWT_SECRET is not set. Generate a strong, unique value of at least "
+                    + MIN_JWT_SECRET_BYTES + " bytes and redeploy.");
         }
+        if (DEFAULT_JWT_SECRET.equals(jwtSecret)) {
+            throw fail("JWT_SECRET is the built-in development default, so anyone could forge tokens. "
+                    + "Set a strong, unique JWT_SECRET (at least " + MIN_JWT_SECRET_BYTES + " bytes) and redeploy.");
+        }
+        if (jwtSecret.getBytes(StandardCharsets.UTF_8).length < MIN_JWT_SECRET_BYTES) {
+            throw fail("JWT_SECRET is too short — HS256 needs at least " + MIN_JWT_SECRET_BYTES
+                    + " bytes. Set a longer random value and redeploy.");
+        }
+
+        // ── Database password ──
+        if (isBlank(dbPassword)) {
+            throw fail("DB_PASSWORD is not set. Set the real database password and redeploy.");
+        }
+        if (DEFAULT_DB_PASSWORD.equals(dbPassword)) {
+            throw fail("DB_PASSWORD is the built-in development default. Set the real database password and redeploy.");
+        }
+
+        // ── Bootstrap super-admin password ──
+        if (isBlank(adminPassword)) {
+            throw fail("APP_BOOTSTRAP_ADMIN_PASSWORD is not set. Set a strong, unique value of at least "
+                    + MIN_ADMIN_PASSWORD_LENGTH + " characters and redeploy.");
+        }
+        if (WEAK_ADMIN_PASSWORDS.contains(adminPassword.toLowerCase(Locale.ROOT))) {
+            throw fail("APP_BOOTSTRAP_ADMIN_PASSWORD is a well-known default/weak value. "
+                    + "Set a strong, unique value and redeploy.");
+        }
+        if (adminPassword.length() < MIN_ADMIN_PASSWORD_LENGTH) {
+            throw fail("APP_BOOTSTRAP_ADMIN_PASSWORD is too short — use at least "
+                    + MIN_ADMIN_PASSWORD_LENGTH + " characters. Set a stronger value and redeploy.");
+        }
+
+        // ── CORS allow-list (origins are not secrets, so they may appear in the message) ──
+        if (isBlank(corsOrigins)) {
+            throw fail("CORS_ORIGINS is not set. List the exact browser origins allowed to call this API "
+                    + "(e.g. https://jlstores.in,https://www.jlstores.in) and redeploy.");
+        }
+        List<String> origins = Arrays.stream(corsOrigins.split(","))
+                .map(String::trim).filter(s -> !s.isEmpty()).toList();
+        if (origins.isEmpty()) {
+            throw fail("CORS_ORIGINS is empty. List the exact browser origins allowed to call this API and redeploy.");
+        }
+        for (String origin : origins) {
+            if (origin.contains("*")) {
+                throw fail("CORS_ORIGINS contains the wildcard entry '" + origin + "', which would let untrusted "
+                        + "sites call this API from a browser. List exact origins instead and redeploy.");
+            }
+            String lower = origin.toLowerCase(Locale.ROOT);
+            if (lower.contains("localhost") || lower.contains("127.0.0.1")) {
+                throw fail("CORS_ORIGINS contains the local development origin '" + origin
+                        + "'. Remove it from the production configuration and redeploy.");
+            }
+        }
+    }
+
+    private static IllegalStateException fail(String problem) {
+        return new IllegalStateException("Refusing to boot — unsafe production configuration: " + problem);
+    }
+
+    private static boolean isBlank(String s) {
+        return s == null || s.isBlank();
     }
 }

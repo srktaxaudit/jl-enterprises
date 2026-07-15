@@ -20,10 +20,22 @@ mobile-store/.expo/
 .vercel
 .env
 .env*.local
+# .env.example is TRACKED on purpose — placeholders only, never real values.
+!.env.example
+
+# ── Claude Code ──
+# Machine-specific state (local permission grants with absolute paths) — never shared.
+# .claude/launch.json IS tracked: it is the shared dev-server config for the team.
+.claude/settings.local.json
+.claude/settings.local.json.bak
 
 # ── OS / editor ──
 .DS_Store
+Thumbs.db
 npm-debug.log*
+.vscode/
+.idea/
+*.iml
 
 # ── Secrets & local data (never commit) ──
 *.pem

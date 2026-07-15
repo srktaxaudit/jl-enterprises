@@ -52,10 +52,25 @@ services:
           name: jl-ecom-redis
           property: port
       # ── App ──
+      # Activates the production profile → StartupConfigValidator fail-fasts on unsafe config
+      # (default/short JWT secret, default/blank DB password, weak bootstrap admin password,
+      # missing/wildcard/localhost CORS_ORIGINS).
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
       - key: JWT_SECRET
-        generateValue: true          # Render generates a strong random value
-      - key: CORS_ORIGINS             # live origins: https://jlstores.in, https://www.jlstores.in, https://*.vercel.app
+        generateValue: true          # Render generates a strong random value (>= 32 bytes)
+      # EXACT live origins, comma-separated — no wildcards, no localhost. This is the ONLY place
+      # production origins are configured; nothing is hardcoded in SecurityConfig.
+      # e.g. https://jlstores.in,https://www.jlstores.in
+      - key: CORS_ORIGINS
         sync: false
+      # Vercel *.vercel.app preview origins stay OFF in production: the pattern matches every
+      # vercel.app site, not just ours. To test a preview build against this API, set this to
+      # "true" temporarily in the Render dashboard, then set it back to "false".
+      - key: APP_SECURITY_CORS_ALLOW_VERCEL_PREVIEWS
+        value: "false"
+      # Strong, unique initial SUPER_ADMIN password (>= 12 chars, not a known default).
+      # Required: production startup fails if this is missing or weak.
       - key: APP_BOOTSTRAP_ADMIN_PASSWORD
         sync: false
       # ── Email (SMTP) — needed for OTP, email verification & password reset ──
