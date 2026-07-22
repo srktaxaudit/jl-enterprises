@@ -23,7 +23,9 @@ services:
 
   - type: web
     # Must match the live host every client calls (jl-enterprises-api.onrender.com):
-    # frontend/config.js, mobile/app.json, mobile/src/core/config/env.ts, the READMEs.
+    # frontend/config.js, frontend/robots.txt (sitemap line), mobile/app.json,
+    # mobile/src/core/config/env.ts, mobile-store/app.json,
+    # mobile-store/src/core/config/env.ts, the READMEs.
     name: jl-enterprises-api
     runtime: docker
     rootDir: ecommerce-backend

@@ -364,36 +364,10 @@
   const escAttr = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
-  // Maps a ProductSummaryDto from the API to a storefront card. The Add-to-Cart
-  // button carries data-* attributes that script.js reads (event-delegated).
-  function card(p) {
-    const price = Number(p.price || 0);
-    const mrp = Number(p.comparePrice || 0);
-    const off = pctOff(mrp, price);
-    const rating = Math.round(Number(p.averageRating || 0));
-    const emoji = JL_CAT_EMOJI[p.categorySlug] || "📦";
-    const searchText = escAttr(((p.name || "") + " " + (p.brandName || "") + " " + (p.categorySlug || "")).toLowerCase());
-    const media = p.primaryImageUrl
-      ? `<img src="${escAttr(p.primaryImageUrl)}" alt="${escAttr(p.name)}" loading="lazy" decoding="async" class="h-40 w-full object-cover" />`
-      : `<div class="h-40 flex items-center justify-center text-6xl bg-gradient-to-br from-slate-50 to-slate-100">${emoji}</div>`;
-    return `
-    <div class="product-card bg-white border border-slate-200 rounded-2xl overflow-hidden hover:shadow-card hover:-translate-y-0.5 transition relative" data-search="${searchText}">
-      ${off>0 ? `<span class="absolute top-3 left-3 bg-red-600 text-white text-[11px] font-bold px-2 py-0.5 rounded z-[2]">-${off}%</span>`:""}
-      <a href="product.html?slug=${escAttr(p.slug)}">${media}</a>
-      <div class="p-3.5">
-        <div class="text-[11px] text-slate-400 uppercase font-semibold tracking-wide">${escAttr(p.brandName || "")}</div>
-        <a href="product.html?slug=${escAttr(p.slug)}" class="text-[15px] text-navy font-semibold mt-0.5 mb-1.5 leading-snug h-9 overflow-hidden block hover:text-brand">${escAttr(p.name)}</a>
-        <div class="text-amber text-[13px] mb-2">${"★".repeat(rating)}<span class="text-slate-400"> (${p.reviewCount || 0})</span></div>
-        <div class="flex items-baseline gap-2 mb-0.5">
-          <span class="text-xl font-extrabold text-navy">${inr(price)}</span>
-          ${mrp>price ? `<span class="text-[13px] text-slate-400 line-through">${inr(mrp)}</span>`:""}
-        </div>
-        ${p.emiAvailable && p.emiAmount ? `<div class="text-[12px] text-brand mb-1.5">EMI from ${inr(p.emiAmount)}/mo</div>` : `<div class="mb-1.5 h-[18px]"></div>`}
-        ${jlStockLine(p.availableStock == null ? null : Number(p.availableStock))}
-        ${jlCardCartOrOOS(p, emoji, p.availableStock == null ? null : Number(p.availableStock))}
-      </div>
-    </div>`;
-  }
+  // One card renderer for the whole storefront: store.js jlProductCard. The inline
+  // copy this replaced had already drifted (different EMI wording + placeholder) —
+  // home cards and category/related/wishlist cards no longer disagree.
+  const card = (p) => jlProductCard(p);
 
   let homePage = 0;
   let homeSearch = "";
@@ -471,7 +445,10 @@
       const show = (n) => { idx = (n + slides.length) % slides.length; slides.forEach((s, i) => s.style.opacity = i === idx ? 1 : 0); dots.forEach((d, i) => d.style.background = i === idx ? "#fff" : "rgba(255,255,255,.55)"); };
       dots.forEach((d, i) => d.addEventListener("click", () => { show(i); }));
       timer = setInterval(() => show(idx + 1), 5000);
+      // Pause while hovering, RESUME on leave — without the mouseleave, one hover
+      // killed the rotation until the next page load.
       box.addEventListener("mouseenter", () => clearInterval(timer));
+      box.addEventListener("mouseleave", () => { clearInterval(timer); timer = setInterval(() => show(idx + 1), 5000); });
     }
     box.classList.remove("hidden");
     // Replace ONLY the main hero panel — the "Furniture Fest"/"Exchange" promo cards stay.
@@ -509,6 +486,7 @@
       dots.forEach((d, i) => d.addEventListener("click", () => show(i)));
       timer = setInterval(() => show(idx + 1), 5000);
       box.addEventListener("mouseenter", () => clearInterval(timer));
+      box.addEventListener("mouseleave", () => { clearInterval(timer); timer = setInterval(() => show(idx + 1), 5000); });
     }
     wrap.classList.remove("hidden");
   }

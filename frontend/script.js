@@ -240,6 +240,14 @@ function renderCartPage() {
 function changeQty(index, delta) {
   const cart = getCart();
   if (!cart[index]) return;
+  // Cap at known stock (the product-card stepper already enforces this; without the
+  // same check here, the cart page could raise quantity past what's available and the
+  // customer only found out at checkout).
+  const stock = Number(cart[index].stock);
+  if (delta > 0 && Number.isFinite(stock) && stock > 0 && cart[index].qty + delta > stock) {
+    if (typeof jlToast === "function") jlToast(`Only ${stock} in stock.`, { type: "warn" });
+    return;
+  }
   cart[index].qty += delta;
   if (cart[index].qty <= 0) cart.splice(index, 1);
   saveCart(cart);

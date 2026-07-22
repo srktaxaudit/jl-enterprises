@@ -120,6 +120,7 @@
                  </select>
                  <button data-upd="${o.id}" class="text-[12px] bg-navy text-white rounded px-2 py-1">Set</button>`}
             <button data-note="${o.id}" title="Internal note" class="text-[12px] text-slate-500 border border-slate-300 rounded px-2 py-1 ml-1">📝</button>
+            <button data-view="${o.id}" title="View items & delivery address" class="text-[12px] text-slate-500 border border-slate-300 rounded px-2 py-1 ml-1">👁</button>
           </td>
         </tr>`).join("") : `<tr><td colspan="6" class="py-4 text-slate-400">No orders.</td></tr>`;
       document.getElementById("pageInfo").textContent = `Page ${state.page+1} of ${state.totalPages}`;
@@ -143,9 +144,45 @@
       } else if(b.dataset.note){
         const notes = await jlPrompt("Internal note for this order (staff-only):",{title:"Internal note",required:false}); if(notes===null) return;
         await jlApi(`/api/v1/admin/orders/${b.dataset.note}/notes?notes=${encodeURIComponent(notes)}`, {method:"PATCH"}); jlToast("Note saved.",{type:"success"});
+      } else if(b.dataset.view){
+        await viewOrder(b.dataset.view);
       }
     } catch(e){ flash(e.message||"Action failed", false); }
   });
+
+  // Everything staff need to FULFIL an order — items, delivery address, phone, payment —
+  // in one dialog (the list alone had no way to see any of it).
+  async function viewOrder(id){
+    const o = await jlApi(`/api/v1/admin/orders/${id}`);
+    const a = o.shippingAddress || {};
+    const p = o.payment || {};
+    const items = (o.items || []).map(it => `
+      <div class="flex justify-between gap-3 py-1.5 border-b border-slate-100 text-[13px]">
+        <span class="flex-1">${esc(it.productName)} <span class="text-slate-400">× ${it.quantity}</span></span>
+        <b>${inr(it.lineTotal)}</b>
+      </div>`).join("");
+    const el = document.createElement("div");
+    el.className = "text-sm";
+    el.innerHTML = `
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="bg-slate-50 rounded-xl p-3">
+          <div class="text-[11px] uppercase text-slate-400 font-semibold mb-1">Deliver to</div>
+          <b>${esc(a.fullName || "—")}</b>
+          <div class="text-slate-600">${[a.line1,a.line2,a.city,a.state,a.postalCode].filter(Boolean).map(esc).join(", ") || "—"}</div>
+          ${a.phone ? `<div class="mt-1">📞 <a class="text-brand font-semibold" href="tel:${esc(a.phone)}">${esc(a.phone)}</a></div>` : ""}
+        </div>
+        <div class="bg-slate-50 rounded-xl p-3">
+          <div class="text-[11px] uppercase text-slate-400 font-semibold mb-1">Payment</div>
+          <div>${esc(p.method || "—")} · <b>${esc(p.status || p.paymentStatus || "—")}</b></div>
+          <div class="mt-1 text-slate-600">Placed ${fmt(o.placedAt)}</div>
+          ${o.notes ? `<div class="mt-1 text-slate-600">🗒 ${esc(o.notes)}</div>` : ""}
+          ${o.adminNotes ? `<div class="mt-1 text-orange-700 text-[12px]">📝 ${esc(o.adminNotes)}</div>` : ""}
+        </div>
+      </div>
+      <div class="mt-3">${items || '<div class="text-slate-400 py-2">No items.</div>'}</div>
+      <div class="flex justify-between mt-2 pt-2 border-t-2 border-navy text-[15px]"><b>Total</b><b>${inr(o.grandTotal)}</b></div>`;
+    jlDialog(el, { title: "Order #" + (o.orderNumber || "") });
+  }
   ["statusFilter","payFilter","fromDate","toDate","sortSel"].forEach(id =>
     document.getElementById(id).addEventListener("change", ()=>{ state.page=0; load(); }));
   document.getElementById("clearFilters").addEventListener("click", ()=>{

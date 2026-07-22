@@ -79,16 +79,8 @@
   else start();
 })();
 
-// Admin pages are rendered inside one persistent dashboard shell.  Keep direct
-// bookmarks working by promoting standalone pages into that shell; pages loaded
-// by the shell's iframe are left alone.
-(function jlEnterAdminShell() {
-  const page = location.pathname.split("/").pop() || "admin.html";
-  if (window.top === window.self && page !== "admin-login.html" && page !== "admin-shell.html") {
-    const target = page + location.search + location.hash;
-    location.replace("admin-shell.html?page=" + encodeURIComponent(target));
-  }
-})();
+// (Shell promotion for direct bookmarks lives in jlEnsureShell below — it has the
+// admin-*.html filename guard, so admin.js can never hijack a non-admin page.)
 
 // Where the Spring Boot API lives. Single source: config.js (loaded first).
 // The backend runs only on Render, so admin always calls it (even from a local server).

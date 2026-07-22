@@ -11,5 +11,11 @@ Disallow: /login.html
 Disallow: /signup.html
 Disallow: /reset-password.html
 Disallow: /my-orders.html
+Disallow: /account.html
+Disallow: /my-wishlist.html
+Disallow: /user.html
 
 Sitemap: https://jlstores.in/sitemap.xml
+# Product URLs, generated live from the catalogue by the backend (cross-host
+# sitemaps are valid when referenced from robots.txt).
+Sitemap: https://jl-enterprises-api.onrender.com/api/v1/sitemap.xml

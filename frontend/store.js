@@ -296,7 +296,7 @@ function jlProductCard(p) {
           <span class="text-xl font-extrabold text-navy">${jlInr(price)}</span>
           ${mrp > price ? `<span class="text-[13px] text-slate-400 line-through">${jlInr(mrp)}</span>` : ""}
         </div>
-        ${(p.emiAvailable && p.emiAmount) ? `<div class="text-[12px] text-brand mb-1.5">EMI ${jlInr(p.emiAmount)}/mo${p.emiMonths ? ` for ${p.emiMonths} months` : ""}</div>` : `<div class="mb-1.5"></div>`}
+        ${(p.emiAvailable && p.emiAmount) ? `<div class="text-[12px] text-brand mb-1.5">EMI ${jlInr(p.emiAmount)}/mo${p.emiMonths ? ` for ${p.emiMonths} months` : ""}</div>` : `<div class="mb-1.5" style="height:18px"></div>`}
         ${jlStockLine(p.availableStock == null ? null : Number(p.availableStock))}
         ${jlCardCartOrOOS(p, emoji, p.availableStock == null ? null : Number(p.availableStock))}
       </div>

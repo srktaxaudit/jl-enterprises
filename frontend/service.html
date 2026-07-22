@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="manifest" href="store.webmanifest" />
+<link rel="apple-touch-icon" href="pwa-192.png" />
+<link rel="icon" type="image/png" sizes="192x192" href="pwa-192.png" />
 <title>Book Service — JL Enterprises</title>
 <meta name="description" content="Doorstep repair, installation and AMC for ACs, fridges, washing machines, TVs & more — our technicians come to you anywhere in Tamil Nadu." />
 <link rel="canonical" href="https://jlstores.in/service.html" />
@@ -264,7 +267,9 @@
 
       btn.disabled = true; const old = btn.textContent; btn.textContent = "Booking…";
       try {
-        await jlAuthApi("/api/v1/service-bookings", body);   // public POST, no token needed
+        // Public POST — auth:false matters: jlAuthApi's 401 handler would LOG OUT a
+        // customer whose access token happened to be expired, failing the booking.
+        await jlFetchJson("/api/v1/service-bookings", { body, auth: false });
         const summary = document.getElementById("svcSummary");
         if (summary) summary.textContent = `Thanks ${name}! Our service team will call you on ${digits} within 1 working day to confirm the visit.`;
         showSuccess(form, "serviceSuccess");

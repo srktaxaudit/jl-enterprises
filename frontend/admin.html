@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex" />
 <title>JL Enterprises — Admin</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
@@ -29,8 +30,10 @@
 <!-- This page renders only the DASHBOARD content; the persistent shell
      (admin-shell.html) provides the sidebar + top bar. -->
 <div class="bg-[#eef1f6] min-h-screen p-4 md:p-7">
-      <div class="bg-emerald-50 border border-emerald-200 text-emerald-800 text-[13px] text-center py-2 rounded-xl mb-5">
-        👑 Super-Admin — full visibility across every team. Live data from the JL Enterprises API.
+      <!-- Filled per-role by the script below — every staff member used to see the
+           hardcoded "Super-Admin" banner regardless of who they were. -->
+      <div id="roleBanner" class="bg-emerald-50 border border-emerald-200 text-emerald-800 text-[13px] text-center py-2 rounded-xl mb-5">
+        Live data from the JL Enterprises API.
       </div>
       <h2 id="greeting" class="text-2xl text-navy font-bold mb-1">Welcome back 👋</h2>
       <p class="text-slate-400 text-sm mb-5">Here's what's happening at JL Enterprises today.</p>
@@ -47,7 +50,7 @@
           </div>
           <table class="w-full text-sm">
             <thead><tr class="text-left text-slate-400 text-[12px] uppercase">
-              <th class="py-2">Order</th><th>Customer</th><th>Status</th><th class="text-right">Amount</th>
+              <th class="py-2">Order</th><th>Items</th><th>Status</th><th class="text-right">Amount</th>
             </tr></thead>
             <tbody id="orders"></tbody>
           </table>
@@ -75,6 +78,16 @@
     const part = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
     const greet = document.getElementById("greeting");
     if (greet) greet.textContent = `${part}, ${jlDisplayName(admin)} 👋`;
+    // Role-accurate banner (was hardcoded "Super-Admin" for everyone).
+    const banner = document.getElementById("roleBanner");
+    if (banner) {
+      const roleLabel = jlIsSuper(admin)
+        ? "👑 Super-Admin — full visibility across every team."
+        : "Signed in as " + ((admin.roles || [])
+            .map((r) => String(r).replace(/^ROLE_/, "").replace(/_/g, " ").toLowerCase()
+              .replace(/\b\w/g, (c) => c.toUpperCase())).join(", ") || "Staff") + ".";
+      banner.textContent = roleLabel + " Live data from the JL Enterprises API.";
+    }
   });
 
   const inr = (n) => "₹" + Math.round(n).toLocaleString("en-IN");

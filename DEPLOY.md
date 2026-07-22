@@ -83,9 +83,8 @@ with the seeded SUPER_ADMIN, and manage staff/roles from `admin-team.html`.
 
 The deployed storefront + admin is the static site in **[`frontend/`](frontend/)**.
 In the Vercel project, set **Settings → Build & Output → Root Directory = `frontend`**
-(Framework preset **Other**, no build command). This ensures Vercel serves the static
-store and never the old Next.js app that also lives at the repo root (kept only for
-reference — it is not deployed). Add your exact Vercel domain to `CORS_ORIGINS`.
+(Framework preset **Other**, no build command; the repo root holds no app — the old
+Next.js prototype was removed from git). Add your exact Vercel domain to `CORS_ORIGINS`.
 
 ### Vercel preview origins
 
@@ -141,10 +140,14 @@ keep working and only log warnings. See [`.env.example`](.env.example) for the f
 
 ## Keep the free tier awake (stops cold-start failures)
 
-Render's free service sleeps after ~15 min idle, so the first request can take 30–60s.
-Create a free uptime monitor (e.g. **cron-job.org** or **UptimeRobot**) that GETs
-`https://<service>.onrender.com/actuator/health/liveness` **every 10 minutes**. The
-storefront and admin already retry cold starts, but this keeps the store instant.
+**Already automated:** [`.github/workflows/keepalive.yml`](.github/workflows/keepalive.yml)
+pings `/actuator/health/liveness` every ~12 minutes from GitHub Actions — nothing to set
+up. (An external monitor like cron-job.org/UptimeRobot is only a fallback if GitHub
+Actions is ever disabled on the repo.) The storefront and admin also retry cold starts.
+
+> Monitoring note: check `/actuator/health/liveness` (or `/readiness`), NOT the plain
+> `/actuator/health` aggregate — an optional component (e.g. SMTP) reporting DOWN turns
+> the aggregate 503 while the store serves customers fine.
 
 ---
 
