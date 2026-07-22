@@ -227,8 +227,16 @@
   const num=(id)=>{ const v=$(id).value; return v===""?0:Number(v); };
 
   // ── shared employee select ──
-  async function ensureEmployees(){ if(!EMPLOYEES.length){ try{ const p=await jlApi(API+"/employees?size=100"); EMPLOYEES=p.content||[]; }catch(_){} } }
-  async function fillEmpSelect(sel){ await ensureEmployees(); const cur=sel.value; sel.innerHTML=EMPLOYEES.map(e=>`<option value="${e.id}">${esc(e.firstName)} ${esc(e.lastName||"")} (${esc(e.employeeCode)})</option>`).join(""); if(cur) sel.value=cur; }
+  async function ensureEmployees(){ if(!EMPLOYEES.length){ try{ const p=await jlApi(API+"/employees?size=100"); EMPLOYEES=p.content||[]; }catch(e){ jlToast(e.message||"Could not load employees.",{type:"error"}); } } }
+  async function fillEmpSelect(sel){
+    await ensureEmployees(); const cur=sel.value;
+    // An empty dropdown must SAY WHY: HR employees are their own register (code, salary,
+    // leave) separate from staff logins — none exist until added on the Employees tab.
+    sel.innerHTML = EMPLOYEES.length
+      ? EMPLOYEES.map(e=>`<option value="${e.id}">${esc(e.firstName)} ${esc(e.lastName||"")} (${esc(e.employeeCode)})</option>`).join("")
+      : `<option value="">— No employees yet: add one in the Employees tab —</option>`;
+    if(cur) sel.value=cur;
+  }
 
   // ── attendance ──
   ATT.forEach(s=>{ const o=document.createElement("option"); o.value=s; o.textContent=s.replace(/_/g," "); $("mkStatus").appendChild(o); });
