@@ -162,37 +162,116 @@ public class PaymentServiceImpl implements PaymentService {
         boolean paid = strategy.verify(payment,
                 new PaymentConfirmation(request.providerReference(), request.signature(), request.payload()));
 
+        if (paid) {
+            settleOnline(order, payment, request.providerReference());
+        } else {
+            Transaction txn = new Transaction();
+            txn.setPayment(payment);
+            txn.setType(TransactionType.CHARGE);
+            txn.setAmount(payment.getAmount());
+            txn.setProviderReference(request.providerReference());
+            txn.setProcessedAt(Instant.now());
+            payment.setPaymentStatus(PaymentStatus.FAILED);
+            txn.setTransactionStatus(PaymentStatus.FAILED);
+            payment.getTransactions().add(txn);
+            paymentRepository.save(payment);
+        }
+
+        return toDto(payment);
+    }
+
+    /** Mark a verified online payment SUCCESS: CHARGE txn, confirm the order, notify, post the sale.
+        Shared by the customer confirm callback and the gateway webhook/reconciliation path. */
+    private void settleOnline(Order order, Payment payment, String providerPaymentRef) {
         Transaction txn = new Transaction();
         txn.setPayment(payment);
         txn.setType(TransactionType.CHARGE);
         txn.setAmount(payment.getAmount());
-        txn.setProviderReference(request.providerReference());
+        txn.setProviderReference(providerPaymentRef);
         txn.setProcessedAt(Instant.now());
-
-        if (paid) {
-            payment.setPaymentStatus(PaymentStatus.SUCCESS);
-            txn.setTransactionStatus(PaymentStatus.SUCCESS);
-            if (order.getOrderStatus() == OrderStatus.PENDING) {
-                order.setOrderStatus(OrderStatus.CONFIRMED);
-                orderRepository.save(order);
-            }
-            notificationService.notifyUser(order.getUser().getId(), NotificationType.ORDER, "Payment received",
-                    "Payment for order " + order.getOrderNumber() + " was successful.", "/orders/" + order.getId());
-            String payerName = order.getUser().getFullName();
-            notificationService.notifyAdmins(NotificationType.PAYMENT, "Payment received",
-                    "Payment received from " + (payerName == null || payerName.isBlank() ? order.getUser().getEmail() : payerName)
-                            + " for order " + order.getOrderNumber() + " (" + order.getCurrency() + " " + payment.getAmount() + ").",
-                    "/admin-orders.html", "Orders", order.getId(), "ORDER");
-            whatsappAutomation.fire(WhatsappAutomationEvent.PAYMENT_RECEIVED, order);
-            postSaleAfterCommit(order.getId());
-        } else {
-            payment.setPaymentStatus(PaymentStatus.FAILED);
-            txn.setTransactionStatus(PaymentStatus.FAILED);
+        txn.setTransactionStatus(PaymentStatus.SUCCESS);
+        payment.setPaymentStatus(PaymentStatus.SUCCESS);
+        if (order.getOrderStatus() == OrderStatus.PENDING) {
+            order.setOrderStatus(OrderStatus.CONFIRMED);
+            orderRepository.save(order);
         }
+        notificationService.notifyUser(order.getUser().getId(), NotificationType.ORDER, "Payment received",
+                "Payment for order " + order.getOrderNumber() + " was successful.", "/orders/" + order.getId());
+        String payerName = order.getUser().getFullName();
+        notificationService.notifyAdmins(NotificationType.PAYMENT, "Payment received",
+                "Payment received from " + (payerName == null || payerName.isBlank() ? order.getUser().getEmail() : payerName)
+                        + " for order " + order.getOrderNumber() + " (" + order.getCurrency() + " " + payment.getAmount() + ").",
+                "/admin-orders.html", "Orders", order.getId(), "ORDER");
+        whatsappAutomation.fire(WhatsappAutomationEvent.PAYMENT_RECEIVED, order);
+        postSaleAfterCommit(order.getId());
         payment.getTransactions().add(txn);
         paymentRepository.save(payment);
+    }
 
-        return toDto(payment);
+    @Override
+    @Transactional
+    public void recordGatewayCapture(String providerOrderId, String providerPaymentId) {
+        Payment lookup = paymentRepository.findByProviderPaymentId(providerOrderId).orElse(null);
+        if (lookup == null) return;   // not ours (e.g. another environment's test event)
+        // Re-read under the row lock so a racing customer confirm can't double-settle.
+        Payment payment = paymentRepository.findByOrderIdForUpdate(lookup.getOrder().getId()).orElse(null);
+        if (payment == null) return;
+        Order order = payment.getOrder();
+
+        if (payment.getPaymentStatus() == PaymentStatus.SUCCESS
+                || payment.getPaymentStatus() == PaymentStatus.REFUNDED) {
+            return;   // already settled/handled — webhooks retry, so this must be idempotent
+        }
+
+        if (order.getOrderStatus() == OrderStatus.CANCELLED) {
+            // Charged AFTER the order was cancelled and restocked (e.g. the sweeper won the
+            // race). Give the money straight back rather than resurrecting the order.
+            recordCaptureThenAutoRefund(order, payment, providerPaymentId);
+            return;
+        }
+
+        settleOnline(order, payment, providerPaymentId);
+    }
+
+    /** The customer paid for an order that no longer exists commercially: record the charge,
+        refund it at the gateway, and make sure a human hears about it either way. */
+    private void recordCaptureThenAutoRefund(Order order, Payment payment, String providerPaymentId) {
+        Transaction charge = new Transaction();
+        charge.setPayment(payment);
+        charge.setType(TransactionType.CHARGE);
+        charge.setAmount(payment.getAmount());
+        charge.setProviderReference(providerPaymentId);
+        charge.setProcessedAt(Instant.now());
+        charge.setTransactionStatus(PaymentStatus.SUCCESS);
+        payment.getTransactions().add(charge);
+        try {
+            String refundRef = strategyFactory.forMethod(payment.getMethod()).refund(payment);
+            Transaction refund = new Transaction();
+            refund.setPayment(payment);
+            refund.setType(TransactionType.REFUND);
+            refund.setAmount(payment.getAmount());
+            refund.setProviderReference(refundRef);
+            refund.setProcessedAt(Instant.now());
+            refund.setTransactionStatus(PaymentStatus.SUCCESS);
+            payment.getTransactions().add(refund);
+            payment.setPaymentStatus(PaymentStatus.REFUNDED);
+            notificationService.notifyUser(order.getUser().getId(), NotificationType.ORDER, "Payment refunded",
+                    "Your payment for cancelled order " + order.getOrderNumber()
+                            + " has been refunded — it will reach your account in a few days.",
+                    "/orders/" + order.getId());
+            notificationService.notifyAdmins(NotificationType.PAYMENT, "Auto-refunded late payment",
+                    "Order " + order.getOrderNumber() + " was already cancelled when its online payment "
+                            + "arrived; the payment was auto-refunded at the gateway.",
+                    "/admin-billing.html", "Billing", order.getId(), "ORDER");
+        } catch (Exception e) {
+            // Refund failed: keep the charge on record and SHOUT — a customer is out of money.
+            payment.setPaymentStatus(PaymentStatus.SUCCESS);
+            notificationService.notifyAdmins(NotificationType.PAYMENT, "URGENT: manual refund needed",
+                    "Order " + order.getOrderNumber() + " was cancelled but its online payment captured, and the "
+                            + "automatic refund FAILED (" + e.getMessage() + "). Refund it in the Razorpay dashboard.",
+                    "/admin-billing.html", "Billing", order.getId(), "ORDER");
+        }
+        paymentRepository.save(payment);
     }
 
     @Override
@@ -204,6 +283,11 @@ public class PaymentServiceImpl implements PaymentService {
         if (payment.getPaymentStatus() != PaymentStatus.SUCCESS) {
             throw new BusinessException("Only successful payments can be refunded");
         }
+        // FIRST move the actual money: for RAZORPAY this calls the refund API and throws on
+        // failure, so books/stock/status are never touched unless the gateway refund really
+        // happened. COD returns null (staff hand the cash back — recorded as MANUAL).
+        String gatewayRef = strategyFactory.forMethod(payment.getMethod()).refund(payment);
+
         // A refund reverses the sale: put stock back (locked), release the coupon usage, give
         // back any consumed trade-in credit, and reverse the sales journal after commit. The
         // SUCCESS guard above makes this idempotent — a second refund attempt fails, so
@@ -217,6 +301,7 @@ public class PaymentServiceImpl implements PaymentService {
         txn.setType(TransactionType.REFUND);
         txn.setTransactionStatus(PaymentStatus.SUCCESS);
         txn.setAmount(payment.getAmount());
+        txn.setProviderReference(gatewayRef == null ? "MANUAL" : gatewayRef);
         txn.setProcessedAt(Instant.now());
         payment.getTransactions().add(txn);
 

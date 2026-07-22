@@ -40,9 +40,14 @@ public record AppProperties(
     }
 
     /** Razorpay online payments. Blank keys = COD-only (Razorpay initiate is rejected clearly). */
-    public record Razorpay(String keyId, String keySecret) {
+    public record Razorpay(String keyId, String keySecret, String webhookSecret) {
         public boolean configured() {
             return keyId != null && !keyId.isBlank() && keySecret != null && !keySecret.isBlank();
+        }
+
+        /** The webhook endpoint only accepts events once its signing secret is set. */
+        public boolean webhookConfigured() {
+            return webhookSecret != null && !webhookSecret.isBlank();
         }
     }
 }

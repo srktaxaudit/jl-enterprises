@@ -127,6 +127,9 @@ app:
   razorpay:
     key-id: ${RAZORPAY_KEY_ID:}
     key-secret: ${RAZORPAY_KEY_SECRET:}
+    # Signing secret for the payment webhook (Razorpay dashboard → Webhooks). Blank =
+    # the webhook endpoint rejects everything; confirm-callback flow still works.
+    webhook-secret: ${RAZORPAY_WEBHOOK_SECRET:}
 
 springdoc:
   # API docs are disabled by default so they are NOT publicly exposed in production

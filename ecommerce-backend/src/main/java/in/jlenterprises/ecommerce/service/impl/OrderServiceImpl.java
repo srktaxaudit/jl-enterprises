@@ -71,6 +71,8 @@ public class OrderServiceImpl implements OrderService {
     private final in.jlenterprises.ecommerce.service.ExchangeService exchangeService;
     private final WhatsappAutomationService whatsappAutomation;
     private final AccountingService accountingService;
+    private final in.jlenterprises.ecommerce.payment.PaymentStrategyFactory strategyFactory;
+    private final in.jlenterprises.ecommerce.service.PaymentService paymentService;
 
     public OrderServiceImpl(OrderRepository orderRepository, CartRepository cartRepository,
                             AddressRepository addressRepository, InventoryRepository inventoryRepository,
@@ -78,7 +80,9 @@ public class OrderServiceImpl implements OrderService {
                             NotificationService notificationService, OrderNumberGenerator orderNumberGenerator,
                             OrderMapper orderMapper, BillingConfig billingConfig,
                             in.jlenterprises.ecommerce.service.ExchangeService exchangeService,
-                            WhatsappAutomationService whatsappAutomation, AccountingService accountingService) {
+                            WhatsappAutomationService whatsappAutomation, AccountingService accountingService,
+                            in.jlenterprises.ecommerce.payment.PaymentStrategyFactory strategyFactory,
+                            in.jlenterprises.ecommerce.service.PaymentService paymentService) {
         this.orderRepository = orderRepository;
         this.cartRepository = cartRepository;
         this.addressRepository = addressRepository;
@@ -92,6 +96,8 @@ public class OrderServiceImpl implements OrderService {
         this.exchangeService = exchangeService;
         this.whatsappAutomation = whatsappAutomation;
         this.accountingService = accountingService;
+        this.strategyFactory = strategyFactory;
+        this.paymentService = paymentService;
     }
 
     @Override
@@ -274,16 +280,36 @@ public class OrderServiceImpl implements OrderService {
     public int expireAbandonedOrders(java.time.Duration olderThan) {
         Instant cutoff = Instant.now().minus(olderThan);
         java.util.List<Order> abandoned = orderRepository.findAbandonedOnlineOrders(cutoff);
+        int cancelled = 0;
         for (Order order : abandoned) {
+            // RECONCILE FIRST: our confirm callback comes from the customer's browser, which
+            // can die right after they paid. Ask the gateway before assuming "unpaid" —
+            // cancelling a captured payment means a charged customer and a vanished order.
+            Payment p = order.getPayment();
+            if (p != null && p.getMethod() != PaymentMethod.COD) {
+                String capturedRef;
+                try {
+                    capturedRef = strategyFactory.forMethod(p.getMethod()).capturedPaymentId(p);
+                } catch (Exception e) {
+                    // Gateway unreachable → be conservative: leave this order for the next
+                    // sweep rather than releasing stock that might already be paid for.
+                    continue;
+                }
+                if (capturedRef != null) {
+                    paymentService.recordGatewayCapture(p.getProviderPaymentId(), capturedRef);
+                    continue;   // settled, not cancelled
+                }
+            }
             doCancel(order, "Auto-cancelled: online payment was not completed in time.");
+            orderRepository.save(order);
+            cancelled++;
             notificationService.notifyAdmins(NotificationType.ORDER, "Order auto-cancelled (unpaid)",
                     "Order " + order.getOrderNumber() + " was auto-cancelled and its stock released — "
                             + "the online payment was not completed.",
                     "/admin-orders.html", "Orders", order.getId(), "ORDER");
             whatsappAutomation.fire(WhatsappAutomationEvent.ABANDONED_CHECKOUT, order);
         }
-        if (!abandoned.isEmpty()) orderRepository.saveAll(abandoned);
-        return abandoned.size();
+        return cancelled;
     }
 
     @Override
@@ -505,8 +531,21 @@ public class OrderServiceImpl implements OrderService {
         couponService.revokeForOrder(order.getId());
         // A consumed trade-in credit belongs to the customer, not the order — give it back.
         exchangeService.releaseFromOrder(order.getId());
-        if (order.getPayment() != null && order.getPayment().getPaymentStatus() == PaymentStatus.SUCCESS) {
-            order.getPayment().setPaymentStatus(PaymentStatus.REFUNDED);
+        Payment pay = order.getPayment();
+        if (pay != null && pay.getPaymentStatus() == PaymentStatus.SUCCESS) {
+            // Move the REAL money first: for RAZORPAY this calls the refund API and throws on
+            // failure — the cancel/return then fails loudly instead of the books claiming a
+            // refund that never reached the customer. COD returns null (cash handed back).
+            String gatewayRef = strategyFactory.forMethod(pay.getMethod()).refund(pay);
+            Transaction txn = new Transaction();
+            txn.setPayment(pay);
+            txn.setType(TransactionType.REFUND);
+            txn.setTransactionStatus(PaymentStatus.SUCCESS);
+            txn.setAmount(pay.getAmount());
+            txn.setProviderReference(gatewayRef == null ? "MANUAL" : gatewayRef);
+            txn.setProcessedAt(Instant.now());
+            pay.getTransactions().add(txn);
+            pay.setPaymentStatus(PaymentStatus.REFUNDED);
         }
         reverseSaleAfterCommit(order.getId());
     }

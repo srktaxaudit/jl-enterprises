@@ -13,4 +13,11 @@ public interface PaymentService {
     OrderPaymentDto confirm(UUID userId, UUID orderId, PaymentConfirmRequest request);
 
     OrderPaymentDto refund(UUID orderId);
+
+    /**
+     * The gateway (webhook or reconciliation sweep) reports this provider order as
+     * captured. Settles the payment idempotently; if the order was already cancelled
+     * (stock restored), auto-refunds at the gateway instead and alerts admins.
+     */
+    void recordGatewayCapture(String providerOrderId, String providerPaymentId);
 }

@@ -138,6 +138,28 @@ keep working and only log warnings. See [`.env.example`](.env.example) for the f
 3. At checkout, "Pay Online" opens Razorpay Checkout; the backend verifies the signature
    before marking the order paid. COD works with no keys. Switch to live keys when ready.
 
+### Payment webhook (strongly recommended once online payments are live)
+
+The browser confirm callback can be lost (customer's phone dies right after paying).
+The webhook is the durable path — with it, a captured payment always settles the order,
+and the abandoned-order sweeper double-checks Razorpay before ever cancelling.
+
+1. Invent a strong random secret (e.g. `openssl rand -hex 24`).
+2. Razorpay dashboard → **Settings → Webhooks → Add New Webhook**:
+   - URL: `https://<service>.onrender.com/api/v1/webhooks/razorpay`
+   - Secret: the value from step 1
+   - Active events: **payment.captured**
+3. Set `RAZORPAY_WEBHOOK_SECRET` on Render to the same value. Until it is set, the
+   endpoint rejects all events (the browser confirm flow keeps working regardless).
+
+### Refunds
+
+Refunds now move REAL money: cancelling/refunding a paid Razorpay order calls the
+Razorpay refund API first and only updates stock/books/status if the gateway refund
+succeeds (a failure shows a clear error and changes nothing). COD refunds are recorded
+as `MANUAL` — staff hand the cash back. If a payment is captured for an order that was
+already cancelled, it is auto-refunded and admins are notified.
+
 ## Keep the free tier awake (stops cold-start failures)
 
 **Already automated:** [`.github/workflows/keepalive.yml`](.github/workflows/keepalive.yml)

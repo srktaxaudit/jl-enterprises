@@ -18,4 +18,23 @@ public interface PaymentStrategy {
 
     /** Verify a completed payment (signature/charge check). @return true if genuinely paid. */
     boolean verify(Payment payment, PaymentConfirmation confirmation);
+
+    /**
+     * Refund the captured amount AT THE GATEWAY. Returns the provider's refund reference,
+     * or {@code null} when this method has no gateway to call (COD refunds are handed back
+     * in cash/UPI by staff). Throws {@code BusinessException} when the gateway call fails —
+     * callers must NOT mark anything refunded in that case.
+     */
+    default String refund(Payment payment) {
+        return null;
+    }
+
+    /**
+     * Reconciliation: ask the provider whether a captured payment exists for this
+     * provider order (e.g. the customer paid but the browser died before our confirm
+     * callback). Returns the provider payment id if captured, else {@code null}.
+     */
+    default String capturedPaymentId(Payment payment) {
+        return null;
+    }
 }
