@@ -39,4 +39,8 @@ public interface ExchangeService {
 
     /** Mark the exchange consumed by an order (COMPLETED + linked). */
     void applyToOrder(UUID exchangeId, UUID orderId);
+
+    /** Give the credit back when its order is cancelled/refunded: COMPLETED → APPROVED,
+        unlink the order. No-op if this order consumed no exchange. */
+    void releaseFromOrder(UUID orderId);
 }

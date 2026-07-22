@@ -141,7 +141,6 @@ public class AuthController {
     }
 
     private static String clientIp(HttpServletRequest http) {
-        String fwd = http.getHeader("X-Forwarded-For");
-        return (fwd != null && !fwd.isBlank()) ? fwd.split(",")[0].trim() : http.getRemoteAddr();
+        return in.jlenterprises.ecommerce.util.ClientIp.from(http);
     }
 }

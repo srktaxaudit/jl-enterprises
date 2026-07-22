@@ -36,6 +36,9 @@ import java.util.UUID;
 public class ExchangeController {
 
     private static final String STAFF = "hasAnyRole('ADMIN','SUPER_ADMIN','MANAGER','CUSTOMER_SUPPORT')";
+    /** Approving an exchange or setting its value creates spendable checkout credit — real
+        money. CUSTOMER_SUPPORT can view requests but must not be able to mint credit. */
+    private static final String EXCHANGE_WRITE = "hasAnyRole('ADMIN','SUPER_ADMIN','MANAGER')";
 
     private final ExchangeService service;
 
@@ -92,7 +95,7 @@ public class ExchangeController {
     }
 
     @PatchMapping("/api/v1/admin/exchanges/{id}/status")
-    @PreAuthorize(STAFF)
+    @PreAuthorize(EXCHANGE_WRITE)
     @Auditable(action = "UPDATE_EXCHANGE_STATUS", entity = "exchange_request")
     @Operation(summary = "Update status (+ optional internal notes)")
     public ApiResponse<ExchangeRequestDto> updateStatus(@PathVariable UUID id,
@@ -102,7 +105,7 @@ public class ExchangeController {
     }
 
     @PatchMapping("/api/v1/admin/exchanges/{id}/value")
-    @PreAuthorize(STAFF)
+    @PreAuthorize(EXCHANGE_WRITE)
     @Auditable(action = "SET_EXCHANGE_VALUE", entity = "exchange_request")
     @Operation(summary = "Set the final approved exchange value")
     public ApiResponse<ExchangeRequestDto> setValue(@PathVariable UUID id, @RequestParam BigDecimal value) {

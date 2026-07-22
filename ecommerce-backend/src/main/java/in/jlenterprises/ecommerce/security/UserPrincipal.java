@@ -40,8 +40,14 @@ public class UserPrincipal implements UserDetails {
             auths.add(new SimpleGrantedAuthority(role.getName().name()));
             role.getPermissions().forEach(p -> auths.add(new SimpleGrantedAuthority(p.getName())));
         });
-        boolean nonLocked = !user.isAccountLocked()
-                && (user.getLockedUntil() == null || user.getLockedUntil().isBefore(Instant.now()));
+        // A failed-login lock is TEMPORARY: it holds only until lockedUntil passes, then the
+        // account works again with no manual reset. A lock with no lockedUntil (set by an
+        // admin) holds indefinitely. The old expression kept accountLocked=true locked
+        // forever — and since a locked user can't log in to trigger the success-path reset,
+        // that would have made every lockout permanent.
+        boolean lockActive = user.isAccountLocked()
+                && (user.getLockedUntil() == null || user.getLockedUntil().isAfter(Instant.now()));
+        boolean nonLocked = !lockActive;
         return new UserPrincipal(user.getId(), user.getEmail(), user.getPasswordHash(),
                 user.isEnabled(), nonLocked, auths);
     }

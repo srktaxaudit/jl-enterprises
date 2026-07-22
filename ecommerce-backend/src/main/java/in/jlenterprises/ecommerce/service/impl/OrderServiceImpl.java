@@ -107,6 +107,25 @@ public class OrderServiceImpl implements OrderService {
                 : addressRepository.findByIdAndUserId(request.billingAddressId(), userId)
                     .orElseThrow(() -> ResourceNotFoundException.of("Address", request.billingAddressId()));
 
+        // 2) Final gate against the CURRENT catalogue. Cart lines refresh their price on every
+        // add/sync (CartServiceImpl.addItem), so a mismatch here means the price or status
+        // changed between the checkout page loading and the customer clicking Place Order.
+        // Refuse rather than silently charging an amount the checkout page never showed —
+        // the retry re-syncs the cart and picks up the current price.
+        for (CartItem item : cart.getItems()) {
+            var product = item.getProduct();
+            if (product == null || product.getStatus() != in.jlenterprises.ecommerce.constant.RecordStatus.ACTIVE) {
+                throw new BusinessException("\"" + (product == null ? "An item" : product.getName())
+                        + "\" is no longer available. Please remove it from your cart.");
+            }
+            BigDecimal current = item.getVariant() != null && item.getVariant().getPrice() != null
+                    ? item.getVariant().getPrice() : product.getPrice();
+            if (current != null && item.getUnitPrice() != null && item.getUnitPrice().compareTo(current) != 0) {
+                throw new BusinessException("The price of \"" + product.getName()
+                        + "\" changed while you were checking out. Please review your cart and try again.");
+            }
+        }
+
         BigDecimal subtotal = cart.getItems().stream()
                 .map(i -> i.getUnitPrice().multiply(BigDecimal.valueOf(i.getQuantity())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -435,6 +454,8 @@ public class OrderServiceImpl implements OrderService {
     private void refundAndRestore(Order order) {
         restoreStock(order);
         couponService.revokeForOrder(order.getId());
+        // A consumed trade-in credit belongs to the customer, not the order — give it back.
+        exchangeService.releaseFromOrder(order.getId());
         if (order.getPayment() != null && order.getPayment().getPaymentStatus() == PaymentStatus.SUCCESS) {
             order.getPayment().setPaymentStatus(PaymentStatus.REFUNDED);
         }

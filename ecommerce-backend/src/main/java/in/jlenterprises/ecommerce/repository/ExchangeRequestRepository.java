@@ -23,4 +23,7 @@ public interface ExchangeRequestRepository extends JpaRepository<ExchangeRequest
 
     /** Exchanges still awaiting admin attention — for the sidebar count badge. */
     long countByExchangeStatusIn(Collection<ExchangeStatus> statuses);
+
+    /** The exchange consumed by this order, if any — used to release it on cancellation. */
+    java.util.Optional<ExchangeRequest> findByAppliedOrderId(UUID appliedOrderId);
 }

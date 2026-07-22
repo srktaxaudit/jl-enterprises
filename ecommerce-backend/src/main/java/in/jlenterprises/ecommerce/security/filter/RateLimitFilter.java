@@ -78,14 +78,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
         chain.doFilter(request, response);
     }
 
-    /** Real client IP behind Render's proxy (X-Forwarded-For: client, proxy1, …). */
     private static String clientIp(HttpServletRequest request) {
-        String xff = request.getHeader("X-Forwarded-For");
-        if (xff != null && !xff.isBlank()) {
-            int comma = xff.indexOf(',');
-            return (comma > 0 ? xff.substring(0, comma) : xff).trim();
-        }
-        return request.getRemoteAddr();
+        return in.jlenterprises.ecommerce.util.ClientIp.from(request);
     }
 
     private static final class Window {

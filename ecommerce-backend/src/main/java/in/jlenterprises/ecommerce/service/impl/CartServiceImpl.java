@@ -70,6 +70,9 @@ public class CartServiceImpl implements CartService {
 
         if (existing != null) {
             existing.setQuantity(existing.getQuantity() + request.quantity());
+            // Refresh the snapshot too: without this, a line added weeks ago keeps its old
+            // price through every checkout sync, and the customer is charged the stale amount.
+            existing.setUnitPrice(unitPrice);
         } else {
             CartItem item = new CartItem();
             item.setCart(cart);

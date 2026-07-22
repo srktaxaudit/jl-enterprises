@@ -302,6 +302,9 @@ public class AccountingServiceImpl implements AccountingService {
             if (entryRepo.existsByReferenceIdAndVoucherType(orderId, VoucherType.SALES)) return;
             Order order = orderRepository.findById(orderId).orElse(null);
             if (order == null) return;
+            // Never book revenue for a cancelled order — its stock is already restored and no
+            // goods will ship, so a SALES entry here would overstate revenue and output GST.
+            if (order.getOrderStatus() == in.jlenterprises.ecommerce.constant.OrderStatus.CANCELLED) return;
             Payment p = order.getPayment();
             if (p == null || p.getPaymentStatus() != PaymentStatus.SUCCESS) return;
             BigDecimal grand = order.getGrandTotal();

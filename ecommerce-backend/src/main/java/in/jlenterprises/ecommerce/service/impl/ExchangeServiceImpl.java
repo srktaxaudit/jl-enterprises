@@ -204,6 +204,22 @@ public class ExchangeServiceImpl implements ExchangeService {
                 "Your exchange value of ₹" + e.getFinalValue() + " was applied to your order.", "/my-exchanges.html");
     }
 
+    @Override
+    @Transactional
+    public void releaseFromOrder(UUID orderId) {
+        repository.findByAppliedOrderId(orderId).ifPresent(e -> {
+            // Deliberate bypass of TRANSITIONS (COMPLETED is terminal for ADMIN edits): the
+            // customer's trade-in credit must survive the order it was spent on being
+            // cancelled — including automatic cancellation by the abandoned-order sweeper.
+            e.setExchangeStatus(ExchangeStatus.APPROVED);
+            e.setAppliedOrderId(null);
+            repository.save(e);
+            notificationService.notifyUser(e.getUser().getId(), NotificationType.ORDER, "Exchange credit restored",
+                    "Your order was cancelled, so your exchange value of ₹" + e.getFinalValue()
+                            + " is available again for your next order.", "/my-exchanges.html");
+        });
+    }
+
     // ── helpers ──
 
     /** Allowed status transitions (admin). Terminal states (REJECTED, COMPLETED,

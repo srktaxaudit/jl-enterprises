@@ -47,11 +47,13 @@ public class PaymentServiceImpl implements PaymentService {
     private final WhatsappAutomationService whatsappAutomation;
     private final InventoryRepository inventoryRepository;
     private final CouponService couponService;
+    private final in.jlenterprises.ecommerce.service.ExchangeService exchangeService;
 
     public PaymentServiceImpl(OrderRepository orderRepository, PaymentRepository paymentRepository,
                               PaymentStrategyFactory strategyFactory, NotificationService notificationService,
                               AccountingService accountingService, WhatsappAutomationService whatsappAutomation,
-                              InventoryRepository inventoryRepository, CouponService couponService) {
+                              InventoryRepository inventoryRepository, CouponService couponService,
+                              in.jlenterprises.ecommerce.service.ExchangeService exchangeService) {
         this.orderRepository = orderRepository;
         this.paymentRepository = paymentRepository;
         this.strategyFactory = strategyFactory;
@@ -60,6 +62,7 @@ public class PaymentServiceImpl implements PaymentService {
         this.whatsappAutomation = whatsappAutomation;
         this.inventoryRepository = inventoryRepository;
         this.couponService = couponService;
+        this.exchangeService = exchangeService;
     }
 
     /** After the current transaction commits, post the sale to the books (best-effort). */
@@ -98,9 +101,20 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     @Transactional
     public PaymentInitResponse initiate(UUID userId, UUID orderId) {
-        orderRepository.findByIdAndUserId(orderId, userId)
+        Order order = orderRepository.findByIdAndUserId(orderId, userId)
                 .orElseThrow(() -> ResourceNotFoundException.of("Order", orderId));
         Payment payment = paymentFor(orderId);
+        // A settled payment must never be re-initiated: doing so would mint a fresh provider
+        // order, overwrite providerPaymentId (orphaning the original signature) and knock the
+        // status back to PENDING — making a paid order look unpaid and payable a second time.
+        if (payment.getPaymentStatus() == PaymentStatus.SUCCESS
+                || payment.getPaymentStatus() == PaymentStatus.REFUNDED) {
+            throw new BusinessException("This order's payment is already " + payment.getPaymentStatus()
+                    + " and cannot be initiated again.");
+        }
+        if (order.getOrderStatus() == OrderStatus.CANCELLED) {
+            throw new BusinessException("This order was cancelled. Please place a new order.");
+        }
         PaymentStrategy strategy = strategyFactory.forMethod(payment.getMethod());
 
         PaymentInitResult result = strategy.initiate(payment);
@@ -131,6 +145,13 @@ public class PaymentServiceImpl implements PaymentService {
         // customer could self-confirm their own COD order as paid.
         if (payment.getMethod() == PaymentMethod.COD) {
             return toDto(payment);
+        }
+        // The abandoned-order sweeper cancels (and RESTOCKS) orders whose payment never
+        // confirmed. A confirm arriving after that must not mark the payment SUCCESS and post
+        // a sale for stock that was already put back — surface it for manual follow-up instead.
+        if (order.getOrderStatus() == OrderStatus.CANCELLED) {
+            throw new BusinessException("This order was cancelled before the payment confirmation arrived. "
+                    + "If you were charged, the amount will be refunded — please contact support.");
         }
 
         PaymentStrategy strategy = strategyFactory.forMethod(payment.getMethod());
@@ -180,11 +201,13 @@ public class PaymentServiceImpl implements PaymentService {
         if (payment.getPaymentStatus() != PaymentStatus.SUCCESS) {
             throw new BusinessException("Only successful payments can be refunded");
         }
-        // A refund reverses the sale: put stock back (locked), release the coupon usage, and
-        // reverse the sales journal after commit. The SUCCESS guard above makes this idempotent —
-        // a second refund attempt fails, so stock/coupons are never restored twice.
+        // A refund reverses the sale: put stock back (locked), release the coupon usage, give
+        // back any consumed trade-in credit, and reverse the sales journal after commit. The
+        // SUCCESS guard above makes this idempotent — a second refund attempt fails, so
+        // stock/coupons/credits are never restored twice.
         restoreStock(order);
         couponService.revokeForOrder(orderId);
+        exchangeService.releaseFromOrder(orderId);
 
         Transaction txn = new Transaction();
         txn.setPayment(payment);

@@ -80,6 +80,55 @@ class PaymentServiceImplTest {
         verifyNoInteractions(strategyFactory, notificationService, accountingService);
     }
 
+    @Test
+    void initiateRejectsAlreadySuccessfulPayment() {
+        Order order = new Order();
+        order.setOrderStatus(OrderStatus.CONFIRMED);
+        Payment payment = payment(PaymentMethod.RAZORPAY, PaymentStatus.SUCCESS, order);
+        when(orderRepository.findByIdAndUserId(orderId, userId)).thenReturn(Optional.of(order));
+        when(paymentRepository.findByOrderId(orderId)).thenReturn(Optional.of(payment));
+
+        // Re-initiating would reset SUCCESS → PENDING and mint a new provider order,
+        // making a paid order look unpaid (and payable twice).
+        org.junit.jupiter.api.Assertions.assertThrows(
+                in.jlenterprises.ecommerce.exception.BusinessException.class,
+                () -> paymentService.initiate(userId, orderId));
+        assertEquals(PaymentStatus.SUCCESS, payment.getPaymentStatus());
+        verifyNoInteractions(strategyFactory);
+    }
+
+    @Test
+    void initiateRejectsCancelledOrder() {
+        Order order = new Order();
+        order.setOrderStatus(OrderStatus.CANCELLED);
+        Payment payment = payment(PaymentMethod.RAZORPAY, PaymentStatus.PENDING, order);
+        when(orderRepository.findByIdAndUserId(orderId, userId)).thenReturn(Optional.of(order));
+        when(paymentRepository.findByOrderId(orderId)).thenReturn(Optional.of(payment));
+
+        org.junit.jupiter.api.Assertions.assertThrows(
+                in.jlenterprises.ecommerce.exception.BusinessException.class,
+                () -> paymentService.initiate(userId, orderId));
+        verifyNoInteractions(strategyFactory);
+    }
+
+    @Test
+    void confirmRejectsCancelledOrder_neverMarksPaidOrPostsSale() {
+        // The sweeper cancelled (and restocked) this order; a late confirm callback must not
+        // flip it to paid and book a sale for stock that was already put back.
+        Order order = new Order();
+        order.setOrderStatus(OrderStatus.CANCELLED);
+        Payment payment = payment(PaymentMethod.RAZORPAY, PaymentStatus.PENDING, order);
+        when(orderRepository.findByIdAndUserId(orderId, userId)).thenReturn(Optional.of(order));
+        when(paymentRepository.findByOrderId(orderId)).thenReturn(Optional.of(payment));
+
+        org.junit.jupiter.api.Assertions.assertThrows(
+                in.jlenterprises.ecommerce.exception.BusinessException.class,
+                () -> paymentService.confirm(userId, orderId, new PaymentConfirmRequest("ref", "sig", null)));
+        assertEquals(PaymentStatus.PENDING, payment.getPaymentStatus());
+        assertTrue(payment.getTransactions().isEmpty());
+        verifyNoInteractions(strategyFactory, notificationService, accountingService);
+    }
+
     private Payment payment(PaymentMethod method, PaymentStatus status, Order order) {
         Payment p = new Payment();
         p.setMethod(method);

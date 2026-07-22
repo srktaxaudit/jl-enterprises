@@ -149,8 +149,12 @@ public class AuthServiceImpl implements AuthService {
     }
 
     // ── Login (with lockout) ────────────────────────────────────────────
+    // noRollbackFor is LOAD-BEARING: on a bad password we increment the failed-attempt
+    // counter and then throw ApiException. A default rollback would silently discard that
+    // increment — the account lockout could never engage. With ApiException exempted, the
+    // counter (and the lock, once the threshold is reached) commits despite the throw.
     @Override
-    @Transactional
+    @Transactional(noRollbackFor = ApiException.class)
     public AuthResponse login(LoginRequest request, String userAgent, String ip) {
         // The identifier may be an email or a mobile number. Normalise it to the same
         // canonical form used for storage/lookup so both paths authenticate uniformly.
