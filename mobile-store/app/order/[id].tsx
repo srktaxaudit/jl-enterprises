@@ -9,7 +9,9 @@ import { ApiError } from "@/core/api/client";
 import { dateTime, inr, statusLabel } from "@/shared/format";
 import type { OrderStatus } from "@/core/types";
 
-const CANCELLABLE: OrderStatus[] = ["PENDING", "CONFIRMED", "PROCESSING", "PACKED"];
+// Must match OrderServiceImpl.cancel() exactly — the backend rejects a cancel once the
+// order is PACKED, so offering the button for PACKED would always error.
+const CANCELLABLE: OrderStatus[] = ["PENDING", "CONFIRMED", "PROCESSING"];
 
 export default function OrderDetail() {
   const t = useTheme();

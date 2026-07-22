@@ -57,7 +57,7 @@ export default function OrderDetailScreen() {
         {o.items?.length ? (
           <Card>
             <AppText weight="700" size={14} style={{ marginBottom: 8 }}>Items</AppText>
-            {o.items.map((it, i) => (
+            {o.items.map((it: any, i: number) => (
               <View key={it.id ?? i} style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 6 }}>
                 <AppText size={13} style={{ flex: 1, paddingRight: 8 }} numberOfLines={1}>{it.productName} × {it.quantity}</AppText>
                 <AppText size={13} weight="600">{inr(it.lineTotal)}</AppText>

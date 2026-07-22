@@ -15,7 +15,7 @@ import {
 import { SignInPrompt } from "@/shared/components/SignInPrompt";
 import { useTheme } from "@/core/theme/ThemeProvider";
 import { useAuth } from "@/core/auth/authStore";
-import { useCart, useValidateCoupon } from "@/features/cart/hooks";
+import { useCart, useEligibleCoupons, useValidateCoupon } from "@/features/cart/hooks";
 import { useAddresses } from "@/features/addresses/hooks";
 import { usePlaceOrder } from "@/features/orders/hooks";
 import { ApiError } from "@/core/api/client";
@@ -27,6 +27,11 @@ import type { PaymentMethod } from "@/core/types";
 const PAYMENT_METHODS: { value: PaymentMethod; label: string; hint: string }[] = [
   { value: "COD", label: "Cash on delivery", hint: "Pay when your order arrives" },
 ];
+
+// Mirrors OrderServiceImpl exactly (FREE_SHIPPING_THRESHOLD=5000, FLAT_SHIPPING=99),
+// same as the web checkout — keep the three in sync if the rule ever changes.
+const FREE_SHIPPING_THRESHOLD = 5000;
+const FLAT_SHIPPING = 99;
 
 export default function Checkout() {
   const t = useTheme();
@@ -41,8 +46,10 @@ export default function Checkout() {
   const [payment, setPayment] = useState<PaymentMethod>("COD");
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
+  const [couponDiscount, setCouponDiscount] = useState(0);
   const [couponMessage, setCouponMessage] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
+  const eligible = useEligibleCoupons(status === "authed");
 
   // Preselect the default (or only) address once the list arrives.
   useEffect(() => {
@@ -61,21 +68,25 @@ export default function Checkout() {
     return <Screen><EmptyState emoji="🛒" title="Your cart is empty" hint="Add something before checking out." /></Screen>;
   }
 
-  const onApplyCoupon = () => {
-    const code = couponCode.trim().toUpperCase();
+  const onApplyCoupon = (raw?: string) => {
+    const code = (raw ?? couponCode).trim().toUpperCase();
     if (!code) return;
+    if (raw) setCouponCode(code);
     validateCoupon.mutate(code, {
       onSuccess: (res) => {
         if (res.valid) {
           setAppliedCoupon(code);
+          setCouponDiscount(res.discountAmount ?? 0);
           setCouponMessage(res.discountAmount ? `Coupon applied — you save ${inr(res.discountAmount)}.` : "Coupon applied.");
         } else {
           setAppliedCoupon(null);
+          setCouponDiscount(0);
           setCouponMessage(res.message ?? "This coupon can't be applied.");
         }
       },
       onError: (e) => {
         setAppliedCoupon(null);
+        setCouponDiscount(0);
         setCouponMessage(e instanceof ApiError ? e.message : "Couldn't validate the coupon.");
       },
     });
@@ -148,15 +159,36 @@ export default function Checkout() {
                 onChangeText={(v) => {
                   setCouponCode(v);
                   setAppliedCoupon(null);
+                  setCouponDiscount(0);
                   setCouponMessage(null);
                 }}
                 autoCapitalize="characters"
               />
             </View>
-            <Button title="Apply" variant="outline" loading={validateCoupon.isPending} onPress={onApplyCoupon} />
+            <Button title="Apply" variant="outline" loading={validateCoupon.isPending} onPress={() => onApplyCoupon()} />
           </View>
           {couponMessage ? (
             <AppText size={12} color={appliedCoupon ? t.success : t.danger}>{couponMessage}</AppText>
+          ) : null}
+          {(eligible.data ?? []).length > 0 ? (
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
+              {(eligible.data ?? []).map((c) => (
+                <Pressable key={c.code} onPress={() => onApplyCoupon(c.code)}>
+                  <View
+                    style={{
+                      paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999,
+                      borderWidth: 1, borderStyle: "dashed",
+                      borderColor: appliedCoupon === c.code ? t.success : t.accent,
+                      backgroundColor: appliedCoupon === c.code ? t.success + "18" : "transparent",
+                    }}
+                  >
+                    <AppText size={12} weight="700" color={appliedCoupon === c.code ? t.success : t.accent}>
+                      {appliedCoupon === c.code ? "✓ " : "🏷 "}{c.code}
+                    </AppText>
+                  </View>
+                </Pressable>
+              ))}
+            </View>
           ) : null}
         </View>
 
@@ -196,7 +228,9 @@ export default function Checkout() {
           multiline
         />
 
-        {/* Summary */}
+        {/* Summary — the same arithmetic the backend applies (subtotal − coupon, then
+            free delivery at ₹5,000+, else flat ₹99), so the buyer commits to the REAL
+            amount, not a subtotal with surprises added later. */}
         <Card style={{ gap: 8 }}>
           {items.map((i) => (
             <View key={i.id} style={{ flexDirection: "row", justifyContent: "space-between" }}>
@@ -207,11 +241,39 @@ export default function Checkout() {
             </View>
           ))}
           <View style={{ height: 1, backgroundColor: t.border }} />
-          <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-            <AppText weight="700">Subtotal</AppText>
-            <AppText weight="800" size={16}>{inr(cart.data?.subtotal)}</AppText>
-          </View>
-          <AppText muted size={12}>Delivery charges, taxes and coupon discount are finalised on the order.</AppText>
+          {(() => {
+            const subtotal = cart.data?.subtotal ?? items.reduce((s, i) => s + (i.lineTotal ?? 0), 0);
+            const discount = Math.min(couponDiscount, subtotal);
+            const base = subtotal - discount;
+            const shipping = base >= FREE_SHIPPING_THRESHOLD ? 0 : FLAT_SHIPPING;
+            const grand = base + shipping;
+            return (
+              <View style={{ gap: 4 }}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                  <AppText size={13} muted>Subtotal</AppText>
+                  <AppText size={13} weight="600">{inr(subtotal)}</AppText>
+                </View>
+                {discount > 0 ? (
+                  <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                    <AppText size={13} color={t.success}>Coupon ({appliedCoupon})</AppText>
+                    <AppText size={13} weight="600" color={t.success}>− {inr(discount)}</AppText>
+                  </View>
+                ) : null}
+                <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                  <AppText size={13} muted>Delivery</AppText>
+                  <AppText size={13} weight="600" color={shipping === 0 ? t.success : undefined}>
+                    {shipping === 0 ? "FREE" : inr(shipping)}
+                  </AppText>
+                </View>
+                <View style={{ height: 1, backgroundColor: t.border }} />
+                <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                  <AppText weight="800" size={16}>Total to pay</AppText>
+                  <AppText weight="800" size={18}>{inr(grand)}</AppText>
+                </View>
+                <AppText muted size={11}>Prices include GST. The order confirms this exact amount.</AppText>
+              </View>
+            );
+          })()}
         </Card>
 
         <Button title="Place order" variant="accent" loading={placeOrder.isPending} onPress={onPlaceOrder} />

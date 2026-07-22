@@ -26,15 +26,16 @@ export function useOrders() {
 }
 
 /**
- * Update an order's status. NOTE: verify the exact path/param against
- * AdminOrderController before shipping — the pattern here matches the web admin
- * (PATCH /api/v1/admin/orders/{id}/status with { status }).
+ * Update an order's status. AdminOrderController declares
+ * `@PatchMapping("/{id}/status")` with `@RequestParam OrderStatus status` — the
+ * status goes in the QUERY STRING, not the JSON body (a body here 400s), matching
+ * the web admin's `/status?status=...` call.
  */
 export function useUpdateOrderStatus() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) =>
-      apiPatch(`/api/v1/admin/orders/${id}/status`, { status }),
+      apiPatch(`/api/v1/admin/orders/${id}/status`, undefined, { status }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["orders"] }),
   });
 }

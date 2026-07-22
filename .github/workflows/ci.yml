@@ -29,17 +29,24 @@ jobs:
         run: mvn -B -ntp -DskipITs verify
 
   mobile:
-    name: Mobile — typecheck
+    name: ${{ matrix.app }} — typecheck
     runs-on: ubuntu-latest
-    # Informational until the RN app is fully typed; don't fail the whole run on it.
-    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [mobile, mobile-store]
     defaults:
       run:
-        working-directory: mobile
+        working-directory: ${{ matrix.app }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - run: npm ci --legacy-peer-deps
+          cache: npm
+          cache-dependency-path: ${{ matrix.app }}/package-lock.json
+      # Each app's .npmrc already sets legacy-peer-deps; npm ci needs the committed
+      # package-lock.json (it hard-fails without one — which silently no-op'd this
+      # job for months behind the old continue-on-error).
+      - run: npm ci
       - run: npx tsc --noEmit

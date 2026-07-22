@@ -84,13 +84,22 @@ Render backend). Log in with a staff account; RBAC hides modules you can’t acc
 
 ## Production checklist (follow-ups)
 
-- **App icon & splash** — add `assets/icon.png` + `assets/splash.png` and re-add them to `app.json`.
+Done already: branded icon/splash/adaptive assets are in `assets/` and wired in
+`app.json`; the order-status PATCH sends `status` as a query param matching
+`AdminOrderController`; CI typechecks the app on every push (`package-lock.json`
+is committed — keep it updated when deps change).
+
 - **Offline caching** — wrap the QueryClient with `@tanstack/query-async-storage-persister` + AsyncStorage.
-- **Push notifications** — register the device token (`expo-notifications`) and add a backend endpoint to store it + send on order/low-stock/exchange events (the backend already has a NotificationService).
-- **Image upload** — `expo-image-picker` → multipart POST to `/api/v1/products/{id}/images` (reuse the web pattern).
-- **App icon & splash** — `app.json` currently omits them, so builds use the default Expo assets; add branded icon/splash before store submission.
-- **Builds & stores** — `eas build -p android|ios`, then `eas submit`. App IDs: `com.jlenterprises.admin`.
-- **Verify endpoints** — a few paths in the hooks (e.g. order status PATCH) are marked to confirm against the controllers.
+- **Push notifications** — deliberately NOT included yet (the unused `expo-notifications`
+  dep/plugin was removed to keep store review clean). To add: reinstall it, restore the
+  plugin in `app.json`, register the device token, and add a backend endpoint to store
+  it + send on order/low-stock/exchange events (backend has a NotificationService).
+- **Image upload** — deliberately NOT included yet (unused `expo-image-picker` + iOS
+  camera/photo permission strings removed — undeclared-use permissions are a common
+  App Store rejection). To add: reinstall, restore the plugin + permission strings,
+  then multipart POST to `/api/v1/products/{id}/images` (reuse the web pattern).
+- **Builds & stores** — `eas init` (link a projectId), fill `eas.json` `submit.production`,
+  then `eas build -p android|ios` and `eas submit`. App IDs: `com.jlenterprises.admin`.
 
 ## Security notes
 

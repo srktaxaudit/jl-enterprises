@@ -89,6 +89,9 @@ export default function Login() {
           ) : null}
 
           <Button title="Sign in" onPress={handleSubmit(onSubmit)} loading={isSubmitting} />
+          <Pressable onPress={() => router.push("/forgot-password")} style={{ marginTop: 14, alignItems: "center" }} hitSlop={8}>
+            <AppText size={13} weight="700" color={t.accent}>Forgot password?</AppText>
+          </Pressable>
           <Pressable onPress={() => router.push("/signup")} style={{ marginTop: 18, alignItems: "center" }} hitSlop={8}>
             <AppText size={13} muted>
               New to JL Enterprises? <AppText size={13} weight="700" color={t.accent}>Create an account</AppText>

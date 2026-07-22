@@ -48,7 +48,7 @@ export default function Ledgers() {
                   {dateOnly(ledger.data.from)} → {dateOnly(ledger.data.to)} · Opening {inr(ledger.data.openingBalance)}
                 </AppText>
                 <ScrollView style={{ maxHeight: 380 }}>
-                  {ledger.data.lines.map((ln, i) => (
+                  {ledger.data.lines.map((ln: any, i: number) => (
                     <View key={i} style={{ paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: t.border }}>
                       <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                         <AppText size={12} style={{ flex: 1, paddingRight: 8 }} numberOfLines={1}>{ln.voucherNumber ?? "—"} · {dateOnly(ln.date)}</AppText>

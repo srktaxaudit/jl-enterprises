@@ -30,6 +30,7 @@ export function AppText({
   weight = "400",
   color,
   style,
+  numberOfLines,
 }: {
   children: React.ReactNode;
   muted?: boolean;
@@ -37,10 +38,14 @@ export function AppText({
   weight?: "400" | "600" | "700" | "800";
   color?: string;
   style?: object;
+  numberOfLines?: number;
 }) {
   const t = useTheme();
   return (
-    <Text style={[{ color: color ?? (muted ? t.textMuted : t.text), fontSize: size, fontWeight: weight }, style]}>
+    <Text
+      numberOfLines={numberOfLines}
+      style={[{ color: color ?? (muted ? t.textMuted : t.text), fontSize: size, fontWeight: weight }, style]}
+    >
       {children}
     </Text>
   );
@@ -118,7 +123,7 @@ export function TextField({
 export function StatusBadge({ label, tone = "info" }: { label: string; tone?: "info" | "success" | "warn" | "danger" | "muted" }) {
   const t = useTheme();
   const map = {
-    info: t.brand ?? t.primary,
+    info: t.primary,
     success: t.success,
     warn: t.warn,
     danger: t.danger,

@@ -55,7 +55,7 @@ export default function Outstanding() {
             <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 6, borderTopWidth: 1, borderTopColor: t.border, paddingTop: 6 }}><AppText weight="700" size={13}>Total</AppText><AppText weight="700" size={13}>{inr(aging.data.total)}</AppText></View>
           </Card>
 
-          {aging.data.parties.map((p) => (
+          {aging.data.parties.map((p: any) => (
             <Card key={p.partyName} style={{ padding: 14 }}>
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
                 <AppText weight="700" size={13} style={{ flex: 1, paddingRight: 8 }} numberOfLines={1}>{p.partyName}</AppText>

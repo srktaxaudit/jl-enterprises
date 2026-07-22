@@ -14,9 +14,9 @@ same Spring Boot API (`ecommerce-backend/`) as the web storefront.
 | Area | Screens |
 |---|---|
 | **Browse** (no sign-in needed) | Home (banners, categories, featured), Shop (search, category & sort filters, infinite scroll), Product detail (gallery, EMI info, reviews, related products) |
-| **Buy** | Cart (quantity stepper, badge on the tab), Checkout (address picker, coupon validation, COD), Order confirmation |
-| **After the sale** | My Orders (paginated), Order detail (cancel before shipping, request return after delivery), public order tracking by number + phone |
-| **Account** | Login (email **or** mobile number), sign-up, profile card, address book CRUD (+ default address), wishlist |
+| **Buy** | Cart (quantity stepper, badge on the tab), Checkout (address picker, eligible-coupon chips + code validation, full order total incl. delivery, COD), Order confirmation |
+| **After the sale** | My Orders (paginated), Order detail (cancel before packing, request return after delivery), public order tracking by number + phone |
+| **Account** | Login (email **or** mobile number), sign-up, forgot-password (emails the reset link), profile card, address book CRUD (+ default address), wishlist |
 
 Guests can browse everything; the app prompts for sign-in only where the API
 requires it (cart, wishlist, checkout, orders).
@@ -26,7 +26,16 @@ requires it (cart, wishlist, checkout, orders).
 **COD is the only payment method offered** — it's the one method fully live on
 the backend. Razorpay is wired server-side; when the mobile checkout should
 support it, integrate `react-native-razorpay` and add `RAZORPAY` to
-`PAYMENT_METHODS` in `app/checkout.tsx`.
+`PAYMENT_METHODS` in `app/checkout.tsx`. The checkout summary mirrors the
+backend's totals rule exactly (subtotal − coupon; free delivery at ₹5,000+,
+else flat ₹99) so the buyer sees the real amount before placing the order —
+keep those constants in sync with `OrderServiceImpl` and the web checkout.
+
+### Deliberate v1 gaps (web has these; add when needed)
+
+Delivery-pincode/ETA check, exchange (trade-in) requests, EMI enquiry
+submission, and service booking are web-only for now — kept out of v1 to ship
+a focused shopping core.
 
 ## Architecture
 
