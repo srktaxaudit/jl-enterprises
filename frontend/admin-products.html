@@ -67,6 +67,14 @@
         <div class="md:col-span-2"><label class="lbl">Specifications <span class="text-slate-400 font-normal">(one per line, e.g. “Capacity: 1.5 Ton”)</span></label><textarea id="specifications" rows="4" class="inp" placeholder="Capacity: 1.5 Ton&#10;Star Rating: 3 Star&#10;Warranty: 1 year + 10 years compressor"></textarea></div>
         <label class="flex items-center gap-2 text-sm"><input id="featured" type="checkbox" /> Featured</label>
 
+        <!-- GST (per product; electronics mix 18% and 28% slabs) -->
+        <div class="md:col-span-2 border-t border-slate-100 pt-4 grid md:grid-cols-2 gap-4">
+          <div><label class="lbl">GST Rate % <span class="text-slate-400 font-normal">(blank = store default from Settings)</span></label>
+            <input id="gstRate" type="number" min="0" max="28" step="0.01" class="inp" placeholder="e.g. 18 or 28" /></div>
+          <div><label class="lbl">HSN Code <span class="text-slate-400 font-normal">(for GST invoices)</span></label>
+            <input id="hsnCode" maxlength="16" class="inp" placeholder="e.g. 8415" /></div>
+        </div>
+
         <!-- EMI (manual, per-product — the storefront never auto-calculates) -->
         <div class="md:col-span-2 border-t border-slate-100 pt-4">
           <label class="flex items-center gap-2 text-sm font-semibold text-navy">
@@ -326,6 +334,7 @@
       $("categoryId").value=p.categoryId||""; setBrand(p.brandId||"");
       $("shortDescription").value=p.shortDescription||""; $("description").value=p.description||""; $("specifications").value=p.specifications||"";
       $("featured").checked=!!p.featured;
+      $("gstRate").value=p.gstRate??""; $("hsnCode").value=p.hsnCode||"";
       $("emiAvailable").checked=!!p.emiAvailable;
       $("emiMonths").value=p.emiMonths??""; $("emiAmount").value=p.emiAmount??"";
       $("emiDownPayment").value=p.emiDownPayment??""; $("emiProcessingFee").value=p.emiProcessingFee??"";
@@ -353,6 +362,9 @@
       categoryId:$("categoryId").value||null, brandId:$("brandId").value||null,
       shortDescription:$("shortDescription").value.trim()||null, description:$("description").value.trim()||null, specifications:$("specifications").value.trim()||null,
       featured:$("featured").checked, currency:"INR",
+      // GST — null rate means "use the store-wide default".
+      gstRate:$("gstRate").value||null,
+      hsnCode:$("hsnCode").value.trim()||null,
       // EMI — sent exactly as typed; empty fields go as null (not saved).
       emiAvailable:$("emiAvailable").checked,
       emiMonths:$("emiMonths").value ? parseInt($("emiMonths").value,10) : null,

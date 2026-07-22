@@ -26,6 +26,9 @@ public record ProductRequest(
         @Size(max = 200) String metaTitle,
         @Size(max = 300) String metaDescription,
         @Size(max = 4000) String specifications,
+        // ── GST (optional; null rate → store-wide default from Settings) ──
+        @PositiveOrZero BigDecimal gstRate,
+        @Size(max = 16) String hsnCode,
         // ── EMI (all optional; only used when emiAvailable is true) ──
         Boolean emiAvailable,
         @PositiveOrZero Integer emiMonths,

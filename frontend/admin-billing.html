@@ -146,8 +146,9 @@
 
   // ── Invoice view (printable) ──
   function invoiceHTML(inv){
+    // Per-line GST: each item shows its own snapshotted HSN + rate (mixed 18%/28% orders).
     const itemRows = (inv.items||[]).map(i=>`<tr>
-      <td style="padding:6px 8px;border-bottom:1px solid #eee">${esc(i.productName)}<div style="font-size:11px;color:#888">${esc(i.sku||"")}</div></td>
+      <td style="padding:6px 8px;border-bottom:1px solid #eee">${esc(i.productName)}<div style="font-size:11px;color:#888">${esc(i.sku||"")}${i.hsnCode?" · HSN "+esc(i.hsnCode):""}${i.gstRate!=null?" · GST "+Number(i.gstRate)+"%":""}</div></td>
       <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:center">${i.quantity}</td>
       <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right">${inr(i.unitPrice)}</td>
       <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right">${inr(i.lineTotal)}</td></tr>`).join("");
@@ -180,8 +181,8 @@
         ${Number(inv.shippingTotal)>0?row("Shipping", inr(inv.shippingTotal)):""}
         <div style="border-top:1px solid #e2e8f0;margin:6px 0"></div>
         ${row("Taxable value", inr(inv.taxableValue))}
-        ${row(`CGST (${Number(inv.gstRate)/2}%)`, inr(inv.cgst))}
-        ${row(`SGST (${Number(inv.gstRate)/2}%)`, inr(inv.sgst))}
+        ${inv.interState ? row("IGST", inr(inv.igst))
+                         : row("CGST", inr(inv.cgst)) + row("SGST", inr(inv.sgst))}
         <div style="border-top:2px solid #0b2447;margin:6px 0"></div>
         ${row("<b>Grand Total</b>", "<b>"+inr(inv.grandTotal)+"</b>")}
       </div>

@@ -49,4 +49,9 @@ public class BillingConfig {
     public String sellerAddress() {
         return get("seller_address", "185G/1B, Palai Road, Chidambaramnagar, Thoothukudi, Tamil Nadu 628008");
     }
+
+    /** Seller's GST state — decides CGST/SGST (intra-state) vs IGST (inter-state) on invoices. */
+    public String sellerState() {
+        return get("seller_state", "Tamil Nadu");
+    }
 }

@@ -52,4 +52,13 @@ public class OrderItem extends BaseEntity {
 
     @Column(name = "line_total", nullable = false, precision = 12, scale = 2)
     private BigDecimal lineTotal;
+
+    // ── GST snapshot (frozen at order time, like productName/sku/unitPrice, so the
+    //    invoice and books never change retroactively when the catalogue is edited) ──
+    /** GST rate percent applied to this line. Null on legacy rows → store default. */
+    @Column(name = "gst_rate", precision = 5, scale = 2)
+    private BigDecimal gstRate;
+
+    @Column(name = "hsn_code", length = 16)
+    private String hsnCode;
 }

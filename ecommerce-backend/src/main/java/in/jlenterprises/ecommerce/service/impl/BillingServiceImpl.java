@@ -103,7 +103,16 @@ public class BillingServiceImpl implements BillingService {
             switch (ps) {
                 case SUCCESS -> { paid = paid.add(grand); tax = tax.add(GstUtil.gstAmount(grand, rate)); paidCount++; }
                 case REFUNDED -> { refunded = refunded.add(grand); refundedCount++; }
-                default -> { pending = pending.add(grand); pendingCount++; }
+                // Never-collected payments of cancelled orders are closed, not owed —
+                // counting them as "pending" inflated expected receipts forever.
+                case CANCELLED -> { /* excluded from every bucket */ }
+                default -> {
+                    // Legacy cancelled orders predate the CANCELLED payment status: their
+                    // payments still read PENDING but nothing will ever be collected.
+                    if (o.getOrderStatus() != OrderStatus.CANCELLED) {
+                        pending = pending.add(grand); pendingCount++;
+                    }
+                }
             }
             if (pm == PaymentMethod.COD) cod = cod.add(grand);
             else if (pm != null) online = online.add(grand);
@@ -118,20 +127,24 @@ public class BillingServiceImpl implements BillingService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> ResourceNotFoundException.of("Order", orderId));
         return orderMapper.toInvoice(order, billingConfig.gstRate(), billingConfig.sellerGstin(),
-                billingConfig.sellerName(), billingConfig.sellerAddress());
+                billingConfig.sellerName(), billingConfig.sellerAddress(), billingConfig.sellerState());
     }
 
     @Override
     @Transactional
     @Auditable(action = "MARK_PAID", entity = "payment")
     public OrderPaymentDto markPaid(UUID orderId) {
-        Payment payment = paymentRepository.findByOrderId(orderId)
+        // Row-locked so a racing COD-delivery settle / confirm can't double-charge.
+        Payment payment = paymentRepository.findByOrderIdForUpdate(orderId)
                 .orElseThrow(() -> new BusinessException("No payment associated with this order"));
         if (payment.getPaymentStatus() == PaymentStatus.SUCCESS) {
             return toDto(payment);   // already paid — idempotent
         }
         if (payment.getPaymentStatus() == PaymentStatus.REFUNDED) {
             throw new BusinessException("A refunded payment cannot be marked as paid");
+        }
+        if (payment.getPaymentStatus() == PaymentStatus.CANCELLED) {
+            throw new BusinessException("This order was cancelled — its payment cannot be marked as paid");
         }
         payment.setPaymentStatus(PaymentStatus.SUCCESS);
         Order order = payment.getOrder();

@@ -203,9 +203,14 @@
         const inv = await JLCheckout.invoice(id);
         const b = inv.billTo || {};
         const addr = [b.line1, b.line2, b.city, b.state, b.postalCode].filter(Boolean).map(jlEsc).join(", ");
-        const rows = (inv.items || []).map((it) => `<tr><td>${jlEsc(it.productName || "Item")}<div class="sku">${jlEsc(it.sku || "")}</div></td><td style="text-align:center">${it.quantity}</td><td style="text-align:right">${jlInr(it.unitPrice)}</td><td style="text-align:right">${jlInr(it.lineTotal)}</td></tr>`).join("");
-        const half = Number(inv.gstRate || 0) / 2;
+        // Per-line GST: each item carries its own rate + HSN snapshot (mixed 18%/28% orders).
+        const rows = (inv.items || []).map((it) => `<tr><td>${jlEsc(it.productName || "Item")}<div class="sku">${jlEsc(it.sku || "")}${it.hsnCode ? " · HSN " + jlEsc(it.hsnCode) : ""}${it.gstRate != null ? " · GST " + Number(it.gstRate) + "%" : ""}</div></td><td style="text-align:center">${it.quantity}</td><td style="text-align:right">${jlInr(it.unitPrice)}</td><td style="text-align:right">${jlInr(it.lineTotal)}</td></tr>`).join("");
         const line = (l, v) => `<div class="t"><span>${l}</span><span>${v}</span></div>`;
+        // Inter-state supplies carry IGST; intra-state split CGST/SGST. (No % suffix on the
+        // totals — the rate can differ per line; each line shows its own rate above.)
+        const taxLines = inv.interState
+          ? line("IGST", jlInr(inv.igst))
+          : line("CGST", jlInr(inv.cgst)) + line("SGST", jlInr(inv.sgst));
         const w = window.open("", "_blank");
         if (!w) { await jlAlert("Please allow pop-ups to view the invoice.", { type: "warn", title: "Pop-up blocked" }); return; }
         w.document.write(`<html><head><title>${jlEsc(inv.invoiceNumber || "Invoice")}</title>
@@ -233,8 +238,7 @@
               ${Number(inv.discountTotal) > 0 ? line("Discount", "− " + jlInr(inv.discountTotal)) : ""}
               ${Number(inv.shippingTotal) > 0 ? line("Shipping", jlInr(inv.shippingTotal)) : line("Delivery", "FREE")}
               ${line("Taxable value", jlInr(inv.taxableValue))}
-              ${line("CGST (" + half + "%)", jlInr(inv.cgst))}
-              ${line("SGST (" + half + "%)", jlInr(inv.sgst))}
+              ${taxLines}
               <div class="t grand"><span>Grand Total</span><span>${jlInr(inv.grandTotal)}</span></div>
             </div>
             <div class="muted" style="margin-top:20px">Prices are inclusive of GST. Thank you for shopping with JL Enterprises.</div>

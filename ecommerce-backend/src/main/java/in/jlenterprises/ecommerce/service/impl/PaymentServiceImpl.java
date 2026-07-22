@@ -133,7 +133,10 @@ public class PaymentServiceImpl implements PaymentService {
     public OrderPaymentDto confirm(UUID userId, UUID orderId, PaymentConfirmRequest request) {
         Order order = orderRepository.findByIdAndUserId(orderId, userId)
                 .orElseThrow(() -> ResourceNotFoundException.of("Order", orderId));
-        Payment payment = paymentFor(orderId);
+        // Row-locked: two racing confirm callbacks would otherwise both read PENDING and
+        // both record a CHARGE + post the sale. The second caller now blocks, then hits
+        // the SUCCESS idempotency guard below.
+        Payment payment = paymentForUpdate(orderId);
 
         // Idempotency: a payment already settled must not create a duplicate CHARGE
         // transaction or re-fire user/admin notifications on a repeated confirm callback.
@@ -196,7 +199,7 @@ public class PaymentServiceImpl implements PaymentService {
     @Transactional
     @Auditable(action = "REFUND_PAYMENT", entity = "payment")
     public OrderPaymentDto refund(UUID orderId) {
-        Payment payment = paymentFor(orderId);
+        Payment payment = paymentForUpdate(orderId);
         Order order = payment.getOrder();
         if (payment.getPaymentStatus() != PaymentStatus.SUCCESS) {
             throw new BusinessException("Only successful payments can be refunded");
@@ -230,6 +233,11 @@ public class PaymentServiceImpl implements PaymentService {
 
     private Payment paymentFor(UUID orderId) {
         return paymentRepository.findByOrderId(orderId)
+                .orElseThrow(() -> new BusinessException("No payment associated with this order"));
+    }
+
+    private Payment paymentForUpdate(UUID orderId) {
+        return paymentRepository.findByOrderIdForUpdate(orderId)
                 .orElseThrow(() -> new BusinessException("No payment associated with this order"));
     }
 

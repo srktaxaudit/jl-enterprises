@@ -316,7 +316,7 @@ public class AccountingServiceImpl implements AccountingService {
             LedgerAccount gstAcc = accountRepo.findByCode(OUTPUT_GST).orElse(null);
             if (debitAcc == null || salesAcc == null || gstAcc == null) return;   // defaults not seeded
 
-            BigDecimal gst = GstUtil.gstAmount(grand, billingConfig.gstRate());
+            BigDecimal gst = embeddedGstFor(order, grand);
             BigDecimal taxable = grand.subtract(gst);
 
             JournalEntry e = new JournalEntry();
@@ -354,7 +354,7 @@ public class AccountingServiceImpl implements AccountingService {
             LedgerAccount gstAcc = accountRepo.findByCode(OUTPUT_GST).orElse(null);
             if (cashBank == null || salesAcc == null || gstAcc == null) return;
 
-            BigDecimal gst = GstUtil.gstAmount(grand, billingConfig.gstRate());
+            BigDecimal gst = embeddedGstFor(order, grand);
             BigDecimal taxable = grand.subtract(gst);
 
             // Mirror of the sale, reversed: Dr Sales + Dr Output GST, Cr Cash/Bank (money returned).
@@ -454,6 +454,11 @@ public class AccountingServiceImpl implements AccountingService {
         a.setCreditDays(r.creditDays());
         if (r.blocked() != null) a.setBlocked(r.blocked());
         if (r.active() != null) a.setActive(r.active());
+    }
+
+    /** Per-line embedded GST — single source of truth shared with invoices (GstUtil). */
+    private BigDecimal embeddedGstFor(Order order, BigDecimal grand) {
+        return GstUtil.embeddedGst(order, grand, billingConfig.gstRate());
     }
 
     private JournalLine line(LedgerAccount acc, BigDecimal dr, BigDecimal cr) {

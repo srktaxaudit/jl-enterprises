@@ -52,7 +52,7 @@ class PaymentServiceImplTest {
         order.setOrderStatus(OrderStatus.PENDING);
         Payment payment = payment(PaymentMethod.COD, PaymentStatus.PENDING, order);
         when(orderRepository.findByIdAndUserId(orderId, userId)).thenReturn(Optional.of(order));
-        when(paymentRepository.findByOrderId(orderId)).thenReturn(Optional.of(payment));
+        when(paymentRepository.findByOrderIdForUpdate(orderId)).thenReturn(Optional.of(payment));
 
         paymentService.confirm(userId, orderId, new PaymentConfirmRequest("ref", null, null));
 
@@ -70,7 +70,7 @@ class PaymentServiceImplTest {
         order.setOrderStatus(OrderStatus.CONFIRMED);
         Payment payment = payment(PaymentMethod.RAZORPAY, PaymentStatus.SUCCESS, order);
         when(orderRepository.findByIdAndUserId(orderId, userId)).thenReturn(Optional.of(order));
-        when(paymentRepository.findByOrderId(orderId)).thenReturn(Optional.of(payment));
+        when(paymentRepository.findByOrderIdForUpdate(orderId)).thenReturn(Optional.of(payment));
 
         paymentService.confirm(userId, orderId, new PaymentConfirmRequest("ref", null, null));
 
@@ -119,7 +119,7 @@ class PaymentServiceImplTest {
         order.setOrderStatus(OrderStatus.CANCELLED);
         Payment payment = payment(PaymentMethod.RAZORPAY, PaymentStatus.PENDING, order);
         when(orderRepository.findByIdAndUserId(orderId, userId)).thenReturn(Optional.of(order));
-        when(paymentRepository.findByOrderId(orderId)).thenReturn(Optional.of(payment));
+        when(paymentRepository.findByOrderIdForUpdate(orderId)).thenReturn(Optional.of(payment));
 
         org.junit.jupiter.api.Assertions.assertThrows(
                 in.jlenterprises.ecommerce.exception.BusinessException.class,

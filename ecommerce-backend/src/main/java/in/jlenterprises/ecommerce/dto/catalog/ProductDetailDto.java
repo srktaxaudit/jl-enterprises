@@ -32,6 +32,9 @@ public record ProductDetailDto(
         String brandName,
         List<ProductImageDto> images,
         List<ProductVariantDto> variants,
+        // ── GST (per product; null rate → store default) ──
+        BigDecimal gstRate,
+        String hsnCode,
         // ── EMI (manually set by admin; storefront shows these as-is) ──
         boolean emiAvailable,
         Integer emiMonths,

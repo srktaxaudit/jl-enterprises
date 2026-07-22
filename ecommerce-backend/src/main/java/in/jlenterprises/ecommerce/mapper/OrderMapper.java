@@ -50,14 +50,24 @@ public class OrderMapper {
     }
 
     public InvoiceDto toInvoice(Order o, BigDecimal gstRate, String sellerGstin,
-                                String sellerName, String sellerAddress) {
+                                String sellerName, String sellerAddress, String sellerState) {
         List<OrderItemDto> items = o.getItems().stream().map(this::toItemDto).toList();
         BigDecimal grand = o.getGrandTotal() == null ? BigDecimal.ZERO : o.getGrandTotal();
-        // Prices are GST-inclusive: derive the embedded tax (total unchanged).
-        BigDecimal taxable = GstUtil.taxableValue(grand, gstRate);
-        BigDecimal gst = GstUtil.gstAmount(grand, gstRate);
-        BigDecimal cgst = gst.divide(BigDecimal.valueOf(2), 2, RoundingMode.HALF_UP);
-        BigDecimal sgst = gst.subtract(cgst);   // remainder absorbs any rounding
+        // Prices are GST-inclusive: derive the embedded tax (total unchanged), computed
+        // per line at each item's snapshotted rate — same math as the journal posting.
+        BigDecimal gst = GstUtil.embeddedGst(o, grand, gstRate);
+        BigDecimal taxable = grand.subtract(gst);
+        // Place of supply for goods = where they ship. Same state as the seller →
+        // CGST+SGST split; different state → the whole tax is IGST.
+        boolean interState = isInterState(o, sellerState);
+        BigDecimal cgst, sgst, igst;
+        if (interState) {
+            igst = gst; cgst = BigDecimal.ZERO; sgst = BigDecimal.ZERO;
+        } else {
+            cgst = gst.divide(BigDecimal.valueOf(2), 2, RoundingMode.HALF_UP);
+            sgst = gst.subtract(cgst);   // remainder absorbs any rounding
+            igst = BigDecimal.ZERO;
+        }
         Payment p = o.getPayment();
         return new InvoiceDto(
                 "INV-" + o.getOrderNumber(), o.getOrderNumber(), o.getPlacedAt(),
@@ -65,10 +75,19 @@ public class OrderMapper {
                 toSnapshotDto(o.getBillingAddress()),
                 items,
                 o.getSubtotal(), o.getDiscountTotal(),
-                taxable, gstRate, cgst, sgst, gst,
+                taxable, gstRate, cgst, sgst, igst, interState, gst,
                 o.getShippingTotal(), grand, o.getCurrency(),
                 p == null ? null : p.getMethod().name(),
                 p == null ? null : p.getPaymentStatus().name());
+    }
+
+    private static boolean isInterState(Order o, String sellerState) {
+        if (sellerState == null || sellerState.isBlank()) return false;
+        AddressSnapshot ship = o.getShippingAddress() != null ? o.getShippingAddress() : o.getBillingAddress();
+        String state = ship == null ? null : ship.getState();
+        // Unknown ship-to state → assume intra-state (the store's walk-in default).
+        if (state == null || state.isBlank()) return false;
+        return !state.trim().equalsIgnoreCase(sellerState.trim());
     }
 
     private OrderItemDto toItemDto(OrderItem i) {
@@ -76,7 +95,8 @@ public class OrderMapper {
                 i.getId(),
                 i.getProduct() == null ? null : i.getProduct().getId(),
                 i.getVariant() == null ? null : i.getVariant().getId(),
-                i.getProductName(), i.getSku(), i.getUnitPrice(), i.getQuantity(), i.getLineTotal());
+                i.getProductName(), i.getSku(), i.getUnitPrice(), i.getQuantity(), i.getLineTotal(),
+                i.getGstRate(), i.getHsnCode());
     }
 
     private AddressSnapshotDto toSnapshotDto(AddressSnapshot a) {

@@ -77,6 +77,17 @@ public class Product extends BaseEntity {
     @Column(name = "currency", nullable = false, length = 3)
     private String currency = "INR";
 
+    // ── GST (per product; electronics mix 18% and 28% slabs) ──
+    /** GST rate percent for this product. Null → the store-wide default from Settings
+        (gst_rate). Prices remain GST-INCLUSIVE; this only changes how the embedded
+        tax is derived per line on invoices and in the books. */
+    @Column(name = "gst_rate", precision = 5, scale = 2)
+    private BigDecimal gstRate;
+
+    /** HSN code for GST invoices/returns (nullable until catalogued). */
+    @Column(name = "hsn_code", length = 16)
+    private String hsnCode;
+
     @Column(name = "featured", nullable = false)
     private boolean featured = false;
 

@@ -56,12 +56,14 @@ public class PosOrderServiceImpl implements PosOrderService {
     private final OrderMapper orderMapper;
     private final NotificationService notificationService;
     private final AccountingService accountingService;
+    private final in.jlenterprises.ecommerce.config.BillingConfig billingConfig;
 
     public PosOrderServiceImpl(ProductRepository productRepository, InventoryRepository inventoryRepository,
                                OrderRepository orderRepository, PaymentRepository paymentRepository,
                                UserRepository userRepository, RoleRepository roleRepository,
                                OrderNumberGenerator orderNumberGenerator, OrderMapper orderMapper,
-                               NotificationService notificationService, AccountingService accountingService) {
+                               NotificationService notificationService, AccountingService accountingService,
+                               in.jlenterprises.ecommerce.config.BillingConfig billingConfig) {
         this.productRepository = productRepository;
         this.inventoryRepository = inventoryRepository;
         this.orderRepository = orderRepository;
@@ -72,6 +74,7 @@ public class PosOrderServiceImpl implements PosOrderService {
         this.orderMapper = orderMapper;
         this.notificationService = notificationService;
         this.accountingService = accountingService;
+        this.billingConfig = billingConfig;
     }
 
     @Override
@@ -110,6 +113,9 @@ public class PosOrderServiceImpl implements PosOrderService {
             oi.setUnitPrice(unit);
             oi.setQuantity(qty);
             oi.setLineTotal(unit.multiply(BigDecimal.valueOf(qty)));
+            // Same GST snapshot as online orders — invoices/books must not follow later catalogue edits.
+            oi.setGstRate(product.getGstRate() != null ? product.getGstRate() : billingConfig.gstRate());
+            oi.setHsnCode(product.getHsnCode());
             lines.add(oi);
             subtotal = subtotal.add(oi.getLineTotal());
         }

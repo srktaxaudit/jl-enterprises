@@ -11,5 +11,8 @@ public record OrderItemDto(
         String sku,
         BigDecimal unitPrice,
         int quantity,
-        BigDecimal lineTotal
+        BigDecimal lineTotal,
+        /* GST snapshot frozen at order time (null on legacy rows → store default rate). */
+        BigDecimal gstRate,
+        String hsnCode
 ) {}

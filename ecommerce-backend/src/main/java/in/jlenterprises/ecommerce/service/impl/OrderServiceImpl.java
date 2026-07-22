@@ -3,7 +3,9 @@ package in.jlenterprises.ecommerce.service.impl;
 import in.jlenterprises.ecommerce.audit.Auditable;
 import in.jlenterprises.ecommerce.constant.NotificationType;
 import in.jlenterprises.ecommerce.constant.OrderStatus;
+import in.jlenterprises.ecommerce.constant.PaymentMethod;
 import in.jlenterprises.ecommerce.constant.PaymentStatus;
+import in.jlenterprises.ecommerce.constant.TransactionType;
 import in.jlenterprises.ecommerce.constant.WhatsappAutomationEvent;
 import in.jlenterprises.ecommerce.dto.order.InvoiceDto;
 import in.jlenterprises.ecommerce.dto.order.OrderDto;
@@ -18,6 +20,7 @@ import in.jlenterprises.ecommerce.entity.Order;
 import in.jlenterprises.ecommerce.entity.OrderItem;
 import in.jlenterprises.ecommerce.entity.Payment;
 import in.jlenterprises.ecommerce.entity.Product;
+import in.jlenterprises.ecommerce.entity.Transaction;
 import in.jlenterprises.ecommerce.entity.User;
 import in.jlenterprises.ecommerce.exception.BusinessException;
 import in.jlenterprises.ecommerce.exception.ResourceNotFoundException;
@@ -201,6 +204,11 @@ public class OrderServiceImpl implements OrderService {
             oi.setUnitPrice(item.getUnitPrice());
             oi.setQuantity(item.getQuantity());
             oi.setLineTotal(item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity())));
+            // Freeze the GST facts alongside price/name: catalogue edits must never
+            // change what an already-issued invoice or posted journal says.
+            oi.setGstRate(item.getProduct().getGstRate() != null
+                    ? item.getProduct().getGstRate() : billingConfig.gstRate());
+            oi.setHsnCode(item.getProduct().getHsnCode());
             order.getItems().add(oi);
         }
         Order saved = orderRepository.save(order);
@@ -300,7 +308,8 @@ public class OrderServiceImpl implements OrderService {
     @Transactional(readOnly = true)
     public InvoiceDto invoice(UUID userId, UUID orderId) {
         return orderMapper.toInvoice(ownedOrder(userId, orderId), billingConfig.gstRate(),
-                billingConfig.sellerGstin(), billingConfig.sellerName(), billingConfig.sellerAddress());
+                billingConfig.sellerGstin(), billingConfig.sellerName(), billingConfig.sellerAddress(),
+                billingConfig.sellerState());
     }
 
     @Override
@@ -369,6 +378,7 @@ public class OrderServiceImpl implements OrderService {
             order.setOrderStatus(status);
         } else {
             order.setOrderStatus(status);
+            if (status == OrderStatus.DELIVERED) settleCodOnDelivery(order);
         }
         notificationService.notifyUser(order.getUser().getId(), NotificationType.ORDER,
                 "Order update", "Your order " + order.getOrderNumber() + " is now " + status + ".",
@@ -444,9 +454,48 @@ public class OrderServiceImpl implements OrderService {
     /** Cancel: restock, revoke coupon usage, set reason/timestamp, mark payment refunded if paid. */
     private void doCancel(Order order, String reason) {
         refundAndRestore(order);
+        // A payment that was never collected is CANCELLED, not left PENDING forever —
+        // otherwise every cancelled order inflates the billing "payment pending" bucket.
+        Payment p = order.getPayment();
+        if (p != null && (p.getPaymentStatus() == PaymentStatus.PENDING
+                || p.getPaymentStatus() == PaymentStatus.FAILED)) {
+            p.setPaymentStatus(PaymentStatus.CANCELLED);
+        }
         order.setOrderStatus(OrderStatus.CANCELLED);
         order.setCancelledAt(Instant.now());
         order.setCancellationReason(reason);
+    }
+
+    /**
+     * Cash on delivery is COLLECTED at the doorstep, so DELIVERED is the moment the sale
+     * becomes real money. Settle the payment and post the sale to the books here —
+     * previously delivered COD orders sat PENDING forever (revenue and output GST never
+     * booked) because the only settle path was the ADMIN-only "mark paid" button.
+     */
+    private void settleCodOnDelivery(Order order) {
+        Payment p = order.getPayment();
+        if (p == null || p.getMethod() != PaymentMethod.COD
+                || p.getPaymentStatus() != PaymentStatus.PENDING) {
+            return;
+        }
+        p.setPaymentStatus(PaymentStatus.SUCCESS);
+        Transaction txn = new Transaction();
+        txn.setPayment(p);
+        txn.setType(TransactionType.CHARGE);
+        txn.setTransactionStatus(PaymentStatus.SUCCESS);
+        txn.setAmount(p.getAmount());
+        txn.setProviderReference("COD-DELIVERY");
+        txn.setProcessedAt(Instant.now());
+        p.getTransactions().add(txn);
+
+        final UUID oid = order.getId();
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override public void afterCommit() { accountingService.postSaleForOrder(oid); }
+            });
+        } else {
+            accountingService.postSaleForOrder(oid);
+        }
     }
 
     /** Restore inventory + coupon usage, flip a successful payment to REFUNDED, and reverse the

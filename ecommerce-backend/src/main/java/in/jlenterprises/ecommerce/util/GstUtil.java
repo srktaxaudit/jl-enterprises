@@ -29,4 +29,40 @@ public final class GstUtil {
         BigDecimal amt = inclusiveAmount.setScale(2, RoundingMode.HALF_UP);
         return amt.subtract(taxableValue(amt, ratePercent));
     }
+
+    /**
+     * Total GST embedded in a GST-inclusive order, computed PER LINE at each item's
+     * snapshotted rate (electronics mix 18% and 28% slabs — one flat rate misstates the
+     * liability). Coupon/exchange discounts shrink each line's share proportionally;
+     * shipping and legacy lines without a snapshot use {@code defaultRate}.
+     *
+     * <p>Single source of truth for invoices AND journal postings — the printed invoice
+     * and the books must never disagree.
+     */
+    public static BigDecimal embeddedGst(in.jlenterprises.ecommerce.entity.Order order,
+                                         BigDecimal grand, BigDecimal defaultRate) {
+        if (grand == null) return BigDecimal.ZERO;
+        BigDecimal shipping = order.getShippingTotal() == null ? BigDecimal.ZERO : order.getShippingTotal();
+        BigDecimal merchandise = grand.subtract(shipping);
+        if (merchandise.signum() < 0) merchandise = BigDecimal.ZERO;
+
+        BigDecimal itemsTotal = order.getItems().stream()
+                .map(i -> i.getLineTotal() == null ? BigDecimal.ZERO : i.getLineTotal())
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal gst;
+        if (itemsTotal.signum() <= 0) {
+            gst = gstAmount(merchandise, defaultRate);
+        } else {
+            gst = BigDecimal.ZERO;
+            for (var item : order.getItems()) {
+                BigDecimal lineTotal = item.getLineTotal() == null ? BigDecimal.ZERO : item.getLineTotal();
+                // This line's share of the actual consideration (post-discount/exchange).
+                BigDecimal share = lineTotal.multiply(merchandise).divide(itemsTotal, 2, RoundingMode.HALF_UP);
+                BigDecimal rate = item.getGstRate() != null ? item.getGstRate() : defaultRate;
+                gst = gst.add(gstAmount(share, rate));
+            }
+        }
+        return gst.add(gstAmount(shipping, defaultRate));
+    }
 }

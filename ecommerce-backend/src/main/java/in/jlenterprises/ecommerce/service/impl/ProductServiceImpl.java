@@ -358,6 +358,9 @@ public class ProductServiceImpl implements ProductService {
         p.setSpecifications(r.specifications());
         p.setCategory(r.categoryId() == null ? null : findCategory(r.categoryId()));
         p.setBrand(r.brandId() == null ? null : findBrand(r.brandId()));
+        // GST — null rate means "use the store-wide default from Settings".
+        p.setGstRate(r.gstRate());
+        p.setHsnCode(r.hsnCode() == null || r.hsnCode().isBlank() ? null : r.hsnCode().trim());
         // EMI — stored exactly as the admin enters it; the storefront never auto-calculates.
         p.setEmiAvailable(r.emiAvailable() != null && r.emiAvailable());
         p.setEmiMonths(r.emiMonths());
