@@ -26,6 +26,11 @@ public interface WhatsappCampaignService {
     /** Internal async worker: send all QUEUED messages of a campaign in the background.
         Called by {@link #send} after commit — not a controller endpoint. */
     void processQueued(UUID campaignId);
+    /** Internal worker step: send ONE batch of queued messages in its own short
+        transaction. Returns how many were processed (0 = campaign drained/cancelled). */
+    int processBatch(UUID campaignId, int batchSize);
+    /** Internal worker step: final recount + sentAt stamp once the queue is drained. */
+    void finishCampaign(UUID campaignId);
     CampaignDetailDto retryFailed(UUID id);
     CampaignDetailDto cancel(UUID id);
     void delete(UUID id);

@@ -32,7 +32,10 @@ import java.util.List;
         uniqueConstraints = @UniqueConstraint(name = "uk_order_number", columnNames = "order_number"),
         indexes = {
                 @Index(name = "idx_order_user", columnList = "user_id"),
-                @Index(name = "idx_order_status", columnList = "order_status")
+                @Index(name = "idx_order_status", columnList = "order_status"),
+                // Admin date filters, revenue/billing ranges and the abandoned-order
+                // sweeper all scan by placed_at.
+                @Index(name = "idx_order_placed_at", columnList = "placed_at")
         })
 @SQLRestriction("deleted = false")
 @Getter

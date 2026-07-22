@@ -28,7 +28,7 @@ public class SupabaseStorageService {
     private static final Logger log = LoggerFactory.getLogger(SupabaseStorageService.class);
 
     private final AppProperties.Supabase cfg;
-    private final RestClient http = RestClient.create();
+    private final RestClient http = in.jlenterprises.ecommerce.util.Http.client();
 
     public SupabaseStorageService(AppProperties props) {
         this.cfg = props.supabase();

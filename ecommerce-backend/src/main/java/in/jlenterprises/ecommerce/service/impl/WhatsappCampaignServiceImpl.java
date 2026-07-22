@@ -213,16 +213,36 @@ public class WhatsappCampaignServiceImpl implements WhatsappCampaignService {
 
     @Override
     @Async
-    @Transactional
     public void processQueued(UUID campaignId) {
+        // Deliberately NOT transactional: one short transaction PER BATCH (via the self
+        // proxy) instead of a single transaction — and its Hikari connection (pool max 5
+        // on the free tier) — held across every HTTP send of the whole campaign. Progress
+        // also commits as it happens, and a cancel mid-send takes effect between batches.
+        while (self.processBatch(campaignId, 20) > 0) { /* next batch */ }
+        self.finishCampaign(campaignId);
+    }
+
+    @Override
+    @Transactional
+    public int processBatch(UUID campaignId, int batchSize) {
         WhatsappCampaign c = campaignRepo.findById(campaignId).orElse(null);
-        if (c == null) return;
+        if (c == null || c.getCampaignStatus() == WhatsappCampaignStatus.CANCELLED) return 0;
         boolean demo = c.isDemoMode();
-        List<WhatsappMessageLog> queued = logRepo.findByCampaign_IdAndMessageStatus(campaignId, WhatsappMessageStatus.QUEUED);
+        List<WhatsappMessageLog> queued = logRepo
+                .findByCampaign_IdAndMessageStatus(campaignId, WhatsappMessageStatus.QUEUED)
+                .stream().limit(batchSize).toList();
         for (WhatsappMessageLog msg : queued) {
             sendOne(c, msg, demo);
             logRepo.save(msg);
         }
+        return queued.size();
+    }
+
+    @Override
+    @Transactional
+    public void finishCampaign(UUID campaignId) {
+        WhatsappCampaign c = campaignRepo.findById(campaignId).orElse(null);
+        if (c == null) return;
         recount(c);
         c.setSentAt(Instant.now());
         campaignRepo.save(c);

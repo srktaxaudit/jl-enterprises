@@ -196,10 +196,13 @@ public class ExchangeServiceImpl implements ExchangeService {
     @Override
     @Transactional
     public void applyToOrder(UUID exchangeId, UUID orderId) {
+        // Conditional UPDATE, not read-modify-write: two checkouts racing on the same
+        // credit both pass valueForCheckout's check; exactly one may win here.
+        int updated = repository.consumeIfUnused(exchangeId, orderId);
+        if (updated == 0) {
+            throw new BusinessException("This exchange has already been used on another order.");
+        }
         ExchangeRequest e = entity(exchangeId);
-        e.setExchangeStatus(ExchangeStatus.COMPLETED);
-        e.setAppliedOrderId(orderId);
-        repository.save(e);
         notificationService.notifyUser(e.getUser().getId(), NotificationType.ORDER, "Exchange applied",
                 "Your exchange value of ₹" + e.getFinalValue() + " was applied to your order.", "/my-exchanges.html");
     }

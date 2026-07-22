@@ -50,6 +50,7 @@ public class StartupConfigValidator implements ApplicationRunner {
     private final String adminPassword;
     private final String corsOrigins;
     private final boolean allowVercelPreviews;
+    private final String ddlAuto;
 
     public StartupConfigValidator(Environment environment,
                                   @Value("${app.jwt.secret:}") String jwtSecret,
@@ -57,7 +58,8 @@ public class StartupConfigValidator implements ApplicationRunner {
                                   @Value("${spring.datasource.password:}") String dbPassword,
                                   @Value("${app.bootstrap.admin-password:}") String adminPassword,
                                   @Value("${app.security.cors.allowed-origins:}") String corsOrigins,
-                                  @Value("${app.security.cors.allow-vercel-previews:false}") boolean allowVercelPreviews) {
+                                  @Value("${app.security.cors.allow-vercel-previews:false}") boolean allowVercelPreviews,
+                                  @Value("${spring.jpa.hibernate.ddl-auto:}") String ddlAuto) {
         this.environment = environment;
         this.jwtSecret = jwtSecret;
         this.dbUrl = dbUrl;
@@ -65,6 +67,7 @@ public class StartupConfigValidator implements ApplicationRunner {
         this.adminPassword = adminPassword;
         this.corsOrigins = corsOrigins;
         this.allowVercelPreviews = allowVercelPreviews;
+        this.ddlAuto = ddlAuto;
     }
 
     @Override
@@ -80,6 +83,15 @@ public class StartupConfigValidator implements ApplicationRunner {
         }
 
         validateProduction(jwtSecret, dbPassword, adminPassword, corsOrigins);
+
+        // Schema management: entity-development mode mutates the LIVE schema on every deploy.
+        // Accepted for now (see application.yml), but each boot should say so out loud until
+        // the Flyway freeze happens. Non-fatal — never take the store down over it.
+        if (!"validate".equalsIgnoreCase(ddlAuto == null ? "" : ddlAuto.trim())) {
+            log.warn("Schema: production is running with ddl-auto='{}' and Flyway disabled — Hibernate "
+                    + "mutates the live schema on deploy. Plan the Flyway freeze (JPA_DDL_AUTO=validate, "
+                    + "FLYWAY_ENABLED=true) and take a DB backup first.", ddlAuto);
+        }
 
         // Enabling previews requires an explicit env var (the default is false), so reaching here
         // is a deliberate, temporary choice — but it is risky enough to shout about every boot.

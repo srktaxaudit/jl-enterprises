@@ -40,7 +40,11 @@ public class InventoryServiceImpl implements InventoryService {
     @Transactional
     @Auditable(action = "UPDATE_INVENTORY", entity = "inventory")
     public InventoryDto update(UUID productId, InventoryUpdateRequest request) {
-        Inventory inv = getEntity(productId);
+        // Row lock (SELECT ... FOR UPDATE), same as the checkout deduct path: writing an
+        // absolute quantity through a plain read could silently overwrite a concurrent
+        // checkout's decrement in the window between our read and our save.
+        Inventory inv = inventoryRepository.findByProductIdForUpdate(productId)
+                .orElseGet(() -> getEntity(productId));
         inv.setQuantity(request.quantity());
         inv.setReorderLevel(request.reorderLevel());
         inv.setWarehouseLocation(request.warehouseLocation());

@@ -87,7 +87,11 @@ public class AdminUserServiceImpl implements AdminUserService {
         assertCanManage(user);
         if (!enabled) assertNotLastSuperAdmin(user);
         user.setEnabled(enabled);
-        return userMapper.toDto(userRepository.save(user));
+        UserDto dto = userMapper.toDto(userRepository.save(user));
+        // Disabling must end the user's sessions NOW, same as deleteStaff — otherwise
+        // their refresh token keeps minting access tokens until it expires.
+        if (!enabled) refreshTokenService.revokeAll(user);
+        return dto;
     }
 
     @Override
@@ -146,7 +150,8 @@ public class AdminUserServiceImpl implements AdminUserService {
         u.setPasswordHash(passwordEncoder.encode(r.password()));
         u.setFirstName(r.firstName());
         u.setLastName(r.lastName());
-        u.setPhone(r.phone() == null || r.phone().isBlank() ? null : r.phone().trim());
+        u.setPhone(r.phone() == null || r.phone().isBlank() ? null
+                : in.jlenterprises.ecommerce.util.IdentifierUtil.normalizePhone(r.phone()));
         u.setDepartment(r.department());
         u.setDesignation(r.designation());
         u.setEmailVerified(true);

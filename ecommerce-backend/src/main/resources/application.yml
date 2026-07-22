@@ -40,6 +40,11 @@ spring:
     properties:
       hibernate:
         format_sql: true
+        # Batch lazy-association loading (brand/category/images on catalogue pages,
+        # payment/user on admin order lists): one IN(...) query per 25 entities instead
+        # of one query per entity — the single biggest cut in round-trips to the remote
+        # Supabase DB on the hottest public endpoints.
+        default_batch_fetch_size: 25
         jdbc:
           time_zone: UTC
 
@@ -150,6 +155,12 @@ management:
     # re-enable (set true) once a Redis instance is configured.
     redis:
       enabled: ${MANAGEMENT_HEALTH_REDIS_ENABLED:false}
+    # Same story for SMTP: the mail indicator pings the mail host and drags the
+    # /actuator/health AGGREGATE to 503 while the app serves traffic fine (this
+    # caused a false "site down" alarm during the July 2026 audit). Mail failures
+    # already surface per-send in the logs; liveness/readiness stay authoritative.
+    mail:
+      enabled: ${MANAGEMENT_HEALTH_MAIL_ENABLED:false}
 
 logging:
   level:

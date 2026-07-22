@@ -37,7 +37,7 @@ public class RazorpayPaymentStrategy implements PaymentStrategy {
     private static final Logger log = LoggerFactory.getLogger(RazorpayPaymentStrategy.class);
 
     private final AppProperties.Razorpay cfg;
-    private final RestClient http = RestClient.create();
+    private final RestClient http = in.jlenterprises.ecommerce.util.Http.client();
 
     public RazorpayPaymentStrategy(AppProperties props) {
         this.cfg = props.razorpay();

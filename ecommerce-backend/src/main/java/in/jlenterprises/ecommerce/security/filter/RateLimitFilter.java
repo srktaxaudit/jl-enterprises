@@ -39,6 +39,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
             "/api/v1/stock-alerts",
             "/api/v1/service-bookings");
 
+    /** Throttled GETs: public order tracking validates order number + phone last-10 —
+        unthrottled, the phone could be brute-forced for any known order number. */
+    private static final Set<String> LIMITED_GET_PATHS = Set.of(
+            "/api/v1/orders/track");
+
     private final int maxPerWindow;
     private final long windowSeconds;
     private final Map<String, Window> counters = new ConcurrentHashMap<>();
@@ -50,7 +55,13 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return !(HttpMethod.POST.matches(request.getMethod()) && LIMITED_PATHS.contains(request.getRequestURI()));
+        if (HttpMethod.POST.matches(request.getMethod())) {
+            return !LIMITED_PATHS.contains(request.getRequestURI());
+        }
+        if (HttpMethod.GET.matches(request.getMethod())) {
+            return !LIMITED_GET_PATHS.contains(request.getRequestURI());
+        }
+        return true;
     }
 
     @Override

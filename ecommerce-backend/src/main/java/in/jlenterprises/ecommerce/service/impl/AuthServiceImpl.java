@@ -108,8 +108,15 @@ public class AuthServiceImpl implements AuthService {
         if (userRepository.existsByEmailIgnoreCase(email)) {
             throw new DuplicateResourceException("An account with this email already exists");
         }
-        if (request.phone() != null && !request.phone().isBlank() && userRepository.existsByPhone(request.phone())) {
-            throw new DuplicateResourceException("An account with this phone already exists");
+        // Canonicalise to +91XXXXXXXXXX before storing, and check duplicates by last-10
+        // digits so "+919876543210" and "9876543210" can never coexist as two accounts
+        // (exact-string existsByPhone missed differently-formatted duplicates).
+        String phone = null;
+        if (request.phone() != null && !request.phone().isBlank()) {
+            phone = IdentifierUtil.normalizePhone(request.phone());
+            if (!userRepository.findByPhoneLast10(IdentifierUtil.last10(phone)).isEmpty()) {
+                throw new DuplicateResourceException("An account with this phone already exists");
+            }
         }
 
         Role customer = roleRepository.findByName(RoleName.ROLE_CUSTOMER)
@@ -120,7 +127,7 @@ public class AuthServiceImpl implements AuthService {
         user.setPasswordHash(passwordEncoder.encode(request.password()));
         user.setFirstName(request.firstName());
         user.setLastName(request.lastName());
-        user.setPhone(request.phone() == null || request.phone().isBlank() ? null : request.phone());
+        user.setPhone(phone);
         if (Boolean.TRUE.equals(request.whatsappOptIn())) {
             user.setWhatsappOptIn(true);
             user.setWhatsappOptInAt(Instant.now());
@@ -218,8 +225,14 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public AuthResponse refresh(String refreshToken, String userAgent, String ip) {
         RefreshToken current = refreshTokenService.verify(refreshToken);
+        User user = current.getUser();
+        // A disabled account must not keep a session alive by rotating refresh tokens
+        // forever (the JWT filter blocks its ACCESS tokens, but refresh worked before).
+        if (!user.isEnabled()) {
+            refreshTokenService.revokeAll(user);
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "This account has been disabled.");
+        }
         RefreshToken rotated = refreshTokenService.rotate(current, userAgent, ip);
-        User user = rotated.getUser();
         String access = jwtService.generateAccessToken(user.getEmail(), roleNames(user));
         return AuthResponse.of(access, rotated.getRawToken(), jwtService.getAccessTtlSeconds(), userMapper.toDto(user));
     }
@@ -296,6 +309,13 @@ public class AuthServiceImpl implements AuthService {
             String digits = request.identifier().replaceAll("\\D", "");
             String last10 = digits.length() > 10 ? digits.substring(digits.length() - 10) : digits;
             java.util.List<User> matches = userRepository.findByPhoneLast10(last10);
+            // Registration/profile updates now enforce phone uniqueness (last-10), so more
+            // than one match means legacy duplicate rows — flag them for cleanup rather
+            // than silently blessing every account with the number.
+            if (matches.size() > 1) {
+                log.warn("OTP phone-verify matched {} accounts for the same number — legacy duplicates "
+                        + "need manual cleanup (last10 ending {}).", matches.size(), last10.substring(6));
+            }
             matches.forEach(u -> u.setPhoneVerified(true));
             if (!matches.isEmpty()) userRepository.saveAll(matches);
         }
@@ -327,10 +347,12 @@ public class AuthServiceImpl implements AuthService {
         if (request.firstName() != null) user.setFirstName(request.firstName());
         if (request.lastName() != null) user.setLastName(request.lastName());
         if (request.phone() != null && !request.phone().isBlank()) {
-            if (userRepository.existsByPhone(request.phone()) && !request.phone().equals(user.getPhone())) {
-                throw new DuplicateResourceException("Phone already in use");
-            }
-            user.setPhone(request.phone());
+            // Same canonical form + last-10 duplicate check as registration (excluding self).
+            String phone = IdentifierUtil.normalizePhone(request.phone());
+            boolean taken = userRepository.findByPhoneLast10(IdentifierUtil.last10(phone)).stream()
+                    .anyMatch(u -> !u.getId().equals(userId));
+            if (taken) throw new DuplicateResourceException("Phone already in use");
+            user.setPhone(phone);
         }
         if (request.whatsappOptIn() != null) {
             boolean opt = request.whatsappOptIn();
