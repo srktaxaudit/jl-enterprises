@@ -132,7 +132,7 @@
   let timer; $("search").addEventListener("input", (e)=>{ clearTimeout(timer); const v=e.target.value.trim(); timer=setTimeout(()=>search(v),300); });
 
   jlWireLogout("#logoutBtn");
-  jlRequireAdmin().then((a)=>{
+  jlRequireAdmin(["INVENTORY_MANAGER"]).then((a)=>{
     $("adminBadge").textContent = jlDisplayName(a).split(/[\s@.]+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join("")||"JL";
     jlWithBusy(loadLow);
   });

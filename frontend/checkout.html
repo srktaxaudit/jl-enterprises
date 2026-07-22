@@ -541,6 +541,26 @@
         if (sync.added === 0) {
           throw { message: "None of your items could be added — they may be out of stock. Please review your cart." };
         }
+        // Some (but not all) items failed to sync: the on-screen summary still shows them,
+        // so placing the order silently would charge for FEWER items than the customer sees.
+        // Make them choose: continue without those items, or go back and fix the cart.
+        if (sync.failed.length > 0) {
+          const names = sync.failed.map((f) => "• " + f.name + " (" + f.reason + ")").join("\n");
+          const goOn = await jlConfirm(
+            "Some items can't be ordered right now:\n\n" + names +
+            "\n\nPlace the order WITHOUT these items?",
+            { title: "Items unavailable", confirmText: "Place order without them", cancelText: "Back to cart" });
+          if (!goOn) {
+            btn.disabled = false; btn.textContent = old;
+            window.location.href = "cart.html";
+            return;
+          }
+          // Drop the failed items locally too, so the summary/localStorage match the order.
+          const failedNames = new Set(sync.failed.map((f) => f.name));
+          const kept = JSON.parse(localStorage.getItem("jl_cart") || "[]")
+            .filter((it) => !failedNames.has(it.name || it.id));
+          localStorage.setItem("jl_cart", JSON.stringify(kept));
+        }
         const addr = CHOSEN_ADDR_ID ? { id: CHOSEN_ADDR_ID } : await JLCheckout.addAddress(newAddrPayload);
         const method = (document.querySelector('input[name="pay"]:checked') || {}).value || "COD";
         window.jlTrack && jlTrack("begin_checkout", { currency: "INR", value: subtotal });

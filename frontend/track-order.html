@@ -179,6 +179,15 @@
       { key: "SHIPPED",   label: "Out for Delivery", emoji: "🚚" },
       { key: "DELIVERED", label: "Delivered",      emoji: "🎉" },
     ];
+    // Statuses that sit between the display steps map onto the nearest step — without this,
+    // findIndex returns -1 and an out-for-delivery order shows as "Order Received".
+    const STEP_ALIAS = {
+      FAILED_PAYMENT: "PENDING",
+      PROCESSING: "CONFIRMED",
+      OUT_FOR_DELIVERY: "SHIPPED",
+      RETURN_REQUESTED: "DELIVERED",
+      RETURNED: "DELIVERED",
+    };
     const $ = (id) => document.getElementById(id);
     const showErr = (m) => { const e=$("trackError"); e.textContent=m||""; e.style.display=m?"block":"none"; };
 
@@ -215,8 +224,10 @@
       const status = t.status;
       if (status === "CANCELLED" || status === "REFUNDED") {
         $("trackSteps").innerHTML = `<div style="text-align:center;padding:16px;background:#fef2f2;border-radius:12px;color:#b91c1c;font-weight:600">This order was ${status.toLowerCase()}.</div>`;
+      } else if (status === "RETURN_REQUESTED" || status === "RETURNED") {
+        $("trackSteps").innerHTML = `<div style="text-align:center;padding:16px;background:#fff7ed;border-radius:12px;color:#c2410c;font-weight:600">${status === "RETURNED" ? "This order was returned." : "A return has been requested for this order."}</div>`;
       } else {
-        const currentIdx = Math.max(0, STEPS.findIndex(s => s.key === status));
+        const currentIdx = Math.max(0, STEPS.findIndex(s => s.key === (STEP_ALIAS[status] || status)));
         $("trackSteps").innerHTML = STEPS.map((s, i) => {
           const done = i <= currentIdx;
           const isCurrent = i === currentIdx;

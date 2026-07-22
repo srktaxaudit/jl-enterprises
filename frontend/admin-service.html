@@ -100,7 +100,7 @@
   let t; $("search").addEventListener("input", ()=>{ clearTimeout(t); t=setTimeout(load, 250); });
 
   jlWireLogout("#logoutBtn");
-  jlRequireAdmin().then((a)=>{
+  jlRequireAdmin(["CUSTOMER_SUPPORT"]).then((a)=>{
     $("adminBadge").textContent = jlDisplayName(a).split(/[\s@.]+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join("")||"JL";
     jlWithBusy(load);
   });

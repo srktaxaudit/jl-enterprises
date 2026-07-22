@@ -91,6 +91,7 @@
 
 <footer class="bg-navy text-slate-400 mt-9 py-6 text-center text-[13px]">© 2026 JL Enterprises, Thoothukudi · <a href="index.html" class="text-brand">Home</a> · <a href="cart.html" class="text-brand">Cart</a></footer>
 
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script src="jl-ui.js"></script>
 <script src="config.js"></script>
 <script src="store.js"></script>
@@ -243,6 +244,49 @@
       } catch (e) { await jlAlert(e.message || "Could not load the invoice.", { type: "error", title: "Couldn't load invoice" }); }
     }
 
+    // Complete a pending online payment straight from My Orders — same verified flow as
+    // checkout (initiate → Razorpay modal → server-side signature confirm).
+    async function payNow(o, btn) {
+      btn.disabled = true; const old = btn.textContent; btn.textContent = "Opening payment…";
+      try {
+        if (typeof Razorpay === "undefined") throw { message: "Payment library failed to load. Please refresh and retry." };
+        const init = await JLCheckout.initiatePayment(o.id);
+        const user = JLCustomer.user() || {};
+        await new Promise((resolve, reject) => {
+          const rzp = new Razorpay({
+            key: init.clientData,
+            order_id: init.providerReference,
+            amount: Math.round(Number(init.amount) * 100),
+            currency: init.currency || "INR",
+            name: "JL Enterprises",
+            description: "Order " + (o.orderNumber || ""),
+            prefill: { email: user.email || "", contact: (user.phone || "").replace(/\D/g, "").slice(-10) },
+            theme: { color: "#0b2447" },
+            handler: async (resp) => {
+              try {
+                await JLCheckout.confirmPayment(o.id, {
+                  providerReference: resp.razorpay_payment_id,
+                  signature: resp.razorpay_signature,
+                  payload: resp.razorpay_order_id,
+                });
+                resolve(true);
+              } catch (e) { reject(e); }
+            },
+            modal: { ondismiss: () => reject({ dismissed: true }) },
+          });
+          rzp.on("payment.failed", (r) => reject({ message: (r && r.error && r.error.description) || "Payment failed." }));
+          rzp.open();
+        });
+        jlToast("Payment received — thank you! ✓", "success");
+        setTimeout(() => location.reload(), 1200);
+      } catch (e) {
+        btn.disabled = false; btn.textContent = old;
+        if (e && e.dismissed) { jlToast("Payment cancelled — you can retry anytime.", "info"); return; }
+        await jlAlert(e.message || "The payment could not be completed. Please try again.",
+                      { type: "error", title: "Payment not completed" });
+      }
+    }
+
     (async function load() {
       try {
         const page = await JLCheckout.myOrders();
@@ -269,6 +313,7 @@
               <button type="button" class="viewBtn text-brand font-semibold">View items ▾</button>
               <button type="button" class="invBtn text-slate-500 hover:text-navy">🧾 Invoice</button>
               <button type="button" class="reorderBtn text-green-700 font-semibold">🛒 Buy again</button>
+              ${o.status === "PENDING" && o.paymentMethod === "RAZORPAY" && ["PENDING","FAILED"].includes(o.paymentStatus) ? '<button type="button" class="payBtn text-brand font-bold">💳 Complete payment</button>' : ""}
               ${["PENDING","CONFIRMED","PROCESSING"].includes(o.status) ? '<button type="button" class="cancelBtn text-red-600 font-semibold">Cancel order</button>' : ""}
               ${o.status === "DELIVERED" ? '<button type="button" class="returnBtn text-orange-600 font-semibold">Request return</button>' : ""}
               ${o.status === "RETURN_REQUESTED" ? '<span class="text-orange-600">↩ Return requested</span>' : ""}
@@ -279,6 +324,7 @@
           vb.addEventListener("click", () => toggleDetail(o.id, wrap, vb));
           card.querySelector(".invBtn").addEventListener("click", () => downloadInvoice(o.id));
           card.querySelector(".reorderBtn").addEventListener("click", (e) => reorder(o.id, e.currentTarget));
+          const pb = card.querySelector(".payBtn"); if (pb) pb.addEventListener("click", (e) => payNow(o, e.currentTarget));
           const cb = card.querySelector(".cancelBtn"); if (cb) cb.addEventListener("click", () => cancelOrder(o.id));
           const rb = card.querySelector(".returnBtn"); if (rb) rb.addEventListener("click", () => returnOrder(o.id));
           list.appendChild(card);

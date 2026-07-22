@@ -41,9 +41,12 @@ public class OrderMapper {
     }
 
     public OrderSummaryDto toSummary(Order o) {
+        Payment p = o.getPayment();
         return new OrderSummaryDto(
                 o.getId(), o.getOrderNumber(), o.getOrderStatus(),
-                o.getGrandTotal(), o.getCurrency(), o.getItems().size(), o.getPlacedAt());
+                o.getGrandTotal(), o.getCurrency(), o.getItems().size(), o.getPlacedAt(),
+                p == null ? null : p.getMethod(),
+                p == null ? null : p.getPaymentStatus());
     }
 
     public InvoiceDto toInvoice(Order o, BigDecimal gstRate, String sellerGstin,

@@ -145,7 +145,7 @@
   $("next").addEventListener("click", ()=>{ if(state.page<state.totalPages-1){state.page++; load();} });
 
   jlWireLogout("#logoutBtn");
-  jlRequireAdmin().then((a)=>{
+  jlRequireAdmin(["MANAGER"]).then((a)=>{
     $("adminBadge").textContent = jlDisplayName(a).split(/[\s@.]+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join("")||"JL";
     jlWithBusy(load);
   });

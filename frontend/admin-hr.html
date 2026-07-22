@@ -292,7 +292,14 @@
 
   $("empModal").addEventListener("click",(e)=>{ if(e.target===$("empModal")) $("empModal").classList.add("hidden"); });
   jlWireLogout("#logoutBtn");
-  jlRequireAdmin().then((a)=>{
+  jlRequireAdmin().then(async (a)=>{
+    // Payroll + bank details: match the sidebar's @hr rule exactly — super-admins or HR
+    // only. jlRequireAdmin's MANAGER pass-through must NOT apply to this page.
+    if (!jlIsSuper(a) && !jlHasRole(a, "HR")) {
+      await jlNotify("You don't have access to this section.", { title: "Access denied", type: "warn" });
+      jlTopWindow().location.replace("admin-shell.html");
+      return;
+    }
     $("adminBadge").textContent = jlDisplayName(a).split(/[\s@.]+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join("")||"JL";
     loadEmployees();
   });

@@ -497,7 +497,7 @@
   });
 
   jlWireLogout("#logoutBtn");
-  jlRequireAdmin().then(async (a)=>{
+  jlRequireAdmin(["PRODUCT_MANAGER"]).then(async (a)=>{
     $("adminBadge").textContent = jlDisplayName(a).split(/[\s@.]+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join("")||"JL";
     await jlWithBusy(()=>Promise.all([loadRefs(), load()]));
   });

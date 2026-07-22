@@ -821,7 +821,7 @@
 
   // ── boot ──
   jlWireLogout("#logoutBtn");
-  jlRequireAdmin().then((a)=>{
+  jlRequireAdmin(["MARKETING_MANAGER"]).then((a)=>{
     $("adminBadge").textContent = jlDisplayName(a).split(/[\s@.]+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join("")||"JL";
     loadAnalytics(); loadTemplates(); refreshAudience(); renderPreview(); refreshInboxBadge();
   });
